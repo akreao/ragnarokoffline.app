@@ -107,6 +107,7 @@ const classicNavigationHtml = String.raw`<div class="Navigation">
 	<div class="footer">
 		<label class="minimize-label"><input type="checkbox" class="minimize-toggle" /> Minimize</label>
 		<div class="coordinates-bar"><div class="map-name"></div><div class="mouse-info"><span class="mouse-label">Mouse:</span><span class="mouse-coordinates"></span></div><div class="target-info"><span class="target-label">Target:</span><span class="target-coordinates"></span></div></div>
+		<span class="airship-button">Airship</span>
 		<ui-button class="marker-menu-button" bg="navigation_interface3/btn_roadiocn_select1_normal.bmp" hover="navigation_interface3/btn_roadiocn_select1_over.bmp" down="navigation_interface3/btn_roadiocn_select1_press.bmp" title="Path marker"></ui-button>
 		<div class="marker-palette">
 			<ui-button data-style="1" bg="navigation_interface3/btn_roadiocn_select1_normal.bmp" hover="navigation_interface3/btn_roadiocn_select1_over.bmp" down="navigation_interface3/btn_roadiocn_select1_press.bmp"></ui-button>
@@ -179,6 +180,7 @@ const classicNavigationCss = String.raw`:host { top: 120px; left: 120px; width: 
 .Navigation .minimize-label { position:absolute; left:5px; top:5px; font-size:10px; }
 .Navigation .minimize-label input { width:10px; height:10px; margin:0 2px 0 0; vertical-align:-1px; }
 .Navigation .coordinates-bar { display:none; }
+.Navigation .airship-button { display:none; position:absolute; right:34px; top:4px; height:14px; line-height:14px; padding:0 4px; font-size:10px; color:#000; border:1px solid #b0b0b0; border-radius:3px; background:linear-gradient(#fff,#e4e4e4); cursor:pointer; white-space:nowrap; }
 .Navigation .marker-menu-button { position:absolute; right:4px; top:2px; width:26px; height:18px; background-repeat:no-repeat; overflow:hidden; }
 .Navigation .marker-palette { display:none; position:absolute; right:3px; bottom:22px; width:126px; height:50px; z-index:20; box-sizing:border-box; border:1px solid #888; border-radius:2px; background:#f4f4f4; box-shadow:1px 1px 3px rgba(0,0,0,.4); }
 .Navigation .marker-palette.open { display:grid; grid-template-columns:repeat(4,26px); grid-template-rows:repeat(2,18px); gap:4px; padding:4px; }
@@ -199,8 +201,12 @@ function replaceNavigationRawAssignment(variableName, value) {
 replaceNavigationRawAssignment('Navigation_default$2', classicNavigationHtml);
 replaceNavigationRawAssignment('Navigation_default$1', classicNavigationCss);
 
-const navigationVarsNeedle = 'var Navigation, _arrow, _toolDealer, _weaponDealer, _armorDealer, _blacksmith, _guide, _inn, _kafra, _map, _ctx$2, _towninfo, _markers, _path, _lastPathUpdate, _pathUpdateThrottle, _pathUpdateLock, _pathFindingWorker, _mapData, _targetData, _finalTargetData, _isMapClickTarget, _blinking, _fadeInterval, _originalColor, _documentClickHandler, Navigation_default;';
-if (patched.split(navigationVarsNeedle).length !== 2) throw Error('Navigation variable declaration not found');
+// The bundler numbers clashing names (_ctx$2, _ctx$3...) by how many other
+// modules use them, so match the declaration whatever suffix _ctx gets.
+const navigationVarsPattern = /var Navigation, _arrow, _toolDealer, _weaponDealer, _armorDealer, _blacksmith, _guide, _inn, _kafra, _map, _ctx\$\d+, _towninfo, _markers, _path, _lastPathUpdate, _pathUpdateThrottle, _pathUpdateLock, _pathFindingWorker, _mapData, _targetData, _finalTargetData, _isMapClickTarget, _blinking, _fadeInterval, _originalColor, _documentClickHandler, Navigation_default;/g;
+const navigationVarsMatches = patched.match(navigationVarsPattern) || [];
+if (navigationVarsMatches.length !== 1) throw Error('Navigation variable declaration not found');
+const navigationVarsNeedle = navigationVarsMatches[0];
 const groundPathImplementation = String.raw`var _navigationGroundPathProgram = null;
 var _navigationGroundPathBuffers = Array(8).fill(null);
 var _navigationGroundPathTextures = Array(8).fill(null);
@@ -470,9 +476,11 @@ function renderNavigationGroundPath(gl, modelView, projection, tick) {
 }`;
 patched = patched.replace(navigationVarsNeedle, groundPathImplementation + '\n' + navigationVarsNeedle);
 
-const navigationDependenciesNeedle = '\tinit_DBManager();\n\tinit_Navigation$2();';
+// Anchored on Navigation's own html/css imports, which end its dependency
+// list: what is imported ahead of them varies with the fork's Navigation.js.
+const navigationDependenciesNeedle = '\tinit_Navigation$2();\n\tinit_Navigation$1();';
 if (patched.split(navigationDependenciesNeedle).length !== 2) throw Error('Navigation dependency block not found');
-patched = patched.replace(navigationDependenciesNeedle, '\tinit_DBManager();\n\tinit_Entity$1();\n\tinit_SpriteRenderer();\n\tinit_Navigation$2();');
+patched = patched.replace(navigationDependenciesNeedle, () => '\tinit_Entity$1();\n\tinit_SpriteRenderer();\n' + navigationDependenciesNeedle);
 
 const navigationInitialPositionNeedle = `\t\tthis._host.style.top = \`\${Math.max(0, Math.min(Renderer.height - 300, 200))}px\`;
 \t\tthis._host.style.left = \`\${Math.max(0, Math.min(Renderer.width - 300, 200))}px\`;`;
