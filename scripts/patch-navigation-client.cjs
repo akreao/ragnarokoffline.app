@@ -593,9 +593,10 @@ patched = patched.replace(naviCommandNeedle, `\t\tnavi: {
 \t\t\t\tNavigation_default.show();
 \t\t\t\tif (coordinates) {
 \t\t\t\t\tconst navigationRoot = Navigation_default.getRoot();
-\t\t\t\t\tnavigationRoot.querySelector(".search-workspace").style.display = "none";
-\t\t\t\t\tnavigationRoot.querySelector(".search-actions").style.display = "none";
-\t\t\t\t\tnavigationRoot.querySelector(".map-container").style.display = "flex";
+\t\t\t\t\tfor (const [selector, display] of [[".search-workspace", "none"], [".search-actions", "none"], [".map-container", "flex"]]) {
+\t\t\t\t\t\tconst element = navigationRoot.querySelector(selector);
+\t\t\t\t\t\tif (element) element.style.display = display;
+\t\t\t\t\t}
 \t\t\t\t\tNavigation_default.navigateTo({
 \t\t\t\t\t\tstartMap: MapRenderer.currentMap,
 \t\t\t\t\t\tstartX: SessionStorage_default.Entity.position[0] | 0,
@@ -610,7 +611,9 @@ patched = patched.replace(naviCommandNeedle, `\t\tnavi: {
 \t\t\t\tif (args.length >= 2) {
 \t\t\t\t\tconst root = Navigation_default.getRoot();
 \t\t\t\t\troot.querySelector(".search-input").value = args;
-\t\t\t\t\troot.querySelector(".search-type").value = "ALL";
+\t\t\t\t\tconst searchType = root.querySelector(".search-type");
+\t\t\t\t\tif (searchType) searchType.value = "ALL";
+\t\t\t\t\telse if (Navigation_default.setSearchType) Navigation_default.setSearchType("ALL");
 \t\t\t\t\tNavigation_default.onSearch();
 \t\t\t\t}
 \t\t\t}
