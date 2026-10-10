@@ -93,5 +93,15 @@ window.ROConfigLocal = {
 	// The official skill window, roBrowserLegacy#14: Apply asks first (MsgStr 1377)
 	// and list-mode "+" only reserves points until Apply.
 	enableOfficialSkillList: true,
+	// Official pieces of existing windows, roBrowserLegacy#17: Esc menu buttons,
+	// quest tracker, minimap buttons, whisper title, cash shop tabs, the 2026
+	// menu bar and the broadcast balloon.
+	officialEscapeMenu: true,
+	officialQuestTracker: true,
+	officialMiniMapButtons: true,
+	officialWhisperTitle: true,
+	officialCashShopTabs: true,
+	officialMenuBar: true,
+	officialAnnounce: true,
 	BGMFileExtension: ['mp3']
 };
