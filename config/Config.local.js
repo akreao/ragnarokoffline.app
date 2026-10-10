@@ -90,5 +90,8 @@ window.ROConfigLocal = {
 	// The official layouts of rebuilt windows (Vending, Navigation, Roulette),
 	// roBrowserLegacy#16, #18 and #19. Unset in roBrowser, where its own windows show.
 	officialLayout: true,
+	// The official skill window, roBrowserLegacy#14: Apply asks first (MsgStr 1377)
+	// and list-mode "+" only reserves points until Apply.
+	enableOfficialSkillList: true,
 	BGMFileExtension: ['mp3']
 };
