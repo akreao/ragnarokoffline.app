@@ -84,5 +84,8 @@ window.ROConfigLocal = {
 	worldMapExtras: false,
 	chatBattleModeBar: false,
 	mercenaryGauges: false,
+	// The official renewal hotbar (-/+ rows, Skill Bar 1/2), roBrowserLegacy#15.
+	// Off by default in roBrowser, where the classic hotbar shows.
+	enableRenewalShortCut: true,
 	BGMFileExtension: ['mp3']
 };
