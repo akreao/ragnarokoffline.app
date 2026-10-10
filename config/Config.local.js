@@ -75,5 +75,14 @@ window.ROConfigLocal = {
 	// Costs nothing visible -- players do not have devtools open -- and turns
 	// the log into something worth asking a bug reporter for.
 	enableConsole: true,
+	// Windows follow the 2026 official client. Each switch below keeps a
+	// roBrowser extra in the fork; the app turns them off:
+	// Status attached under Equipment, the world map's toggle-all-maps button
+	// and preview tooltip, the chat "battle mode" strip, and the mercenary
+	// gauges in place of the official end date and counters.
+	equipmentStatusEmbedded: false,
+	worldMapExtras: false,
+	chatBattleModeBar: false,
+	mercenaryGauges: false,
 	BGMFileExtension: ['mp3']
 };
