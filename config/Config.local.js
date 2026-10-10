@@ -87,5 +87,8 @@ window.ROConfigLocal = {
 	// The official renewal hotbar (-/+ rows, Skill Bar 1/2), roBrowserLegacy#15.
 	// Off by default in roBrowser, where the classic hotbar shows.
 	enableRenewalShortCut: true,
+	// The official layouts of rebuilt windows (Vending, Navigation, Roulette),
+	// roBrowserLegacy#16, #18 and #19. Unset in roBrowser, where its own windows show.
+	officialLayout: true,
 	BGMFileExtension: ['mp3']
 };
