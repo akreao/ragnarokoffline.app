@@ -593,9 +593,10 @@ patched = patched.replace(naviCommandNeedle, `\t\tnavi: {
 \t\t\t\tNavigation_default.show();
 \t\t\t\tif (coordinates) {
 \t\t\t\t\tconst navigationRoot = Navigation_default.getRoot();
-\t\t\t\t\tnavigationRoot.querySelector(".search-workspace").style.display = "none";
-\t\t\t\t\tnavigationRoot.querySelector(".search-actions").style.display = "none";
-\t\t\t\t\tnavigationRoot.querySelector(".map-container").style.display = "flex";
+\t\t\t\t\tfor (const [selector, display] of [[".search-workspace", "none"], [".search-actions", "none"], [".map-container", "flex"]]) {
+\t\t\t\t\t\tconst element = navigationRoot.querySelector(selector);
+\t\t\t\t\t\tif (element) element.style.display = display;
+\t\t\t\t\t}
 \t\t\t\t\tNavigation_default.navigateTo({
 \t\t\t\t\t\tstartMap: MapRenderer.currentMap,
 \t\t\t\t\t\tstartX: SessionStorage_default.Entity.position[0] | 0,
@@ -610,7 +611,9 @@ patched = patched.replace(naviCommandNeedle, `\t\tnavi: {
 \t\t\t\tif (args.length >= 2) {
 \t\t\t\t\tconst root = Navigation_default.getRoot();
 \t\t\t\t\troot.querySelector(".search-input").value = args;
-\t\t\t\t\troot.querySelector(".search-type").value = "ALL";
+\t\t\t\t\tconst searchType = root.querySelector(".search-type");
+\t\t\t\t\tif (searchType) searchType.value = "ALL";
+\t\t\t\t\telse if (Navigation_default.setSearchType) Navigation_default.setSearchType("ALL");
 \t\t\t\t\tNavigation_default.onSearch();
 \t\t\t\t}
 \t\t\t}
@@ -894,39 +897,36 @@ patched = patched.replace(navigationRemoveNeedle, `\tNavigation.onRemove = funct
 \t\tif (_documentClickHandler) document.removeEventListener("click", _documentClickHandler);
 \t};`);
 
-const navigationSearchTablesNeedle = `\t\tstatic searchNavigation(query, type) {
-\t\t\tif (!query || query.length < 2) return [];
-\t\t\tquery = query.toLowerCase();
-\t\t\tconst results = [];`;
-if (patched.split(navigationSearchTablesNeedle).length !== 2) throw Error('Navigation database search method not found');
-patched = patched.replace(navigationSearchTablesNeedle, `${navigationSearchTablesNeedle}
+// The fork's official navigation window adds an options argument.
+const navigationSearchTablesPattern =
+	/\t\tstatic searchNavigation\(query, type(?:, options)?\) \{\n\t\t\tif \(!query \|\| query\.length < 2\) return \[\];\n\t\t\tquery = query\.toLowerCase\(\);\n\t\t\tconst results = \[\];/g;
+if ((patched.match(navigationSearchTablesPattern) || []).length !== 1) throw Error('Navigation database search method not found');
+patched = patched.replace(navigationSearchTablesPattern, match => `${match}
 \t\t\tconst elementNames = ["Neutral", "Water", "Earth", "Fire", "Wind", "Poison", "Holy", "Shadow", "Ghost", "Undead"];
 \t\t\tconst raceNames = ["Formless", "Undead", "Brute", "Plant", "Insect", "Fish", "Demon", "Demi-Human", "Angel", "Dragon", "Player", "Boss"];
 \t\t\tconst sizeNames = ["Small", "Medium", "Large"];`);
 
-const npcResultIdNeedle = `\t\t\t\t\ttype: "NPC",
-\t\t\t\t\tid: npcId,
-\t\t\t\t\tname: npcName,`;
-if (patched.split(npcResultIdNeedle).length !== 2) throw Error('NPC navigation result fields not found');
-patched = patched.replace(npcResultIdNeedle, `\t\t\t\t\ttype: "NPC",
-\t\t\t\t\tid: npcId,
-\t\t\t\t\tspriteId: Number(npc[3]) & 65535,
-\t\t\t\t\tname: npcName,`);
+// The search loops sit one level deeper once the fork's search grows a map
+// branch, so match the result fields at whatever indent they have.
+const npcResultIdPattern = /(\t+)type: "NPC",\n\1id: npcId,\n\1name: npcName,/g;
+if ((patched.match(npcResultIdPattern) || []).length !== 1) throw Error('NPC navigation result fields not found');
+patched = patched.replace(npcResultIdPattern, (_, indent) => `${indent}type: "NPC",
+${indent}id: npcId,
+${indent}spriteId: Number(npc[3]) & 65535,
+${indent}name: npcName,`);
 
-const mobResultIdNeedle = `\t\t\t\t\ttype: "MOB",
-\t\t\t\t\tid: mobId,
-\t\t\t\t\tname: mobName,`;
-if (patched.split(mobResultIdNeedle).length !== 2) throw Error('MOB navigation result fields not found');
-patched = patched.replace(mobResultIdNeedle, `\t\t\t\t\ttype: "MOB",
-\t\t\t\t\tid: mobId,
-\t\t\t\t\tspriteId: Number(mob[3]) & 65535,
-\t\t\t\t\tspawnCount: Number(mob[3]) >>> 16,
-\t\t\t\t\tfrequency: (() => { const count = Number(mob[3]) >>> 16; if (count <= 5) return "Very Low"; if (count <= 15) return "Low"; if (count <= 40) return "Average"; if (count <= 80) return "High"; return "Very High"; })(),
-\t\t\t\t\tname: mobName,
-\t\t\t\t\tlevel: Number(mob[6]) || 0,
-\t\t\t\t\telement: (() => { const code = Number(mob[7]) >>> 16 & 255; const kind = Math.floor(code / 20); const level = code % 20; return (elementNames[kind] || "Unknown") + (level ? " " + level : ""); })(),
-\t\t\t\t\trace: raceNames[Number(mob[7]) & 255] || "Unknown",
-\t\t\t\t\tsize: sizeNames[Number(mob[7]) >>> 8 & 255] || "Unknown",`);
+const mobResultIdPattern = /(\t+)type: "MOB",\n\1id: mobId,\n\1name: mobName,/g;
+if ((patched.match(mobResultIdPattern) || []).length !== 1) throw Error('MOB navigation result fields not found');
+patched = patched.replace(mobResultIdPattern, (_, indent) => `${indent}type: "MOB",
+${indent}id: mobId,
+${indent}spriteId: Number(mob[3]) & 65535,
+${indent}spawnCount: Number(mob[3]) >>> 16,
+${indent}frequency: (() => { const count = Number(mob[3]) >>> 16; if (count <= 5) return "Very Low"; if (count <= 15) return "Low"; if (count <= 40) return "Average"; if (count <= 80) return "High"; return "Very High"; })(),
+${indent}name: mobName,
+${indent}level: Number(mob[6]) || 0,
+${indent}element: (() => { const code = Number(mob[7]) >>> 16 & 255; const kind = Math.floor(code / 20); const level = code % 20; return (elementNames[kind] || "Unknown") + (level ? " " + level : ""); })(),
+${indent}race: raceNames[Number(mob[7]) & 255] || "Unknown",
+${indent}size: sizeNames[Number(mob[7]) >>> 8 & 255] || "Unknown",`);
 
 const navigationSearchLimitNeedle = '\t\t\treturn results.slice(0, 50);';
 if (patched.split(navigationSearchLimitNeedle).length !== 2) throw Error('Navigation result limit not found');
@@ -948,14 +948,13 @@ patched = patched.replace(navigationMapImageNeedle, `\t\tconst showFallback = ()
 \t\t\tshowFallback();
 \t\t}, showFallback);`);
 
-const naviMapGetterNeedle = `\t\tstatic getNaviLinkTable() {
-\t\t\treturn NaviLinkTable;
-\t\t}`;
-if (patched.split(naviMapGetterNeedle).length !== 2) throw Error('Navigation link table getter not found');
-patched = patched.replace(naviMapGetterNeedle, `\t\tstatic getNaviMapTable() {
+// The fork may wrap the table in naviList().
+const naviMapGetterPattern = /\t\tstatic getNaviLinkTable\(\) \{\n\t\t\treturn (?:naviList\(NaviLinkTable\)|NaviLinkTable);\n\t\t\}/g;
+if ((patched.match(naviMapGetterPattern) || []).length !== 1) throw Error('Navigation link table getter not found');
+patched = patched.replace(naviMapGetterPattern, match => `\t\tstatic getNaviMapTable() {
 \t\t\treturn NaviMapTable;
 \t\t}
-\t\t${naviMapGetterNeedle}`);
+${match}`);
 
 const navigationHideNeedle = `\tNavigation.hide = function hide() {
 \t\tthis.ui.hide();

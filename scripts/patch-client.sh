@@ -425,12 +425,7 @@ else:
 # controlled buttons is active.
 p = rb / "src/UI/Components/Equipment/EquipmentCommon.js"
 s = p.read_text()
-old = """\t\tcurrentTabId = selectedId;
-
-\t\tif (switchEquip) {"""
-new = """\t\tcurrentTabId = selectedId;
-
-\t\tconst attachmentControls = root.querySelector('.attachment-controls');
+new = """\t\tconst attachmentControls = root.querySelector('.attachment-controls');
 \t\tif (attachmentControls) {
 \t\t\tconst hasVisibleControl = Array.from(attachmentControls.querySelectorAll('button')).some(
 \t\t\t\tbutton => button.style.display === 'block'
@@ -441,14 +436,17 @@ new = """\t\tcurrentTabId = selectedId;
 \t\t\tif (panel) panel.classList.toggle('has-attachment-controls', showAttachmentControls);
 \t\t}
 
-\t\tif (switchEquip) {"""
+"""
+# Other statements may follow the assignment (the fork's take-off-all button
+# adds updateTakeOffAll()); the strip goes after them, before the switch block.
+m = re.search(r"\t\tcurrentTabId = selectedId;\n(?:\t\t\S[^\n]*\n)*\n(?=\t\tif \(switchEquip\) \{)", s)
 if "const hasVisibleControl" in s:
     print("EquipmentCommon.js attachment tab visibility already patched")
-elif s.count(old) == 1:
-    p.write_text(s.replace(old, new, 1))
+elif m:
+    p.write_text(s[: m.end()] + new + s[m.end() :])
     print("patched EquipmentCommon.js (attachment controls follow General tab)")
 else:
-    sys.exit("EquipmentCommon.js: tab-switch anchor no longer matches (%d hits); re-check the patch" % s.count(old))
+    sys.exit("EquipmentCommon.js: tab-switch anchor no longer matches; re-check the patch")
 
 p = rb / "src/UI/Components/Equipment/EquipmentV4/EquipmentV4.html"
 s = p.read_text()
