@@ -75,5 +75,33 @@ window.ROConfigLocal = {
 	// Costs nothing visible -- players do not have devtools open -- and turns
 	// the log into something worth asking a bug reporter for.
 	enableConsole: true,
+	// Windows follow the 2026 official client. Each switch below keeps a
+	// roBrowser extra in the fork; the app turns them off:
+	// Status attached under Equipment, the world map's toggle-all-maps button
+	// and preview tooltip, the chat "battle mode" strip, and the mercenary
+	// gauges in place of the official end date and counters.
+	equipmentStatusEmbedded: false,
+	worldMapExtras: false,
+	chatBattleModeBar: false,
+	mercenaryGauges: false,
+	// The official renewal hotbar (-/+ rows, Skill Bar 1/2), roBrowserLegacy#15.
+	// Off by default in roBrowser, where the classic hotbar shows.
+	enableRenewalShortCut: true,
+	// The official layouts of rebuilt windows (Vending, Navigation, Roulette),
+	// roBrowserLegacy#16, #18 and #19. Unset in roBrowser, where its own windows show.
+	officialLayout: true,
+	// The official skill window, roBrowserLegacy#14: Apply asks first (MsgStr 1377)
+	// and list-mode "+" only reserves points until Apply.
+	enableOfficialSkillList: true,
+	// Official pieces of existing windows, roBrowserLegacy#17: Esc menu buttons,
+	// quest tracker, minimap buttons, whisper title, cash shop tabs, the 2026
+	// menu bar and the broadcast balloon.
+	officialEscapeMenu: true,
+	officialQuestTracker: true,
+	officialMiniMapButtons: true,
+	officialWhisperTitle: true,
+	officialCashShopTabs: true,
+	officialMenuBar: true,
+	officialAnnounce: true,
 	BGMFileExtension: ['mp3']
 };
