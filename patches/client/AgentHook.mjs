@@ -22,6 +22,7 @@ import Network from 'Network/NetworkManager.js';
 import PACKET from 'Network/PacketStructure.js';
 import PACKETVER from 'Network/PacketVerManager.js';
 import UIManager from 'UI/UIManager.js';
+import GraphicsSettings from 'Preferences/Graphics.js';
 import EffectManager from 'Renderer/EffectManager.js';
 import EffectTable from 'DB/Effects/EffectTable.js';
 
@@ -172,6 +173,6 @@ export function install() {
         effects(since = 0) { return effects.filter(e => e.at >= since).map(({ id, known, owner }) => ({ id, known, owner })); },
         mouse() { return { state: Mouse.state, intersect: Mouse.intersect, screen: { ...Mouse.screen }, world: { ...Mouse.world },
             over: EntityManager.getOverEntity() ? describe(EntityManager.getOverEntity()) : null }; },
-        modules: { Session, Camera, Renderer, MapRenderer, EntityManager, Entity, Altitude, Mouse, DB, SkillInfo, Network, PACKET, PACKETVER, UIManager },
+        modules: { Session, Camera, Renderer, MapRenderer, EntityManager, Entity, Altitude, Mouse, DB, SkillInfo, Network, PACKET, PACKETVER, UIManager, GraphicsSettings },
     }) });
 }

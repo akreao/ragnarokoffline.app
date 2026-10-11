@@ -226,6 +226,32 @@ Do it on a field map (`@warp prt_fild08 170 360`); towns forbid some skills.
   `rotest server sql --write "UPDATE \`char\` SET ap=max_ap WHERE name='Tester'"`
   while logged out.
 
+## Measuring performance
+
+The client carries an opt-in probe, `src/Core/PerfProbe.js` in the
+roBrowserLegacy fork. It measures frame time, draw calls per frame, map load
+and startup to the login window, and does nothing unless
+`localStorage.roPerf` is `'1'`. `ROTEST_PERF=1` in the environment of `rotest
+start` sets it before the page loads, and puts a small overlay in the corner;
+`rotest eval "roPerf.stats()"` reads it. `ROTEST_UNCAPPED=1` starts Chromium
+with no vsync or frame cap, so a frame's time is what it costs, not the 60 Hz
+tick.
+
+`scripts/perf-bench.cjs` runs the whole baseline: cold startups, the Byalan
+dungeon floors, a Payon field with a spawned wolf pack, each with the occluder
+fade off, dither and alpha, then warm map loads. It restarts the daemon
+itself, and writes a Markdown table and the raw JSON to `artifacts/perf/`.
+
+```sh
+scripts/rotest world up
+node scripts/perf-bench.cjs                  # uncapped, 10 s per window
+node scripts/perf-bench.cjs --capped         # what a player at 60 fps sees
+node scripts/perf-bench.cjs --scenes pay_fild02 --secs 5
+```
+
+The world's client has to be a build with the probe in it.
+[docs/PERF_BASELINE.md](PERF_BASELINE.md) has the numbers to compare against.
+
 ## How it works, and what to watch for
 
 - **Never press Escape to cancel something.** Escape opens Game Options, whose

@@ -252,11 +252,20 @@ async function daemon(flags) {
     }
 
     // Autoplay on: headless has no user gesture, and `record` wants the music.
-    const browser = await chromium.launch({ headless: !headed, args: ['--use-gl=angle', '--enable-webgl', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'] });
+    // ROTEST_UNCAPPED=1: no vsync or frame-rate cap, so frame times show what a
+    // frame costs rather than the 60 Hz tick (for scripts/perf-bench.cjs).
+    const uncapped = process.env.ROTEST_UNCAPPED === '1' ? ['--disable-frame-rate-limit', '--disable-gpu-vsync'] : [];
+    const browser = await chromium.launch({ headless: !headed, args: ['--use-gl=angle', '--enable-webgl', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required', ...uncapped] });
     const context = await browser.newContext({ viewport: { width: vw, height: vh } });
     await context.addInitScript(() => { try { localStorage.setItem('roAgent', '1'); } catch {} });
+    // ROTEST_PERF=1: the client's opt-in perf probe (window.roPerf), from the first load.
+    if (process.env.ROTEST_PERF === '1') await context.addInitScript(() => { try { localStorage.setItem('roPerf', '1'); } catch {} });
     await context.addInitScript(AUDIO_TAP);
     const page = await context.newPage();
+    // ROTEST_CPU_THROTTLE=4: the page's main thread runs 4x slower, a stand-in
+    // for a slower machine when measuring (the GPU is not slowed).
+    const throttle = Number(process.env.ROTEST_CPU_THROTTLE || 1);
+    if (throttle > 1) await (await context.newCDPSession(page)).send('Emulation.setCPUThrottlingRate', { rate: throttle });
     const errors = [];
     let errorsSeen = 0;
     page.on('pageerror', e => errors.push({ at: Date.now(), kind: 'pageerror', text: String(e.stack || e.message).slice(0, 2000) }));
