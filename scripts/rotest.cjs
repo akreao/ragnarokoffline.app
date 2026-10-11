@@ -64,6 +64,7 @@ server:  server <args>                     the world's ragnarok-stack: logs map 
                              and orbits. Defaults: zoom 125 (smaller is closer), pitch 230, yaw 0
   record start <name> [--dir D]  start recording video + game audio (music and effects)
   record stop                stop; writes <name>.mp4 (H.264/AAC, 30 fps) to D, default $ROTEST_OUT/clips
+  trace start | trace stop [file]  a Chrome performance trace (JS samples, GC, GPU, timeline)
   errors                     every console/page error since start
 
 Environment: RO_E2E_WORLD (default artifacts/agent-world), RO_E2E_RUNTIME,
@@ -425,6 +426,7 @@ async function daemon(flags) {
         },
     };
 
+    let tracing = null;
     const commands = {
         camera: async args => {
             const want = {};
@@ -458,6 +460,44 @@ async function daemon(flags) {
             if (sub === 'start') { const d = rest.indexOf('--dir'); return record.start(name, d >= 0 ? rest[d + 1] : undefined); }
             if (sub === 'stop') return record.stop();
             throw new Error('record start <name> [--dir D] | record stop');
+        },
+        // A Chrome trace (chrome://tracing / Perfetto / DevTools format) with JS
+        // sampling, GC, GPU and the timeline, streamed to disk. PerfProbe's slow
+        // frames show in it as 'roPerf slow frame' measures. Chrome stops
+        // recording when its buffer is full; uncapped, that is within a minute.
+        trace: async ([sub, file]) => {
+            if (sub === 'start') {
+                if (tracing) throw new Error('already tracing');
+                tracing = await browser.newBrowserCDPSession();
+                await tracing.send('Tracing.start', { transferMode: 'ReturnAsStream', traceConfig: { recordMode: 'recordAsMuchAsPossible',
+                    includedCategories: ['devtools.timeline', 'disabled-by-default-devtools.timeline',
+                        'disabled-by-default-devtools.timeline.frame', 'blink.user_timing', 'toplevel', 'v8', 'v8.execute',
+                        'disabled-by-default-v8.cpu_profiler', 'disabled-by-default-v8.gc', 'gpu', 'disabled-by-default-gpu.service',
+                        'cc', 'viz', 'loading', 'blink.console', '__metadata'] } });
+                return { ok: true, tracing: true };
+            }
+            if (sub === 'stop') {
+                if (!tracing) throw new Error('not tracing');
+                const cdp = tracing; tracing = null;
+                const done = new Promise(r => cdp.once('Tracing.tracingComplete', r));
+                await cdp.send('Tracing.end');
+                const { stream, dataLossOccurred } = await done;
+                const out = path.resolve(file || path.join(OUT, `trace-${Date.now()}.json`));
+                fs.mkdirSync(path.dirname(out), { recursive: true });
+                const fd = fs.openSync(out, 'w');
+                let bytes = 0;
+                for (;;) {
+                    const chunk = await cdp.send('IO.read', { handle: stream, size: 1 << 20 });
+                    const buf = Buffer.from(chunk.data, chunk.base64Encoded ? 'base64' : 'utf8');
+                    fs.writeSync(fd, buf); bytes += buf.length;
+                    if (chunk.eof) break;
+                }
+                fs.closeSync(fd);
+                await cdp.send('IO.close', { handle: stream }).catch(() => {});
+                await cdp.detach().catch(() => {});
+                return { ok: true, file: out, bytes, dataLossOccurred: Boolean(dataLossOccurred) };
+            }
+            throw new Error('trace start | trace stop [file]');
         },
         ping: async () => ({ ok: true }),
         status: async () => ({ ok: true, running: true, url: page.url(), inGame: await inGame(), errors: errors.length }),

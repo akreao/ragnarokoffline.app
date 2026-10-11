@@ -15,7 +15,10 @@
 //
 //   node scripts/perf-bench.cjs [--secs 10] [--cold 3] [--capped] [--size 1920x1080]
 //                               [--scenes iz_dun00,pay_fild02] [--out artifacts/perf]
-//                               [--cpu-throttle 4]
+//                               [--cpu-throttle 4] [--headed] [--fps N]
+//
+// --fps sets the client's own limiter (Graphics fpslimit; 0 is none, vsync
+// only). It defaults to 60 with --capped and 0 without.
 //
 // Prints a Markdown summary and writes the raw numbers as JSON beside it.
 'use strict';
@@ -32,6 +35,8 @@ const CAPPED = argv.includes('--capped');
 const SIZE = flag('--size', '1920x1080');
 const OUT = path.resolve(flag('--out', path.join(repo, 'artifacts/perf')));
 const THROTTLE = Number(flag('--cpu-throttle', 1));
+const HEADED = argv.includes('--headed');
+const FPS = Number(flag('--fps', CAPPED ? 60 : 0));
 const FADES = ['off', 'dither', 'alpha'];
 
 // Fixed cells, each one a warp has landed on, so a rerun sees the same view.
@@ -69,7 +74,7 @@ async function restart() {
     // `stop` answers before the daemon has gone, and `start` against a daemon
     // still answering takes it for running.
     for (let i = 0; i < 30 && spawnSync(process.execPath, [path.join(repo, 'scripts/rotest.cjs'), 'status'], { env }).status === 0; i++) await sleep(500);
-    rotest('start', '--size', SIZE);
+    rotest('start', '--size', SIZE, ...(HEADED ? ['--headed'] : []));
     let probe = false;
     for (let i = 0; i < 120; i++) {
         try {
@@ -88,13 +93,14 @@ async function restart() {
 const measure = (fade, secs) => evaluate(`(async () => {
     const g = roAgent.modules.GraphicsSettings;
     g.occluderFade = ${JSON.stringify(fade)};
-    g.fpslimit = ${CAPPED ? 60 : 0};
+    g.fpslimit = ${FPS};
     await new Promise(r => setTimeout(r, 1500));
     roPerf.reset();
     await new Promise(r => setTimeout(r, ${secs * 1000}));
     const s = roPerf.stats();
     delete s.marks;
     s.entitiesNear = roAgent.entities({ radius: 20 }).length;
+    s.slowFrames = roPerf.slowFrames();
     return s;
 })()`);
 
@@ -111,7 +117,7 @@ const median = a => { const s = [...a].sort((x, y) => x - y); return s.length ? 
 
 async function main() {
     fs.mkdirSync(OUT, { recursive: true });
-    const result = { at: new Date().toISOString(), secs: SECS, capped: CAPPED, size: SIZE, cpuThrottle: THROTTLE, startup: [], scenes: [] };
+    const result = { at: new Date().toISOString(), secs: SECS, capped: CAPPED, headed: HEADED, fpslimit: FPS, size: SIZE, cpuThrottle: THROTTLE, startup: [], scenes: [] };
 
     // Cold startup: every `start` is a fresh browser profile, so nothing is
     // cached, neither HTTP nor roBrowser's own file cache.
@@ -168,7 +174,7 @@ async function main() {
     const file = path.join(OUT, `perf-${stamp}.json`);
     fs.writeFileSync(file, JSON.stringify(result, null, 2));
     const lines = [];
-    lines.push(`GPU: ${result.gpu}; ${SIZE}; ${CAPPED ? 'capped at 60 fps' : 'uncapped (no vsync)'}${THROTTLE > 1 ? `; CPU throttled ${THROTTLE}x` : ''}; ${SECS} s per window`);
+    lines.push(`GPU: ${result.gpu}; ${SIZE}; ${HEADED ? 'headed; ' : ''}${CAPPED ? 'vsync on' : 'no vsync'}, client fpslimit ${FPS || 'off'}${THROTTLE > 1 ? `; CPU throttled ${THROTTLE}x` : ''}; ${SECS} s per window`);
     lines.push('');
     lines.push(`Cold startup to login window: median ${median(result.startup)} ms (${result.startup.join(', ')})`);
     lines.push(`Login to character select: ${result.loginToCharSelectMs} ms; character select to playable: ${result.charSelectToPlayableMs} ms (first map ${result.firstMap?.map} ${result.firstMap?.firstFrameMs} ms)`);

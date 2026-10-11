@@ -138,11 +138,118 @@ hitches. The draw counts are the useful part:
    and not the main thread. Profile the map worker and the GPU upload next.
 4. **Character select to playable takes 5.7 s**, of which the map is about
    2 s. The other 3.7 s is unexplained, and it is the longest wait in startup.
-5. **Uncapped dungeon windows show occasional 50–180 ms hitches**: up to 11 in
-   10 s on iz_dun02 and iz_dun05, even with no entities near. They do not
-   appear capped, throttled, or on the field. GC or compositor stalls at
-   1500 fps are the likely cause. Check this before treating it as a real
-   player stutter.
+5. **The uncapped dungeon windows have 50–180 ms "hitches".** These turned
+   out to be a headless artifact, not stutter. See
+   [What the hitches are](#what-the-hitches-are-traces).
+
+## What the hitches are (traces)
+
+Steven sees FPS drops that come and go rather than a steady low rate. To find
+out what they are, `scripts/perf-trace.cjs` plays a scripted stretch under a
+Chrome trace: warp into iz_dun05, walk it, spawn Merman, Strouf and Hydra, open
+and close four windows, warp to pay_fild02, spawn 60 wolves, walk, cast six
+bolts and Thunderstorm into them, then warp back. The trace has JS sampling,
+GC, GPU and the timeline. The client's PerfProbe logs every frame over 33 ms
+and marks it in the trace as a `roPerf slow frame` measure.
+`scripts/perf-trace-analyze.py` then says, for each one, what ran on the main
+thread, the workers, the GPU process and the compositor, and which game
+functions the CPU samples landed in.
+
+```sh
+node scripts/perf-trace.cjs --headed --capped    # a real window at 60 fps; the one that counts
+node scripts/perf-trace.cjs --capped             # headless
+node scripts/perf-trace.cjs --short              # headless uncapped; Chrome's trace buffer fills in about 20 s
+python3 scripts/perf-trace-analyze.py artifacts/perf/trace-<...>.json
+```
+
+### Slow frames over the same 75 s of play
+
+| Run | Frames >33 ms | Of which >50 ms | Where |
+|---|---|---|---|
+| Headed, 60 fps cap, on Steven's 75 Hz monitor | **4** | 2 | the first frame after each warp, plus the tracer starting |
+| Headless, 60 fps cap | 57 | 3 | 51 single missed vsyncs (33–38 ms), map warps, one GC |
+| Headless, uncapped (step 1 bench) | 13–16 per 10 s on iz_dun05 | 7–12 | idle, with nothing near |
+
+The **uncapped headless hitches in the step 1 tables are not stutter.** Each
+one is a whole multiple of about 17.6 ms (2.0×, 3.0×, 4.0× … 15×), and the
+frame itself does at most 4 ms of work. Headless Chromium's frame scheduler is
+holding frames back. They do not appear capped or headed. The 51 headless
+capped frames of 33–38 ms are one missed synthetic vsync each, with the main
+thread 3–4 ms busy. They do not appear headed either.
+
+### What players actually get
+
+1. **The 60 fps cap judders on any monitor faster than 60 Hz.** Steven's
+   display is 1920×1080 at 74.97 Hz. The client's default `fpslimit` is 60
+   (`Preferences/Graphics.js`), and the app does not change it. The limiter in
+   `Renderer._render` can only skip whole vsyncs, so at 75 Hz it shows one
+   frame in four for two vsyncs. Frame times alternate between 13.3 and
+   26.7 ms. Measured on iz_dun05, headed:
+
+   | Headed, 75 Hz | FPS | Frame p50 | p95 | max |
+   |---|---|---|---|---|
+   | `fpslimit` 60 (default) | 59.9 | 13.4 ms | **26.7 ms** | 26.8 ms |
+   | `fpslimit` off (vsync only) | 74.9 | 13.3 ms | 13.4 ms | 13.5 ms |
+
+   A quarter of all frames are twice as long as the rest, all the time, on
+   every map. That is uneven motion, not a low frame rate, and it matches "FPS
+   drops that aren't consistent". 144 and 165 Hz monitors get the same kind of
+   uneven pacing.
+
+2. **The first frames after a warp stall for 40–90 ms.** In every warp window
+   (headed and headless), most of the JS samples are in
+   `PostProcess.createFramebuffer`, which blocks on
+   `GLES2Implementation::CheckFramebufferStatus`: 27–32 ms waiting on the GPU
+   process. `compileShader`/`createShaderProgram`, `createWorldMapView` and
+   texture `removeMagenta` take the rest. The cause is in `MapRenderer`'s
+   `onMapComplete`: `registerPostProcessModules(gl)` runs on every map load
+   and re-inits every post-process module, enabled or not (Bloom, Blur, FXAA,
+   CAS, Cartoon, Vibrance, VerticalFlip, Blind, Upsampling). Each one compiles
+   its shaders and builds a framebuffer that ends in a synchronous
+   `checkFramebufferStatus`.
+
+3. **One GC pause** of 33 ms (`V8.GCIncrementalMarking`) while 60 wolves
+   spawned. It was the only GC-attributed slow frame in the run.
+
+No slow frame came from shader compiles mid-play, sync file reads, layout or
+image decode on first sight of a sprite. Image decode shows up only inside
+warp frames (5–16 ms).
+
+### Where the main thread's time goes during play
+
+These are CPU samples over the whole headless capped run. The main thread was
+busy 7% of the time at 60 fps on this machine, so these are shares of a small
+total. They are what a slower machine runs out of first.
+
+| Share of main-thread JS | Function | Source |
+|---|---|---|
+| 20.1% incl., 16.0% self | `updateModelBuffer` → `transformAndWrite` | `Renderer/Map/AnimatedModels.js` |
+| 14.8% | `_renderEntity` / `_renderElement` (sprites, per entity) | `Renderer/Entity/EntityRender.js` |
+| 6.1% | `checkScrollbars` | `UI/GUIComponent.js` `_setupScrollbars` |
+| 5.5% | garbage collector | |
+| 2.3% / 1.5% | `isTexture` / `checkFramebufferStatus` (synchronous GL queries) | `PostProcess.js` |
+| 2.0% | `console.log` | packet logging, wrapped by the test hook |
+
+- **Animated models are transformed on the CPU.** On every step of a model's
+  animation, `updateModelBuffer` re-transforms every face of every node of
+  every instance, recomputes each face normal from vertices that never change,
+  then re-uploads the whole buffer with `bufferSubData`. It does this for
+  nodes that do not move (`_isStatic`) too. Byalan is full of animated models.
+- **`checkScrollbars` runs on any style or class change in a window.** A
+  MutationObserver on each window's subtree reacts to every `style`/`class`
+  attribute change by walking all of the window's descendants and calling
+  `getComputedStyle` on each, which forces a style recalc. A window that
+  updates a style every frame (bars, cooldowns, counters) pays that every
+  frame.
+- `console.log` of every received packet costs more here because the test
+  harness wraps it. In the shipped app it is cheaper, but the client still
+  formats and logs each packet.
+
+The map-loading worker, over the same run, spent 22.6% of its busy time in
+`saveFile` (writing what it downloaded to the browser's file cache: Blob,
+`createWriter`, `getDirectory`). Building the ground (`GND.compile`) took
+16.6% and model smooth normals (`calcNormal_SMOOTH`) 9.6%. This is part of why
+map loads take about 1.3 s even from cache.
 
 ## Caveats
 
