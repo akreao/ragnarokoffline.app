@@ -363,6 +363,100 @@ GRF reads, so requests do not serialize there. Locally the median TTFB at
 game entry was 32 ms with 387 requests queued, so the server is not the
 bottleneck; the round trips and bytes are.
 
+## Proposed fixes, ranked
+
+These are proposals only; none is implemented. They are ranked by expected
+effect on what players report: slow loading for remote players, and FPS that
+comes and goes.
+
+### 1. Cut what a remote player downloads and waits for
+
+This is the largest measured cost: 25 s from character select to playable at
+10 Mbps / 100 ms, and every page load is cold for internet players. It has
+three parts, each its own PR.
+
+- **a. Load UI window art when a window first opens, not on entering the
+  game** (fork, `UI/`). 505 of the about 960 requests at game entry are UI
+  textures, mostly for windows that are not open. Moving them to first open
+  takes about half the requests out of the burst that queues 466 deep. Based
+  on that, I would expect playable at 10/100 to drop from 25 s to roughly
+  12–15 s; to be measured with `perf-load.cjs`. The change is per window, in
+  the component's `init`/`onAppend`, a small pattern upstream could take. The
+  same goes for `worldmap.jpg` (1.3 MB, needed only when the world map opens)
+  and fetching `itemInfo.lua` on top of `itemInfo_client.lub`.
+- **b. Let the friends gateway pass caching through** (app,
+  `electron/sharing/gateway.js`). Forward `If-None-Match` and the ETag, and
+  for GRF assets keep `private, max-age=86400, immutable` instead of
+  `no-store`. `private` still keeps Cloudflare from caching, and the
+  invitation check still runs on every request. With this, a returning
+  internet player's page load goes from the cold 7.6 s to about the warm
+  2.8 s, and their map revisits stop re-downloading. It is our own code, so
+  there is no fork cost. Also give it a keep-alive agent, instead of a new
+  upstream connection per request.
+- **c. Ship a smaller `Online.js`, and precompress the static files** (fork
+  build config, plus the Rust server, which is ours). It is 13.15 MB unminified
+  and gzipped at level 1 on every request, to 3.15 MB. Minified and
+  precompressed with brotli it is 1.64 MB: 1.5 MB less, which is about 1.2 s
+  of startup at 10 Mbps. Gzip or brotli computed once at build time (or cached
+  in the server) also saves CPU on every response. Separately, parallelising
+  the serial chain before `Online.js` (`api.html` → `api.js` → `Config.js` →
+  `Config.local.js`, then the plugins one at a time) saves about 5 round
+  trips: 0.5 s at 100 ms RTT.
+
+### 2. Fix frame pacing on monitors over 60 Hz
+
+This is the likeliest cause of FPS drops that come and go. It is about a
+one-file change, and it affects every player with a 75/120/144/165 Hz
+display. The client's default `fpslimit` is 60, and its limiter can only skip
+whole vsyncs. At 75 Hz that makes a quarter of all frames 26.7 ms instead of
+13.3 ms, on every map, all the time (measured headed on Steven's 74.97 Hz
+display: p95 26.7 ms capped, 13.4 ms with the limit off).
+
+Two possible fixes:
+
+- Default `fpslimit` to off (vsync) in the app's config.
+- Better, in the fork's `Renderer._render`: when the limit is not below the
+  display's rate, do not throttle at all; and when it is below, pace to a
+  whole divisor of the refresh rate instead of alternating.
+
+The second is a general fix upstream would take. On machines that need a cap,
+the cap still applies.
+
+### 3. Stop re-initialising post-processing on every map load
+
+This is the 40–90 ms stall on the first frames after every warp, and part of
+every map load. `MapRenderer`'s `onMapComplete` calls
+`registerPostProcessModules(gl)` on each load. That re-inits all nine
+post-process modules, enabled or not: it compiles their shaders and builds
+framebuffers, each ending in a synchronous `checkFramebufferStatus` (27–32 ms
+blocked on the GPU process in the traces). Init each module once, on the
+first map, and keep it across maps. Better still, init a module lazily the
+first time it is enabled. FBO size changes already go through `recreateFbo`.
+
+The change is in two upstream files (`MapRenderer.js`, `PostProcess.js`). It
+is small, and could go upstream as it stands.
+
+### Next in line
+
+- **Animated models on the CPU:** 20% of main-thread JS during play
+  (`AnimatedModels.js` `updateModelBuffer`). Precompute face normals, write
+  static nodes once, and upload only the ranges that changed. A GPU path
+  (node matrices as uniforms) would be the larger version. On this machine the
+  time is hidden by headroom; it matters on slower CPUs, and Byalan is full of
+  these models.
+- **Occluder fade's occlusion query:** it doubles iz_dun05's draws at 60 fps
+  (102 → 203, 323k → 518k vertices) by re-drawing every model each frame
+  inside the query. Run the query on a coarse proxy (model bounding boxes)
+  or every few frames. It showed no FPS cost on an RTX 3060, so its rank
+  depends on how weak the target GPUs are; it is worth measuring on a laptop
+  iGPU before ranking it higher.
+- **`checkScrollbars`:** 6% of main-thread JS. Its MutationObserver walks
+  every descendant with `getComputedStyle` on any style or class change.
+  Debounce it to one check per frame, and skip nodes already handled.
+- **Per-entity sprite draws:** about 2.5 draw calls for each entity on
+  screen. Batching sprites is the lever for crowds, but a big change; do it
+  after the above.
+
 ## Caveats
 
 - Wolves wander off between windows: entities near fall from 56 to 37 across
