@@ -9,7 +9,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 mod client_tables;
-use client_tables::{copy_data_layer, copy_system_layer, warn_misplaced, ModTables};
+use client_tables::{copy_data_layer, copy_system_layer, stage_client_item_table, warn_misplaced, ModTables};
 
 /// Where the client's text comes from.
 ///
@@ -167,6 +167,117 @@ fn translation_extras(cfg: &Config) -> Vec<(PathBuf, PathBuf)> {
         .collect()
 }
 
+/// config/TRANSLATION_LAYERS: the path prefixes taken from each Compatibility
+/// layer, and the exceptions to them. That file says why these.
+fn translation_layer_rules(cfg: &Config) -> (Vec<String>, Vec<String>) {
+    let list = fs::read_to_string(cfg.root.join("config/TRANSLATION_LAYERS")).unwrap_or_default();
+    let (mut take, mut skip) = (Vec::new(), Vec::new());
+    for line in list.lines().map(str::trim) {
+        let mut cols = line.split('\t').map(str::trim).filter(|c| !c.is_empty());
+        match (cols.next(), cols.next()) {
+            (Some("take"), Some(prefix)) => take.push(prefix.to_string()),
+            (Some("skip"), Some(prefix)) => skip.push(prefix.to_string()),
+            _ => {}
+        }
+    }
+    (take, skip)
+}
+
+/// The Compatibility layers for this packet version, oldest first: every
+/// `Compatibility/YYYY-MM-DD` dated on or before it, as ClientGenerator stacks
+/// them up to a client's date. A layer split by era gives its era's folder.
+fn translation_layers(translation: &Path, packetver: &str, era: &str) -> Result<Vec<PathBuf>, String> {
+    let root = translation.join("Compatibility");
+    if !root.is_dir() {
+        return Ok(Vec::new());
+    }
+    let mut layers = Vec::new();
+    for e in entries(&root)? {
+        let name = e.file_name().to_string_lossy().into_owned();
+        let date: String = name.chars().filter(|c| *c != '-').collect();
+        let dated = name.len() == 10 && date.len() == 8 && date.chars().all(|c| c.is_ascii_digit());
+        if !dated || !e.path().is_dir() || date.as_str() > packetver {
+            continue;
+        }
+        let split = ["Renewal", "Pre-Renewal"].iter().any(|d| e.path().join(d).is_dir());
+        if !split {
+            layers.push(e.path());
+        } else if e.path().join(era).is_dir() {
+            layers.push(e.path().join(era));
+        }
+    }
+    Ok(layers)
+}
+
+/// Copy what the rules take from one layer into the staged translation.
+fn copy_layer_files(
+    src: &Path,
+    dst: &Path,
+    rel: &str,
+    take: &[String],
+    skip: &[String],
+) -> Result<(), String> {
+    for e in entries(src)? {
+        if e.file_type().map_err(|e| e.to_string())?.is_symlink() {
+            return Err(format!("translation layer contains a link: {}", e.path().display()));
+        }
+        let name = e.file_name().to_string_lossy().into_owned();
+        let path = if rel.is_empty() { name } else { format!("{rel}/{name}") };
+        if e.path().is_dir() {
+            // Only into folders a take could still match.
+            let dir = format!("{path}/");
+            if take.iter().any(|t| t.starts_with(&dir) || dir.starts_with(t.as_str())) {
+                copy_layer_files(&e.path(), dst, &path, take, skip)?;
+            }
+        } else if take.iter().any(|t| path.starts_with(t.as_str()))
+            && !skip.iter().any(|s| path.starts_with(s.as_str()))
+        {
+            copy_file(&e.path(), &dst.join(&path))?;
+        }
+    }
+    Ok(())
+}
+
+/// The client asks for `SignBoardList.lub`, and the asset server matches the
+/// translation folder by exact case on Linux. The pre-renewal layer ships it
+/// as `signboardlist.lub`, so the request missed it and fell through to the
+/// GRF's renewal signboards. Renamed in the staged copy, never the source.
+fn restore_signboard_name(dir: &Path) -> Result<(), String> {
+    const NAME: &str = "SignBoardList.lub";
+    if !dir.is_dir() {
+        return Ok(());
+    }
+    for e in entries(dir)? {
+        let name = e.file_name();
+        let n = name.to_string_lossy();
+        if n != NAME && n.eq_ignore_ascii_case(NAME) {
+            fs::rename(e.path(), dir.join(NAME)).map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
+}
+
+/// Tables in ROenglishRE's base layer with no English in them, that are older
+/// copies of what the player's own GRF carries, under `data/`.
+///
+/// `hateffectinfo.lub` is a 2024 copy of kRO's hat effect table, and it
+/// opens with a `HatEFID` of its own that replaces the client's
+/// `hateffectids.lub` -- 225 names against 282 in a 2025-11-05 kRO client
+/// and 323 in an October 2026 iRO one, with no `FOOTPRINT_EF_*`. Every hat
+/// effect above 225 then has no entry, and `footprinteffectinfo.lub` stops at
+/// "table index is nil". Both clients' own copies leave `HatEFID` alone.
+const STALE_TRANSLATION_TABLES: &[&str] = &["luafiles514/lua files/hateffectinfo/hateffectinfo.lub"];
+
+fn drop_stale_translation_tables(data: &Path) -> Result<(), String> {
+    for table in STALE_TRANSLATION_TABLES {
+        let path = data.join(table);
+        if path.is_file() {
+            fs::remove_file(&path).map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
+}
+
 pub fn link(cfg: &Config, args: &[String]) -> Result<(), String> {
     let data = readable_path(
         Path::new(args.first().ok_or("data.grf path required")?),
@@ -184,6 +295,8 @@ pub fn link(cfg: &Config, args: &[String]) -> Result<(), String> {
     let bgm = optional(3)?
         .or_else(|| first_dir(&[client_dir.join("BGM"), client_dir.join("dll_exe/BGM")]));
     let bgm = bgm.map(|p| readable_path(&p, true)).transpose()?;
+    // Another client's GRF, read only for what the player's own client lacks.
+    let fallback = optional(4)?;
     let ai = first_dir(&[client_dir.join("AI"), client_dir.join("dll_exe/AI")])
         .map(|p| readable_path(&p, true))
         .transpose()?;
@@ -207,11 +320,13 @@ pub fn link(cfg: &Config, args: &[String]) -> Result<(), String> {
         fs::create_dir_all(dir).map_err(|e| e.to_string())?;
     }
     // Private absolute entries work across volumes without copying or linking
-    // the GRFs. Lower indices preserve official -> rdata -> data precedence.
+    // the GRFs. Lower indices preserve official -> rdata -> data precedence;
+    // the fallback GRF is last, so it fills only names the client has none of.
     let archives: Vec<_> = official
         .iter()
         .chain(rdata.iter())
         .chain(std::iter::once(&data))
+        .chain(fallback.iter())
         .collect();
     let mut ini = String::from("[Data]\n");
     for (i, path) in archives.iter().enumerate() {
@@ -243,6 +358,13 @@ pub fn link(cfg: &Config, args: &[String]) -> Result<(), String> {
                 copy_over(&translation.join("Pre-Renewal").join(sub), &en.join(sub))?;
             }
         }
+        restore_signboard_name(&en.join("data/luafiles514/lua files"))?;
+        drop_stale_translation_tables(&en.join("data"))?;
+        let era = if crate::cmds::is_prerenewal(cfg) { "Pre-Renewal" } else { "Renewal" };
+        let (take, skip) = translation_layer_rules(cfg);
+        for layer in translation_layers(&translation, packetver, era)? {
+            copy_layer_files(&layer, &en, "", &take, &skip)?;
+        }
         for (src, dst) in translation_extras(cfg) {
             // A pin without one of them is an older translation, not a fault.
             if translation.join(&src).is_file() {
@@ -258,15 +380,23 @@ pub fn link(cfg: &Config, args: &[String]) -> Result<(), String> {
     // asks for achievement_list.lub, and got the Korean one (#164).
     let has_achievements = text.translated() && en.join("SystemEN/achievements.lub").is_file();
     if let Some(sys) = first_dir(&[client_dir.join("System"), client_dir.join("dll_exe/System")]) {
+        // Behind the English item table rather than gone: it still names
+        // what the translation does not (client_tables).
+        if text.translated() {
+            stage_client_item_table(&sys, &merged)?;
+        }
         for e in entries(&sys)? {
             let name = e.file_name();
-            let n = name.to_string_lossy();
+            let n = name.to_string_lossy().to_ascii_lowercase();
             // The English item and quest tables win while they are in
             // front; without them the client's own are the only copies there
             // are, and skipping them leaves the game with no item names.
+            // Matched in any case: iRO ships `iteminfo.lub`, and the client's
+            // first try, `System/itemInfo.lub`, finds it on a case-insensitive
+            // disk and never gets to the English table.
             if text.translated()
-                && (n.starts_with("itemInfo")
-                    || n.starts_with("OngoingQuestInfoList")
+                && (n.starts_with("iteminfo")
+                    || n.starts_with("ongoingquestinfolist")
                     || (n.starts_with("achievement_list") && has_achievements))
             {
                 continue;
@@ -279,6 +409,17 @@ pub fn link(cfg: &Config, args: &[String]) -> Result<(), String> {
                 copy_over(&e.path(), &dst)?;
             } else {
                 copy_file(&e.path(), &dst)?;
+            }
+        }
+    }
+    if !text.translated() {
+        // iRO ships lowercase iteminfo; roBrowser requests itemInfo even on
+        // case-sensitive disks. Keep the original and prefer an existing alias.
+        for ext in ["lub", "lua"] {
+            let src = merged.join(format!("iteminfo.{ext}"));
+            let dst = merged.join(format!("itemInfo.{ext}"));
+            if src.is_file() && !dst.exists() {
+                copy_file(&src, &dst)?;
             }
         }
     }
@@ -304,8 +445,17 @@ pub fn link(cfg: &Config, args: &[String]) -> Result<(), String> {
         &server_root.join("data"),
     )?;
     let (plugins, tables) = overlay_mods(cfg, &server_root, &merged)?;
+    // After the mods' own client files, so its table is the one served.
+    let navigation_npcs = crate::navnpc::stage(cfg, &server_root)?;
+    let navigation_mobs = crate::navmob::stage(cfg, &server_root)?;
+    let navigation_warps = crate::navwarp::stage(cfg, &server_root)?;
     let mut fingerprint = 0xcbf2_9ce4_8422_2325;
-    fnv(&mut fingerprint, b"owned-assets-v2");
+    // Bumped when how the tree is staged changes without its inputs changing
+    // (v3: the signboard table's name; v4: the client's item table staged
+    // behind the English one; v5: the Compatibility layers stacked by packet
+    // version; v6: the translation's hat effect table left out; v7: native
+    // itemInfo filename aliases), so a client holding the old staging drops it.
+    fnv(&mut fingerprint, b"owned-assets-v7");
     fnv(&mut fingerprint, text.as_str().as_bytes());
     // Config.local.js carries it, and that file is an ordinary HTTP request
     // the shell only re-fetches when this fingerprint moves. Left out at the
@@ -314,6 +464,18 @@ pub fn link(cfg: &Config, args: &[String]) -> Result<(), String> {
         fnv(&mut fingerprint, packetver.as_bytes());
     }
     fnv(&mut fingerprint, overlay_fingerprint(cfg).as_bytes());
+    // Built partly from mods' server scripts, which overlay_fingerprint leaves
+    // out because the client never sees them -- except through this table.
+    for (name, table) in [
+        (crate::navnpc::MOD, &navigation_npcs),
+        (crate::navmob::MOD, &navigation_mobs),
+        (crate::navwarp::MOD, &navigation_warps),
+    ] {
+        if let Some(table) = table {
+            fnv(&mut fingerprint, name.as_bytes());
+            fnv(&mut fingerprint, table);
+        }
+    }
     hash_tree(&mut fingerprint, &translation, Path::new("translation"));
     hash_tree(
         &mut fingerprint,
@@ -391,6 +553,8 @@ fn overlay_mods(
             // and does nothing, so the mod says why.
             warn_misplaced(root, &m.name);
         }
+        // The sky, clouds and weather it gives its maps (mod.json "maps").
+        tables.add_maps(&m.manifest.maps);
         // A roBrowser plugin: styling, UI, anything the client can be told to
         // load. Served from the root, so the path in the config is
         // server-relative -- which is the one thing that will confuse people.
@@ -745,9 +909,15 @@ fn write_client_config(
     } else {
         body.replace("langtype: 0,", &format!("langtype: {},", text.langtype()))
     };
+    let mut body = body;
+    // Only the stock Renewal server defines these packages. This separate file
+    // fills missing client boxes without replacing any native package table.
+    if !crate::cmds::is_prerenewal(cfg) {
+        body = insert_before_close(body,
+            "\titemPackageSupplement: 'data/luafiles514/lua files/selectpackage/selectpackageitem_supplement.lua',\n");
+    }
     // The tables mods add to the client's own, each a list the client loads
     // beside its base; client_tables says in which order, and why.
-    let mut body = body;
     for entry in tables.config_entries(web) {
         body = insert_before_close(body, &entry);
     }
@@ -800,6 +970,7 @@ mod tests {
             ("data.grf", "archive"),
             ("rdata.grf", "renewal"),
             ("official.grf", "official"),
+            ("fallback.grf", "other client"),
             ("BGM/theme.mp3", "music"),
             ("System/font.ttf", "font"),
             ("AI/AI.lua", "AI"),
@@ -828,7 +999,7 @@ mod tests {
             "nested mod",
         );
         crate::mods::set_enabled(&cfg.state, "music", true).unwrap();
-        let args: Vec<_> = ["data.grf", "rdata.grf", "official.grf", "BGM"]
+        let args: Vec<_> = ["data.grf", "rdata.grf", "official.grf", "BGM", "fallback.grf"]
             .iter()
             .map(|p| client.join(p).to_str().unwrap().to_string())
             .collect();
@@ -837,6 +1008,7 @@ mod tests {
         assert!(manifest.lines().nth(1).unwrap().ends_with("official.grf"));
         assert!(manifest.lines().nth(2).unwrap().ends_with("rdata.grf"));
         assert!(manifest.lines().nth(3).unwrap().ends_with("data.grf"));
+        assert!(manifest.lines().nth(4).unwrap().ends_with("fallback.grf"));
         assert!(!cfg.state.join("assets/resources/data.grf").exists());
         assert!(!cfg.state.join("assets/resources/DATA.INI").exists());
         assert!(!cfg
@@ -897,6 +1069,95 @@ mod tests {
         fs::remove_dir_all(cfg.state.parent().unwrap()).unwrap();
     }
 
+    /// The client asks for `SignBoardList.lub` in that case, and the asset
+    /// server reads the translation folder case-sensitively on Linux. The
+    /// pre-renewal layer ships the table as `signboardlist.lub`, so unless it
+    /// is staged under the name the client asks for, the request falls through
+    /// to the GRF and the renewal signboards stay over NPCs that have moved.
+    #[test]
+    fn the_pre_renewal_signboard_table_is_staged_under_the_name_the_client_asks_for() {
+        let cfg = fixture_config("signboard-case");
+        let client = cfg.state.parent().unwrap().join("client files");
+        write(&client.join("data.grf"), "archive");
+        let en = cfg.root.join("vendor/ROenglishRE/Translation");
+        write(&en.join("Renewal/data/table.txt"), "renewal table");
+        write(
+            &en.join("Renewal/SystemEN/LuaFiles514/itemInfo.lua"),
+            "English items",
+        );
+        write(
+            &en.join("Renewal/SystemEN/OngoingQuests.lub"),
+            "English quests",
+        );
+        let table = "data/luafiles514/lua files/signboardlist.lub";
+        write(&en.join("Pre-Renewal").join(table), "classic signs");
+        write(
+            &cfg.root.join("config/Config.local.js"),
+            "window.ROConfigLocal = {\nrenewal: true,\n};\n",
+        );
+        write(&cfg.root.join("config/index.html"), "game entry");
+        let args = vec![client.join("data.grf").to_str().unwrap().to_string()];
+        let staged = cfg
+            .state
+            .join("assets/.translation/data/luafiles514/lua files");
+        // Names as the directory lists them: an exact-case lookup is what the
+        // asset server does, and a case-insensitive filesystem would answer
+        // `exists()` for either spelling.
+        let names = |dir: &Path| -> Vec<String> {
+            fs::read_dir(dir)
+                .map(|d| {
+                    d.map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+                        .collect()
+                })
+                .unwrap_or_default()
+        };
+
+        link(&cfg, &args).unwrap();
+        assert!(
+            !names(&staged).iter().any(|n| n.eq_ignore_ascii_case("SignBoardList.lub")),
+            "renewal has no signboard table of its own; the client's stays in front"
+        );
+
+        write(&cfg.state.join("prerenewal"), "true");
+        link(&cfg, &args).unwrap();
+        assert!(
+            names(&staged).iter().any(|n| n == "SignBoardList.lub"),
+            "staged under {:?}, which the client's request does not match",
+            names(&staged)
+        );
+        assert_eq!(
+            fs::read_to_string(staged.join("SignBoardList.lub")).unwrap(),
+            "classic signs"
+        );
+        fs::remove_dir_all(cfg.state.parent().unwrap()).unwrap();
+    }
+
+    /// The translation's hat effect table replaces the client's `HatEFID`
+    /// with an older, shorter one, so it is not staged and the client's own
+    /// copy is served from its GRF. The rest of the folder still is.
+    #[test]
+    fn the_translations_hat_effect_table_leaves_the_clients_in_front() {
+        let cfg = fixture_config("hateffect");
+        let client = cfg.state.parent().unwrap().join("client");
+        write(&client.join("data.grf"), "archive");
+        let en = cfg.root.join("vendor/ROenglishRE/Translation");
+        write(&en.join("Renewal/data/table.txt"), "renewal table");
+        write(&en.join("Renewal/SystemEN/LuaFiles514/itemInfo.lua"), "English items");
+        write(&en.join("Renewal/SystemEN/OngoingQuests.lub"), "English quests");
+        let dir = "data/luafiles514/lua files/hateffectinfo";
+        write(&en.join("Renewal").join(dir).join("hateffectinfo.lub"), "HatEFID = { 225 names }");
+        write(&en.join("Renewal").join(dir).join("other.lub"), "kept");
+        write(&cfg.root.join("config/Config.local.js"), "window.ROConfigLocal = {\nrenewal: true,\n};\n");
+        write(&cfg.root.join("config/index.html"), "game entry");
+        let args = vec![client.join("data.grf").to_str().unwrap().to_string()];
+
+        link(&cfg, &args).unwrap();
+        let staged = cfg.state.join("assets/.translation").join(dir);
+        assert!(!staged.join("hateffectinfo.lub").exists());
+        assert_eq!(fs::read_to_string(staged.join("other.lub")).unwrap(), "kept");
+        fs::remove_dir_all(cfg.state.parent().unwrap()).unwrap();
+    }
+
     /// A kRO client's own Korean copies must not win over the English ones
     /// the translation carries under other names or in its Compatibility
     /// layers (#164), and the extras list cannot reach outside its trees.
@@ -944,6 +1205,74 @@ mod tests {
         fs::remove_dir_all(cfg.state.parent().unwrap()).unwrap();
     }
 
+    /// The Compatibility layers stack up to the chosen packet version, oldest
+    /// first and in the running era's folder, taking only what
+    /// TRANSLATION_LAYERS names; TRANSLATION_EXTRAS still has the last word.
+    #[test]
+    fn compatibility_layers_follow_the_packet_version_and_era() {
+        let cfg = fixture_config("layers");
+        let client = cfg.state.parent().unwrap().join("client");
+        write(&client.join("data.grf"), "archive");
+        let en = cfg.root.join("vendor/ROenglishRE/Translation");
+        write(&en.join("Renewal/data/table.txt"), "renewal table");
+        write(&en.join("Renewal/SystemEN/LuaFiles514/itemInfo.lua"), "English items");
+        write(&en.join("Renewal/SystemEN/OngoingQuests.lub"), "English quests");
+        let c = en.join("Compatibility");
+        write(&c.join("2017-06-14/data/texture/ui/button.bmp"), "2017 button");
+        write(&c.join("2017-06-14/data/texture/ui/narrow_tab.bmp"), "wrong size");
+        write(&c.join("2017-12-13/Renewal/data/texture/ui/era.bmp"), "renewal art");
+        write(&c.join("2017-12-13/Pre-Renewal/data/texture/ui/era.bmp"), "pre-renewal art");
+        write(&c.join("2018-06-20/Renewal/data/luafiles514/lua files/skillinfoz/skilltreeview.lub"), "older layout");
+        write(&c.join("2022-04-06/data/contentdata/repute/reputegroupdata.bson"), "English factions");
+        write(&c.join("2023-08-02/data/simplemsg/msg_emotion.csv"), "English emotions");
+        write(&c.join("2023-08-02/data/texture/ui/button.bmp"), "2023 button");
+        write(&c.join("2023-08-02/data/texture/ui/extra.bmp"), "2023 only");
+        write(&c.join("2025-12-17/data/texture/ui/future.bmp"), "too new for either");
+        write(&c.join("notes/data/texture/ui/undated.bmp"), "not a layer");
+        write(&cfg.root.join("config/TRANSLATION_LAYERS"),
+            "# comment\ntake\tdata/texture/\ntake\tdata/contentdata/repute/\n\
+             take\tdata/simplemsg/msg_emotion.csv\nskip\tdata/texture/ui/narrow_\n");
+        write(&cfg.root.join("config/TRANSLATION_EXTRAS"),
+            "Compatibility/2017-06-14/data/texture/ui/narrow_tab.bmp\tdata/texture/ui/forced.bmp\n");
+        write(&cfg.root.join("config/Config.local.js"),
+            "window.ROConfigLocal = {\npacketver: 20221005,\nrenewal: true,\n};\n");
+        write(&cfg.root.join("config/index.html"), "game entry");
+        let args = vec![client.join("data.grf").to_str().unwrap().to_string()];
+        let staged = cfg.state.join("assets/.translation");
+        let read = |p: &str| fs::read_to_string(staged.join(p)).ok();
+
+        // 20221005: up to the 2022-09-28 layer.
+        link(&cfg, &args).unwrap();
+        assert_eq!(read("data/texture/ui/button.bmp").as_deref(), Some("2017 button"));
+        assert_eq!(read("data/texture/ui/era.bmp").as_deref(), Some("renewal art"));
+        assert_eq!(read("data/contentdata/repute/reputegroupdata.bson").as_deref(), Some("English factions"));
+        assert_eq!(read("data/texture/ui/narrow_tab.bmp"), None, "skipped");
+        assert_eq!(read("data/texture/ui/forced.bmp").as_deref(), Some("wrong size"), "extras apply after");
+        assert_eq!(read("data/luafiles514/lua files/skillinfoz/skilltreeview.lub"), None, "not taken");
+        assert_eq!(read("data/simplemsg/msg_emotion.csv"), None, "2023 is after 20221005");
+        assert_eq!(read("data/texture/ui/extra.bmp"), None);
+        assert_eq!(read("data/texture/ui/future.bmp"), None);
+        assert_eq!(read("data/texture/ui/undated.bmp"), None);
+
+        // 20250402: the later layers too, a newer copy over an older one.
+        if let Some(other) = crate::packetver::all().get(1) {
+            write(&cfg.state.join("settings.json"), &format!("{{\"packetver\":\"{other}\"}}"));
+            link(&cfg, &args).unwrap();
+            assert_eq!(read("data/texture/ui/button.bmp").as_deref(), Some("2023 button"));
+            assert_eq!(read("data/texture/ui/extra.bmp").as_deref(), Some("2023 only"));
+            assert_eq!(read("data/simplemsg/msg_emotion.csv").as_deref(), Some("English emotions"));
+            assert_eq!(read("data/texture/ui/future.bmp"), None);
+        }
+
+        // Pre-renewal takes the other half of a split layer.
+        write(&en.join("Pre-Renewal/data/table.txt"), "pre-renewal table");
+        write(&cfg.state.join("prerenewal"), "true");
+        link(&cfg, &args).unwrap();
+        assert_eq!(read("data/texture/ui/era.bmp").as_deref(), Some("pre-renewal art"));
+        assert_eq!(read("data/texture/ui/button.bmp").as_deref().map(|b| b.ends_with("button")), Some(true));
+        fs::remove_dir_all(cfg.state.parent().unwrap()).unwrap();
+    }
+
     /// Turning the translation off has to take the whole of it away, not just
     /// the `data/` overlay: with the English tables gone, the client's own
     /// item and quest tables are the only ones left and must stop being
@@ -955,7 +1284,7 @@ mod tests {
         let client = cfg.state.parent().unwrap().join("client");
         for (path, text) in [
             ("data.grf", "archive"),
-            ("System/itemInfo.lub", "itens do cliente"),
+            ("System/iteminfo.lub", "itens do cliente"),
             ("System/OngoingQuestInfoList_True.lub", "missões"),
             ("System/font.ttf", "font"),
         ] {
@@ -987,6 +1316,7 @@ mod tests {
             "English items"
         );
         assert!(cfg.state.join("assets/.translation/data/table.txt").exists());
+        assert!(!cfg.state.join("assets/System/itemInfo.lub").exists());
         assert!(fs::read_to_string(cfg.state.join("assets/Config.local.js"))
             .unwrap()
             .contains("langtype: 0,"));
@@ -1042,6 +1372,82 @@ mod tests {
         fs::remove_dir_all(cfg.state.parent().unwrap()).unwrap();
     }
 
+    /// iRO's client names its tables in lower case. They are skipped all the
+    /// same while the translation is in front: the client asks for
+    /// `System/itemInfo.lub` before `itemInfo.lua`, and on Windows and macOS
+    /// that request finds `iteminfo.lub`, so the English table, and every item
+    /// only it names, was never read (standart-npc#55). The item table is
+    /// kept, though, under a name the client never tries on its own, and
+    /// listed after the English one: iRO names items the translation does not.
+    #[test]
+    fn the_clients_own_tables_are_skipped_in_any_case() {
+        let cfg = fixture_config("gametext-case");
+        let client = cfg.state.parent().unwrap().join("client");
+        for (path, text) in [
+            ("data.grf", "archive"),
+            ("System/iteminfo.lub", "iRO items"),
+            ("System/iteminfo_sak.lub", "iRO test items"),
+            ("System/ongoingquestinfolist_true.lub", "iRO quests"),
+            ("System/font.ttf", "font"),
+        ] {
+            write(&client.join(path), text);
+        }
+        let en = cfg.root.join("vendor/ROenglishRE/Translation");
+        write(&en.join("Renewal/data/table.txt"), "renewal table");
+        write(
+            &en.join("Renewal/SystemEN/LuaFiles514/itemInfo.lua"),
+            "English items",
+        );
+        write(
+            &en.join("Renewal/SystemEN/OngoingQuests.lub"),
+            "English quests",
+        );
+        write(
+            &cfg.root.join("config/Config.local.js"),
+            "window.ROConfigLocal = {\nrenewal: true,\nlangtype: 0,\n};\n",
+        );
+        write(&cfg.root.join("config/index.html"), "game entry");
+        let args = vec![client.join("data.grf").to_str().unwrap().to_string()];
+
+        link(&cfg, &args).unwrap();
+        let names: Vec<String> = fs::read_dir(cfg.state.join("assets/System"))
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        for gone in ["iteminfo.lub", "iteminfo_sak.lub", "ongoingquestinfolist_true.lub"] {
+            assert!(!names.iter().any(|n| n == gone), "{gone} in {names:?}");
+        }
+        assert!(names.iter().any(|n| n == "font.ttf"), "{names:?}");
+        assert_eq!(
+            fs::read_to_string(cfg.state.join("assets/System/itemInfo.lua")).unwrap(),
+            "English items"
+        );
+        // The client's item table, behind the English one; not its test
+        // server's.
+        assert_eq!(
+            fs::read_to_string(cfg.state.join("assets/System/itemInfo_client.lub")).unwrap(),
+            "iRO items"
+        );
+        let config = fs::read_to_string(cfg.state.join("assets/Config.local.js")).unwrap();
+        assert!(
+            config.contains("\tcustomItemInfo: ['System/itemInfo.lua', 'System/itemInfo_client.lub'],\n"),
+            "{config}"
+        );
+
+        // Without the translation they are the only tables there are, under
+        // their own names and in the client's own default order.
+        write(&cfg.state.join("settings.json"), "{\"game_text\":\"client_western\"}");
+        link(&cfg, &args).unwrap();
+        assert_eq!(
+            fs::read_to_string(cfg.state.join("assets/System/iteminfo.lub")).unwrap(),
+            "iRO items"
+        );
+        assert!(!cfg.state.join("assets/System/itemInfo_client.lub").exists());
+        let config = fs::read_to_string(cfg.state.join("assets/Config.local.js")).unwrap();
+        assert!(!config.contains("customItemInfo"), "{config}");
+        fs::remove_dir_all(cfg.state.parent().unwrap()).unwrap();
+    }
+
     /// The client's packetver follows the server's, whatever number the
     /// template happens to carry, and a version the image was not built for
     /// stops the rebuild instead of producing a client nothing can talk to.
@@ -1082,6 +1488,40 @@ mod tests {
         }
         write(&cfg.state.join("settings.json"), "{\"packetver\":\"20110101\"}");
         assert!(link(&cfg, &args).unwrap_err().contains("20110101"));
+        fs::remove_dir_all(cfg.state.parent().unwrap()).unwrap();
+    }
+
+    #[test]
+    fn package_supplement_is_staged_in_both_text_modes_but_only_enabled_for_renewal() {
+        let cfg = fixture_config("package-supplement");
+        let client = cfg.state.parent().unwrap().join("client");
+        write(&client.join("data.grf"), "native archive");
+        let en = cfg.root.join("vendor/ROenglishRE/Translation");
+        write(&en.join("Renewal/data/table.txt"), "English text");
+        write(&en.join("Renewal/SystemEN/LuaFiles514/itemInfo.lua"), "English items");
+        write(&en.join("Renewal/SystemEN/OngoingQuests.lub"), "English quests");
+        write(&cfg.root.join("config/Config.local.js"), include_str!("../../config/Config.local.js"));
+        write(&cfg.root.join("config/index.html"), "game entry");
+        let supplement = "data/luafiles514/lua files/selectpackage/selectpackageitem_supplement.lua";
+        let content = include_str!("../../client-assets/data/luafiles514/lua files/selectpackage/selectpackageitem_supplement.lua");
+        write(&cfg.root.join("client-assets").join(supplement), content);
+        let args = vec![client.join("data.grf").to_str().unwrap().to_string()];
+        for settings in ["{}", r#"{"game_text":"client_western"}"#] {
+            write(&cfg.state.join("settings.json"), settings);
+            link(&cfg, &args).unwrap();
+            assert_eq!(fs::read_to_string(cfg.state.join("assets").join(supplement)).unwrap(), content);
+            let config = fs::read_to_string(cfg.state.join("assets/Config.local.js")).unwrap();
+            assert!(config.contains(&format!("itemPackageSupplement: '{supplement}'")), "{config}");
+            assert!(!cfg.state.join("assets/data/luafiles514/lua files/selectpackage/selectpackageitem.lub").exists());
+        }
+        let before = fs::read_to_string(cfg.state.join("assets/overlay.id")).unwrap();
+        write(&cfg.root.join("client-assets").join(supplement), "updated supplement");
+        link(&cfg, &args).unwrap();
+        assert_ne!(fs::read_to_string(cfg.state.join("assets/overlay.id")).unwrap(), before);
+        write(&cfg.state.join("prerenewal"), "");
+        link(&cfg, &args).unwrap();
+        let config = fs::read_to_string(cfg.state.join("assets/Config.local.js")).unwrap();
+        assert!(!config.contains("itemPackageSupplement"), "{config}");
         fs::remove_dir_all(cfg.state.parent().unwrap()).unwrap();
     }
 
@@ -1295,14 +1735,14 @@ mod tests {
 
     /// The shipped template, with a test world's ports: the client dials the
     /// moved login server, and nothing else in the file changes. With no
-    /// override, the file is exactly what it always was.
+    /// override, the template plus the Renewal supplement entry is unchanged.
     #[test]
     fn the_client_dials_the_configured_login_port() {
         let template = fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("../config/Config.local.js")).unwrap();
         assert!(template.contains("\t\t\tport: 6900,"), "the template moved its port line");
 
         let mut cfg = fixture_config("login-port");
-        cfg.ports = crate::ports::Ports { asset: 13338, login: 16900, char: 16121, map: 15121, agent: 17490 };
+        cfg.ports = crate::ports::Ports { asset: 13338, login: 16900, char: 16121, map: 15121, web: 18888, agent: 17490 };
         fs::create_dir_all(cfg.root.join("config")).unwrap();
         fs::write(cfg.root.join("config/Config.local.js"), &template).unwrap();
         let web = cfg.state.join("web");
@@ -1318,7 +1758,11 @@ mod tests {
         cfg.ports = crate::ports::Ports::DEFAULT;
         write_client_config(&cfg, &web, &[], &ModTables::default(), GameText::English, crate::packetver::default()).unwrap();
         let default = fs::read_to_string(web.join("Config.local.js")).unwrap();
-        assert_eq!(default, set_packetver(&template, crate::packetver::default()));
+        let expected = insert_before_close(
+            set_packetver(&template, crate::packetver::default()),
+            "\titemPackageSupplement: 'data/luafiles514/lua files/selectpackage/selectpackageitem_supplement.lua',\n",
+        );
+        assert_eq!(default, expected);
         fs::remove_dir_all(cfg.state.parent().unwrap()).unwrap();
     }
 
@@ -1372,6 +1816,200 @@ mod tests {
         assert_eq!(read("only-over.txt"), "added");
 
         let _ = fs::remove_dir_all(&tmp);
+    }
+
+    /// With navigation-server-npcs on, the client's NPC table is replaced by
+    /// one built from the scripts the server loads: the era's stock scripts,
+    /// the stock ones a mod switches on, and a mod's own, behind its switches.
+    #[test]
+    fn server_npcs_replace_the_navigation_table_while_the_mod_is_on() {
+        let cfg = fixture_config("server-npcs");
+        let client = cfg.state.parent().unwrap().join("client");
+        write(&client.join("data.grf"), "archive");
+        let en = cfg.root.join("vendor/ROenglishRE/Translation");
+        write(&en.join("Renewal/data/table.txt"), "renewal table");
+        write(&en.join("Pre-Renewal/data/table.txt"), "pre-renewal table");
+        write(&en.join("Renewal/SystemEN/LuaFiles514/itemInfo.lua"), "English items");
+        write(&en.join("Renewal/SystemEN/OngoingQuests.lub"), "English quests");
+        write(&cfg.root.join("config/Config.local.js"), "window.ROConfigLocal = {\nrenewal: true,\n};\n");
+        write(&cfg.root.join("config/index.html"), "game entry");
+        let nav = cfg.state.join("mods").join(crate::navnpc::MOD);
+        write(&nav.join("mod.json"), r#"{"default": "off"}"#);
+        write(
+            &nav.join(crate::navnpc::INDEX),
+            "# stock\nsprite\t4_M_KAFRA\t112\nload\trenewal\tnpc/re.txt\nload\tprerenewal\tnpc/pre.txt\n\
+             file\tnpc/re.txt\nnpc\tprontera\t1\t2\t0\t112\tRenewal Kafra\n\
+             file\tnpc/pre.txt\nnpc\tprontera\t3\t4\t0\t112\tClassic Kafra\n\
+             file\tnpc/custom/healer.txt\nnpc\tizlude\t5\t6\t0\t112\tHealer\n",
+        );
+        let town = cfg.state.join("mods/town");
+        write(&town.join("mod.json"), r#"{"settings": [{"key": "night", "type": "boolean", "default": false}]}"#);
+        write(&town.join("stock-npc.txt"), "npc/custom/healer.txt\n");
+        write(&town.join("npc/guide.txt"), "izlude,7,8,0\tscript\tGuide\t4_M_KAFRA,{\n}\n");
+        write(&town.join("npc/when/night/owl.txt"), "izlude,9,9,0\tshop\tNight Owl\t4_M_KAFRA,501:-1\n");
+        crate::mods::enable(&cfg, "town").unwrap();
+        let args = vec![client.join("data.grf").to_str().unwrap().to_string()];
+        let table = || fs::read_to_string(cfg.state.join("assets").join(crate::navnpc::TABLE)).ok();
+        let id = || fs::read_to_string(cfg.state.join("assets/overlay.id")).unwrap();
+
+        link(&cfg, &args).unwrap();
+        assert_eq!(table(), None, "off: the client keeps its own table");
+        let off = id();
+
+        crate::mods::enable(&cfg, crate::navnpc::MOD).unwrap();
+        link(&cfg, &args).unwrap();
+        let on = table().unwrap();
+        for name in ["Renewal Kafra", "Healer", "Guide"] {
+            assert!(on.contains(&format!("\"{name}\"")), "{name} missing: {on}");
+        }
+        assert!(!on.contains("Classic Kafra") && !on.contains("Night Owl"), "{on}");
+        assert_ne!(id(), off, "switching the mod on must clear the cached table");
+        let first = id();
+
+        crate::mods::save_settings(&cfg, "town", r#"{"night": true}"#).unwrap();
+        link(&cfg, &args).unwrap();
+        assert!(table().unwrap().contains("\"izlude\", 4, 102, 112, \"Night Owl\""), "{:?}", table());
+        assert_ne!(id(), first, "a mod's script reaching the table must clear the cache");
+
+        write(&cfg.state.join("prerenewal"), "true");
+        link(&cfg, &args).unwrap();
+        let classic = table().unwrap();
+        assert!(classic.contains("Classic Kafra") && !classic.contains("Renewal Kafra"), "{classic}");
+
+        crate::mods::set_enabled(&cfg.state, crate::navnpc::MOD, false).unwrap();
+        link(&cfg, &args).unwrap();
+        assert_eq!(table(), None);
+        fs::remove_dir_all(cfg.state.parent().unwrap()).unwrap();
+    }
+
+    /// With navigation-server-monsters on, the monster table counts the
+    /// era's stock spawns and every mod's, and describes each monster as the
+    /// merged mob_db does: a mod's new monster, and a mod's change to a stock one.
+    #[test]
+    fn server_monsters_replace_the_navigation_table_while_the_mod_is_on() {
+        let cfg = fixture_config("server-mobs");
+        let client = cfg.state.parent().unwrap().join("client");
+        write(&client.join("data.grf"), "archive");
+        let en = cfg.root.join("vendor/ROenglishRE/Translation");
+        write(&en.join("Renewal/data/table.txt"), "renewal table");
+        write(&en.join("Pre-Renewal/data/table.txt"), "pre-renewal table");
+        write(&en.join("Renewal/SystemEN/LuaFiles514/itemInfo.lua"), "English items");
+        write(&en.join("Renewal/SystemEN/OngoingQuests.lub"), "English quests");
+        write(&cfg.root.join("config/Config.local.js"), "window.ROConfigLocal = {\nrenewal: true,\n};\n");
+        write(&cfg.root.join("config/index.html"), "game entry");
+        let nav = cfg.state.join("mods").join(crate::navmob::MOD);
+        write(&nav.join("mod.json"), r#"{"default": "off"}"#);
+        write(
+            &nav.join(crate::navmob::INDEX),
+            "load\trenewal\tnpc/re.txt\nload\tprerenewal\tnpc/pre.txt\n\
+             mob\trenewal\t1002\tPORING\t1\tPlant\tMedium\tWater\t1\t0\tPoring\n\
+             mob\tprerenewal\t1002\tPORING\t1\tPlant\tMedium\tWater\t1\t0\tClassic Poring\n\
+             file\tnpc/re.txt\nspawn\tprt_fild08\t1002\t20\t0\t\n\
+             file\tnpc/pre.txt\nspawn\tprt_fild08\t1002\t70\t0\t\n",
+        );
+        let isle = cfg.state.join("mods/isle");
+        write(&isle.join("mod.json"), r#"{"settings": [{"key": "angry", "type": "boolean", "default": false}]}"#);
+        write(&isle.join("npc/spawns.txt"), "my_isle,0,0\tmonster\t--en--\t30000,4\nprt_fild08,0,0\tmonster\tPoring\t1002,5\n");
+        write(&isle.join("db/mob_db.yml"), "Body:\n  - Id: 30000\n    AegisName: MY_MOB\n    Name: Isle Crab\n    Level: 12\n    Size: Small\n    Race: Fish\n    Element: Water\n    ElementLevel: 2\n");
+        write(&isle.join("db/when/angry/mob_db.yml"), "Body:\n  - Id: 1002\n    Name: Angry Poring\n    Level: 50\n");
+        crate::mods::enable(&cfg, "isle").unwrap();
+        let args = vec![client.join("data.grf").to_str().unwrap().to_string()];
+        let table = || fs::read_to_string(cfg.state.join("assets").join(crate::navmob::TABLE)).ok();
+        let id = || fs::read_to_string(cfg.state.join("assets/overlay.id")).unwrap();
+
+        link(&cfg, &args).unwrap();
+        assert_eq!(table(), None, "off: the client keeps its own table");
+        let off = id();
+
+        crate::mods::enable(&cfg, crate::navmob::MOD).unwrap();
+        link(&cfg, &args).unwrap();
+        let on = table().unwrap();
+        // 25 Porings, the stock 20 and the mod's 5.
+        assert!(on.contains(&format!("\"prt_fild08\", 1, 300, {}, \"Poring\", \"PORING\", 1, ", 25 << 16 | 1002)), "{on}");
+        assert!(on.contains(&format!("\"my_isle\", 2, 300, {}, \"Isle Crab\", \"MY_MOB\", 12, {} }}", 4 << 16 | 30000, 22 << 16 | 5)), "{on}");
+        assert_ne!(id(), off, "switching the mod on must clear the cached table");
+        let first = id();
+
+        crate::mods::save_settings(&cfg, "isle", r#"{"angry": true}"#).unwrap();
+        link(&cfg, &args).unwrap();
+        // The stock spawns show mob_db's new name; the mod's, which name
+        // their monster, keep that name at the new level.
+        let angry = table().unwrap();
+        assert!(angry.contains(&format!("{}, \"Angry Poring\", \"PORING\", 50, ", 20 << 16 | 1002)), "{angry}");
+        assert!(angry.contains(&format!("{}, \"Poring\", \"PORING\", 50, ", 5 << 16 | 1002)), "{angry}");
+        assert_ne!(id(), first, "a mod's mob_db reaching the table must clear the cache");
+
+        write(&cfg.state.join("prerenewal"), "true");
+        crate::mods::save_settings(&cfg, "isle", r#"{"angry": false}"#).unwrap();
+        link(&cfg, &args).unwrap();
+        assert!(table().unwrap().contains(&format!("{}, \"Classic Poring\"", 70 << 16 | 1002)), "{:?}", table());
+
+        crate::mods::set_enabled(&cfg.state, crate::navmob::MOD, false).unwrap();
+        link(&cfg, &args).unwrap();
+        assert_eq!(table(), None);
+        fs::remove_dir_all(cfg.state.parent().unwrap()).unwrap();
+    }
+
+    /// With navigation-server-warps on, the client's navigation patch gets the
+    /// era's stock portals and every mod's, less those a mod switches off.
+    #[test]
+    fn server_warps_are_staged_while_the_mod_is_on() {
+        let cfg = fixture_config("server-warps");
+        let client = cfg.state.parent().unwrap().join("client");
+        write(&client.join("data.grf"), "archive");
+        let en = cfg.root.join("vendor/ROenglishRE/Translation");
+        write(&en.join("Renewal/data/table.txt"), "renewal table");
+        write(&en.join("Pre-Renewal/data/table.txt"), "pre-renewal table");
+        write(&en.join("Renewal/SystemEN/LuaFiles514/itemInfo.lua"), "English items");
+        write(&en.join("Renewal/SystemEN/OngoingQuests.lub"), "English quests");
+        write(&cfg.root.join("config/Config.local.js"), "window.ROConfigLocal = {\nrenewal: true,\n};\n");
+        write(&cfg.root.join("config/index.html"), "game entry");
+        let nav = cfg.state.join("mods").join(crate::navwarp::MOD);
+        write(&nav.join("mod.json"), r#"{"default": "off"}"#);
+        write(
+            &nav.join(crate::navwarp::INDEX),
+            "load\trenewal\tnpc/re.txt\nload\tprerenewal\tnpc/pre.txt\n\
+             file\tnpc/re.txt\nwarp\tprontera\t156\t22\tprt001\tprt_fild08\t170\t375\n\
+             warp\tprontera\t107\t215\tprt01\tprt_in\t240\t139\n\
+             file\tnpc/pre.txt\nwarp\tprontera\t156\t18\tprt001\tprt_fild08\t170\t370\n",
+        );
+        let isle = cfg.state.join("mods/isle");
+        write(&isle.join("mod.json"), "{}");
+        write(
+            &isle.join("npc/gate.txt"),
+            "-\tscript\tisle_gate\t-1,{\n\tend;\nOnInit:\n\tdisablenpc \"prt001\";\n\tend;\n}\n\
+             prontera,156,22,0\twarp\tisle_gate_warp\t3,2,my_isle,40,40\n",
+        );
+        crate::mods::enable(&cfg, "isle").unwrap();
+        let args = vec![client.join("data.grf").to_str().unwrap().to_string()];
+        let table = || fs::read_to_string(cfg.state.join("assets").join(crate::navwarp::TABLE)).ok();
+        let id = || fs::read_to_string(cfg.state.join("assets/overlay.id")).unwrap();
+
+        link(&cfg, &args).unwrap();
+        // Off: an empty table, so the client keeps its own routes and its
+        // request for the file is not a miss in missing-files.log.
+        assert_eq!(table().as_deref(), Some("Navi_Link_Server = {}\n"));
+        let off = id();
+
+        crate::mods::enable(&cfg, crate::navwarp::MOD).unwrap();
+        link(&cfg, &args).unwrap();
+        let on = table().unwrap();
+        assert!(on.contains("\"prt01\", \"\", 107, 215, \"prt_in\", 240, 139"), "{on}");
+        assert!(on.contains("\"isle_gate_warp\", \"\", 156, 22, \"my_isle\", 40, 40"), "{on}");
+        assert!(!on.contains("prt001"), "the gate the mod switched off: {on}");
+        assert_ne!(id(), off, "switching the mod on must clear the cached routes");
+
+        crate::mods::set_enabled(&cfg.state, "isle", false).unwrap();
+        write(&cfg.state.join("prerenewal"), "true");
+        link(&cfg, &args).unwrap();
+        let classic = table().unwrap();
+        assert!(classic.contains("\"prt001\", \"\", 156, 18, \"prt_fild08\", 170, 370"), "{classic}");
+        assert!(!classic.contains("prt01\"") && !classic.contains("my_isle"), "{classic}");
+
+        crate::mods::set_enabled(&cfg.state, crate::navwarp::MOD, false).unwrap();
+        link(&cfg, &args).unwrap();
+        assert_eq!(table().as_deref(), Some("Navi_Link_Server = {}\n"));
+        fs::remove_dir_all(cfg.state.parent().unwrap()).unwrap();
     }
 
     /// The client caches by filename, and every skin replaces the same

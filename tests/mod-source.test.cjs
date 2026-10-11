@@ -90,9 +90,17 @@ function release(tag, assets, extra = {}) {
 async function fakeGitHub() {
   const files = new Map();      // path -> Buffer
   const releases = new Map();   // repo -> release JSON (or a function of the request)
+  const lists = new Map();      // repo -> the releases list, newest first (or a function)
   const hits = [];
   const server = http.createServer((req, res) => {
     hits.push(req.url);
+    const all = /^\/repos\/([^/]+\/[^/]+)\/releases\?per_page=\d+$/.exec(req.url);
+    if (all) {
+      const answer = lists.get(all[1]);
+      if (typeof answer === 'function') return answer(req, res);
+      res.writeHead(200, { 'content-type': 'application/json' });
+      return res.end(JSON.stringify(answer || []));
+    }
     const latest = /^\/repos\/([^/]+\/[^/]+)\/releases\/latest$/.exec(req.url);
     if (latest) {
       const answer = releases.get(latest[1]);
@@ -119,7 +127,7 @@ async function fakeGitHub() {
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const base = `http://127.0.0.1:${server.address().port}`;
   return {
-    base, files, releases, hits,
+    base, files, releases, lists, hits,
     // Publish a release whose asset is `zip`.
     publish(repo, tag, zip, assetName = `npc-pack-${tag.replace(/^v/, '')}.zip`, extra = {}) {
       files.set(`/storage/${repo}/${tag}/${assetName}`, zip);
@@ -490,7 +498,7 @@ test('a mod installed from the mod list hears of a newer version there', () => {
     { name: 'prontera-vendors', version: '1.1.0' },
     { name: 'autoloot', version: '1.0.0' },
     { name: 'future-mod', version: '1.0.0' },
-    { name: 'standart-npc', version: '4.9.0' },   // a source entry now: its releases answer, not this
+    { name: 'standart-npc', version: '4.9.0' },   // a source entry, but this copy has no source record
     { name: 'my-own-mod', version: '0.1' },       // not in the list at all
   ];
   const out = source.registryUpdates(installed, listing, { appVersion: '1.4.9' });
@@ -499,7 +507,87 @@ test('a mod installed from the mod list hears of a newer version there', () => {
     { name: 'autoloot', listed: true, registry: true, installed: '1.0.0', latest: '1.0.0', update: false },
     { name: 'future-mod', listed: true, registry: true, installed: '1.0.0', latest: '2.0.0', update: false,
       needsApp: 'needs app >=9.0.0, and this is 1.4.9' },
+    // Never offered an update -- its releases can't be compared with a copy that
+    // didn't come from them -- but reported, so Settings can say why.
+    { name: 'standart-npc', localCopy: true, repo: 'MondoTruth/standart-npc', installed: '4.9.0', update: false },
   ]);
   // A version the installed mod.json does not say counts as older.
   assert.strictEqual(source.registryUpdates([{ name: 'autoloot', version: '' }], listing, { appVersion: '1.4.9' })[0].update, true);
+});
+
+test('a CHANGELOG.md is read as one section per version, as text', () => {
+  const text = [
+    '# My mod', 'Intro, not a version.', '',
+    '## 4.9.2', '- Smuggler quest.', '', '### Renewal only', '- Valkyrie.', '',
+    '## Unreleased', '- Not shipped yet.', '',
+    '## v4.9.1', '- Warper moved.', '<b>not html</b>',
+    '## 4.9.0',
+  ].join('\r\n');
+  assert.deepStrictEqual(source.changelogSections(text), [
+    { version: '4.9.2', notes: '- Smuggler quest.\n\n### Renewal only\n- Valkyrie.' },
+    { version: 'v4.9.1', notes: '- Warper moved.\n<b>not html</b>' },
+    { version: '4.9.0', notes: '' },
+  ]);
+});
+
+test('an update shows every version it skips, newest first, and only those', () => {
+  const sections = source.changelogSections('## 4.9.0\n- a\n## 4.9.3\n- d\n## 4.9.1\n- b\n## 4.9.2\n- c\n## 4.8.0\n- old');
+  // One version: its notes alone, as the latest release's notes always were.
+  assert.strictEqual(source.notesSince(sections, '4.9.1', '4.9.2'), '- c');
+  // Several: each under its version, newest first; neither the installed one
+  // nor anything newer than the update.
+  assert.strictEqual(source.notesSince(sections, '4.9.0', '4.9.2'), '## 4.9.2\n- c\n\n## 4.9.1\n- b');
+  // Tags with a v compare with versions without one.
+  assert.strictEqual(source.notesSince(sections, 'v4.9.0', 'v4.9.2'), '## 4.9.2\n- c\n\n## 4.9.1\n- b');
+  // Nothing written for the versions in between: no notes.
+  assert.strictEqual(source.notesSince(source.changelogSections('## 4.9.2\n\n## 4.9.1\n'), '4.9.0', '4.9.2'), '');
+  assert.strictEqual(source.notesSince(sections, '4.9.3', '4.9.3'), '');
+});
+
+test('a mod updated after a long while shows the latest versions and how many it left out', () => {
+  const sections = Array.from({ length: 13 }, (_, i) => ({ version: `1.${i + 1}.0`, notes: `- change ${i + 1}` }));
+  const notes = source.notesSince(sections, '1.0.0', '1.13.0');
+  assert.strictEqual(notes.split('\n').filter(l => l.startsWith('## ')).length, source.NOTES_VERSIONS);
+  assert.ok(notes.startsWith('## 1.13.0\n- change 13'));
+  assert.ok(notes.endsWith('…and 3 earlier versions.'));
+  // A list that may not reach back far enough says so, without a number.
+  assert.ok(source.notesSince(sections.slice(-2), '1.0.0', '1.13.0', { more: true }).endsWith('…and earlier versions.'));
+});
+
+test('an update from GitHub shows the notes of every release it skips', async () => {
+  const gh = await fakeGitHub();
+  try {
+    const repo = 'someone/npc-pack';
+    gh.publish(repo, 'v1.3.0', makeZip({ 'mod.json': manifest('1.3.0') }));
+    gh.lists.set(repo, [
+      release('v1.4.0-rc1', [], { prerelease: true, body: 'not yet' }),
+      release('v1.3.0', [], { body: 'Three' }),
+      release('v1.2.1', [], { draft: true, body: 'a draft' }),
+      release('v1.2.0', [], { body: '' }),
+      release('v1.1.0', [], { body: 'One' }),
+      release('v1.0.0', [], { body: 'Installed' }),
+    ]);
+    const modsDir = tempDir('skipped');
+    const record = tag => fs.writeFileSync(path.join(modsDir, 'npc-pack', '.source.json'), JSON.stringify({ repo, tag }));
+    fs.mkdirSync(path.join(modsDir, 'npc-pack'), { recursive: true });
+    record('v1.0.0');
+    const mods = [{ name: 'npc-pack', dir: path.join(modsDir, 'npc-pack') }];
+    const [result] = await source.checkUpdates(mods, listing(repo), gh.options());
+    assert.strictEqual(result.update, true);
+    // No draft, no pre-release, nothing for an empty release, not the installed one.
+    assert.strictEqual(result.notes, '## v1.3.0\nThree\n\n## v1.1.0\nOne');
+
+    // The list is not asked for when there is no update.
+    record('v1.3.0');
+    gh.hits.length = 0;
+    const [current] = await source.checkUpdates(mods, listing(repo), gh.options());
+    assert.strictEqual(current.update, false);
+    assert.ok(!gh.hits.some(h => h.includes('/releases?')));
+
+    // A failed list lookup leaves the latest release's own notes.
+    record('v1.0.0');
+    gh.lists.set(repo, (req, res) => { res.writeHead(403, { 'x-ratelimit-remaining': '0' }); res.end('{}'); });
+    const [fallback] = await source.checkUpdates(mods, listing(repo), gh.options());
+    assert.strictEqual(fallback.notes, 'Notes for v1.3.0');
+  } finally { await gh.close(); }
 });

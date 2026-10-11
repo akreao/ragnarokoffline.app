@@ -9,6 +9,8 @@
 #include "../../population_engine.hpp"
 #include "../config/population_yaml_types.hpp"
 #include "../core/population_engine_core.hpp"
+#include "population_shell_inventory.hpp"
+#include "population_shell_loot.hpp"
 #include "population_shell_runtime.hpp"
 
 #include <algorithm>
@@ -41,6 +43,8 @@
 #include "../../skill.hpp"
 #include "../../status.hpp"
 #include "../../unit.hpp"
+#include "../strategy/population_strategy.hpp" // RAGNAROKMAC (companion strategies)
+#include "population_companion_roam.hpp" // RAGNAROKMAC (roam)
 
 using namespace rathena;
 
@@ -204,6 +208,9 @@ static bool population_shell_pick_sphere_chain_skill(map_session_data *sd, uint1
 	auto pick = [&](uint16 id, uint16 lv) {
 		if (!population_shell_skill_selected(sd, id))
 			return false;
+		// RAGNAROKMAC (companion strategies): Ban: and Rotation: false bind the chain as well.
+		if (!population_strategy_rotation_allows(sd, map_id2bl(sd->pop.target_id), id))
+			return false;
 		if (!skill_isNotOk(id, *sd) && sd->battle_status.sp >= static_cast<uint32>(skill_get_sp(id, lv))) {
 			out_id = id; out_lv = lv; return true;
 		}
@@ -271,11 +278,13 @@ struct PopAllySearchCtx {
 	map_session_data *shell;
 	uint8_t           hp_threshold;    ///< HP% upper bound for AllyHpBelow scans
 	int16_t           sc_resolved;     ///< Resolved sc_type; -1 = none
+	uint16            skill_id = 0;    ///< The skill to cast, for pop_ally_skill_refused; 0 = none
 	bool              want_has_status; ///< true=find ally WITH status, false=WITHOUT
 	int               best_hp_pct;     ///< Tracks lowest HP% seen (100=no winner yet)
 	map_session_data *result;          ///< Best ally found (nullptr if none)
 	sc_type           gives_sc = SC_NONE; ///< Status the skill gives the ally, if any
 	int               result_rank = 3;   ///< pop_ally_rank() of `result`; lower goes first
+	bool              allow_self = false; ///< The caster counts as one of its allies (pop_ally_row_may_self)
 };
 
 /// An ally no skill can be aimed at: a GM's @hide (OPTION_INVISIBLE), or hiding, cloaking or
@@ -332,6 +341,74 @@ static bool pop_ally_devotion_refused(const map_session_data *shell, const map_s
 		if (shell->devotion[i] == ally->id || shell->devotion[i] == 0)
 			return false;
 	return true;
+}
+
+/// Whether rAthena would refuse `skill_id` on this ally when the cast completes, by the checks
+/// its skill makes on the target. The companion kept picking the same ally and losing the cast:
+/// a Crusader cast Providence at another Crusader forever. `skill_id` 0 (a condition check with
+/// no skill) refuses nothing.
+static bool pop_ally_skill_refused(const map_session_data *shell, const map_session_data *ally, uint16 skill_id)
+{
+	const auto lacks = [ally](int32 pos) { return pc_checkequip(ally, pos) < 0; };
+	const auto unarmed = [ally]() {
+		const int16 index = ally->equip_index[EQI_HAND_R];
+		return index < 0 || !ally->inventory_data[index] || ally->inventory_data[index]->type != IT_WEAPON;
+	};
+	switch (skill_id) {
+	case CR_DEVOTION:
+		return pop_ally_devotion_refused(shell, ally);
+	case CR_PROVIDENCE: // skills/swordman/resistantsouls.cpp: not on the Crusader line
+		return (ally->class_ & MAPID_SECONDMASK) == MAPID_CRUSADER;
+	case CG_MARIONETTE: // archer/marionettecontrol.cpp; a second cast on the same pair ends it
+		return ((ally->class_ & MAPID_SECONDMASK) == MAPID_BARDDANCER && ally->status.sex == shell->status.sex)
+			|| ally->sc.getSCE(SC_CURSE) || ally->sc.getSCE(SC_QUAGMIRE)
+			|| shell->sc.getSCE(SC_MARIONETTE) || ally->sc.getSCE(SC_MARIONETTE2);
+	case AM_CP_WEAPON: return lacks(EQP_WEAPON); // merchant/alchemicalweapon.cpp and the others
+	case AM_CP_SHIELD: return lacks(EQP_SHIELD);
+	case AM_CP_ARMOR:  return lacks(EQP_ARMOR);
+	case AM_CP_HELM:   return lacks(EQP_HEAD_TOP);
+	case CR_FULLPROTECTION: // merchant/fullprotection.cpp: fails with none of the four
+		return lacks(EQP_WEAPON) && lacks(EQP_SHIELD) && lacks(EQP_ARMOR) && lacks(EQP_HEAD_TOP);
+	case BO_ADVANCE_PROTECTION: // merchant/advanceprotection.cpp: needs shadow gear
+		return lacks(EQP_SHADOW_GEAR);
+	case SA_FLAMELAUNCHER: // mage/endow*.cpp: not on bare fists (pre-renewal, a miss unequips the weapon)
+	case SA_FROSTWEAPON:
+	case SA_LIGHTNINGLOADER:
+	case SA_SEISMICWEAPON:
+		return ally->status.weapon == W_FIST;
+	case SOA_TALISMAN_OF_MAGICIAN: // taekwon/talismanof*.cpp: needs a weapon in hand
+	case SOA_TALISMAN_OF_FIVE_ELEMENTS:
+		return unarmed();
+	case SP_KAUTE: { // taekwon/kaute.cpp, which also stuns the caster when it refuses
+		const status_change_entry *spirit = shell->sc.getSCE(SC_SPIRIT);
+		return !((spirit && spirit->val2 == SL_SOULLINKER)
+			|| (ally->class_ & MAPID_SECONDMASK) == MAPID_SOUL_LINKER
+			|| ally->status.char_id == shell->status.char_id
+			|| ally->status.char_id == shell->status.partner_id
+			|| ally->status.char_id == shell->status.child
+			|| ally->sc.getSCE(SC_SOULUNITY));
+	}
+	case SP_SOULREVOLVE: // taekwon/soulrevolution.cpp: only ends a soul link the ally holds
+		return !(ally->sc.getSCE(SC_SPIRIT) || ally->sc.getSCE(SC_SOULGOLEM) || ally->sc.getSCE(SC_SOULSHADOW)
+			|| ally->sc.getSCE(SC_SOULFALCON) || ally->sc.getSCE(SC_SOULFAIRY));
+	case AB_CLEARANCE: // acolyte/clearance.cpp: party members only
+	case SO_STRIKING:  // mage/striking.cpp
+		return shell != ally && battle_check_target(shell, ally, BCT_PARTY) <= 0;
+	case WL_WHITEIMPRISON: // mage/whiteimprison.cpp: the caster or an enemy, never an ally
+		return shell != ally;
+	// RAGNAROKMAC: skill.cpp, skill_castend_nodamage_id -- on the undead, by race or by an armour's
+	// element (Evil Druid card), these turn into attacks, and on an ally they fail. The Priest kept
+	// healing the most hurt member, an undead-armoured one, losing every cast; Sanctuary neither
+	// heals nor hurts such an ally.
+	case AL_HEAL:
+	case AB_HIGHNESSHEAL:
+	case ALL_RESURRECTION:
+	case PR_ASPERSIO:
+	case PR_SANCTUARY:
+		return battle_check_undead(ally->battle_status.race, ally->battle_status.def_ele) != 0;
+	default:
+		return false;
+	}
 }
 
 static bool pop_ally_buff_clashes(map_session_data *ally, sc_type sc_id)
@@ -395,6 +472,9 @@ static int32 pop_dead_party_ally_scan_cb(block_list *bl, va_list ap)
 	if (!pop_is_party_ally(ctx->shell, ally) || !ally->state.active ||
 		ally->state.warping || !status_isdead(*ally))
 		return 0;
+	// RAGNAROKMAC: Resurrection fails on an undead-armoured ally (pop_ally_skill_refused).
+	if (battle_check_undead(ally->battle_status.race, ally->battle_status.def_ele))
+		return 0;
 	const int ally_distance = distance_bl(ctx->shell, ally);
 	if (ally_distance < ctx->best_distance) {
 		ctx->best_distance = ally_distance;
@@ -417,10 +497,9 @@ static bool pop_is_resurrection_job(uint16 job_id)
 	}
 }
 
-/// Priest-line companions always know level-3 Resurrection.  Population PCs
-/// already bypass skill item requirements in skill_get_requirement(), so the
-/// Blue Gemstone catalyst is intentionally unlimited and never enters their
-/// inaccessible inventory.
+/// Priest-line companions always know level-3 Resurrection.  An ambient shell's
+/// Blue Gemstone is waived in skill_get_requirement(); a recruited companion pays
+/// it from its own bag (population_shell_inventory).
 ///
 /// Minstrels and Wanderers revive with Death Valley (WM_DEADHILLHERE), which does
 /// nothing to a living target. Curated as a heal, it was cast at every hurt ally for
@@ -449,7 +528,8 @@ static bool population_shell_try_party_resurrection(map_session_data *sd, t_tick
 	uint16 skill_id = 0, skill_lv = 0;
 	if (!sd || !pop_party_revive_skill(sd, skill_id, skill_lv) ||
 		sd->status.party_id <= 0 || sd->status.party_id >= 0x70000000 ||
-		current_tick < sd->pop.skill_cd || skill_isNotOk(skill_id, *sd))
+		current_tick < sd->pop.skill_cd || skill_isNotOk(skill_id, *sd)
+		|| !population_shell_inventory_can_pay_skill(sd, skill_id, skill_lv)) // a companion's Blue Gemstone
 		return false;
 
 	const int16 range = static_cast<int16>(
@@ -480,7 +560,7 @@ static int32 pop_ally_hp_scan_cb(block_list *bl, va_list ap)
 	map_session_data *ally = BL_CAST(BL_PC, bl);
 	if (!ally) return 0;
 	PopAllySearchCtx *ctx = va_arg(ap, PopAllySearchCtx*);
-	if (ally->id == ctx->shell->id) return 0;
+	if (ally->id == ctx->shell->id && !ctx->allow_self) return 0;
 	// Real players are skipped UNLESS they are an arena ally of this shell
 	// (team-2 shell + real player on the same arena map = mutual allies).
 	if (!pop_shell_may_help(ctx->shell, ally))
@@ -489,7 +569,7 @@ static int32 pop_ally_hp_scan_cb(block_list *bl, va_list ap)
 	if (status_isdead(*ally)) return 0;
 	if (pop_ally_untargetable(ally)) return 0;
 	if (pop_ally_buff_clashes(ally, ctx->gives_sc)) return 0;
-	if (ctx->gives_sc == SC_DEVOTION && pop_ally_devotion_refused(ctx->shell, ally)) return 0;
+	if (pop_ally_skill_refused(ctx->shell, ally, ctx->skill_id)) return 0;
 	if (ally->battle_status.max_hp == 0) return 0;
 	const int pct = static_cast<int>(ally->battle_status.hp * 100 / ally->battle_status.max_hp);
 	if (pct < ctx->hp_threshold && pct < ctx->best_hp_pct) {
@@ -572,14 +652,14 @@ static int32 pop_ally_status_scan_cb(block_list *bl, va_list ap)
 	map_session_data *ally = BL_CAST(BL_PC, bl);
 	if (!ally) return 0;
 	PopAllySearchCtx *ctx = va_arg(ap, PopAllySearchCtx*);
-	if (ally->id == ctx->shell->id) return 0;
+	if (ally->id == ctx->shell->id && !ctx->allow_self) return 0;
 	if (!pop_shell_may_help(ctx->shell, ally))
 		return 0;
 	if (!ally->state.active || ally->state.warping) return 0;
 	if (status_isdead(*ally)) return 0;
 	if (pop_ally_untargetable(ally)) return 0;
 	if (pop_ally_buff_clashes(ally, ctx->gives_sc)) return 0;
-	if (ctx->gives_sc == SC_DEVOTION && pop_ally_devotion_refused(ctx->shell, ally)) return 0;
+	if (pop_ally_skill_refused(ctx->shell, ally, ctx->skill_id)) return 0;
 	if (ctx->sc_resolved < 0) return 0;
 	const status_change *sca = status_get_sc(ally);
 	const bool has_it = sca && sca->hasSCE(static_cast<sc_type>(ctx->sc_resolved));
@@ -594,14 +674,14 @@ static int32 pop_ally_any_scan_cb(block_list *bl, va_list ap)
 	map_session_data *ally = BL_CAST(BL_PC, bl);
 	if (!ally) return 0;
 	PopAllySearchCtx *ctx = va_arg(ap, PopAllySearchCtx*);
-	if (ally->id == ctx->shell->id) return 0;
+	if (ally->id == ctx->shell->id && !ctx->allow_self) return 0;
 	if (!pop_shell_may_help(ctx->shell, ally))
 		return 0;
 	if (!ally->state.active || ally->state.warping) return 0;
 	if (status_isdead(*ally)) return 0;
 	if (pop_ally_untargetable(ally)) return 0;
 	if (pop_ally_buff_clashes(ally, ctx->gives_sc)) return 0;
-	if (ctx->gives_sc == SC_DEVOTION && pop_ally_devotion_refused(ctx->shell, ally)) return 0;
+	if (pop_ally_skill_refused(ctx->shell, ally, ctx->skill_id)) return 0;
 	return pop_ally_offer(ctx, ally);
 }
 
@@ -629,17 +709,38 @@ static int32 pop_tank_intercept_cb(block_list *bl, va_list ap)
 	return 1; // stop scan on first match
 }
 
+/// Whether a Target: ally row may pick the caster itself. Blessing, Increase AGI and Kyrie
+/// Eleison went to everyone near the companion but never to it. Not the skills rAthena refuses
+/// on the caster (NoTargetSelf: Devotion, Providence, Marionette, pre-renewal Suffragium), nor
+/// White Imprison, which locks the caster up, nor Kaute, which pays the caster's HP for its own SP.
+static bool pop_ally_row_may_self(uint16 skill_id)
+{
+	if (skill_id == 0 || skill_get_inf2(skill_id, INF2_NOTARGETSELF))
+		return false;
+	return skill_id != WL_WHITEIMPRISON && skill_id != SP_KAUTE;
+}
+
+/// A condition about someone near the caster other than an enemy: an ally's HP or status.
+static bool pop_is_ally_condition(uint8_t condition)
+{
+	const PopSkillCondition c = static_cast<PopSkillCondition>(condition);
+	return c == PopSkillCondition::AllyHpBelow || c == PopSkillCondition::AllyStatus
+		|| c == PopSkillCondition::NotAllyStatus;
+}
+
 /// Find the best ally target within scan_range cells satisfying the given condition.
 /// An ally holding a buff that `gives_sc` would cancel, and that cancels it back, is passed over.
+/// `skill_id` says whether the caster may be its own target (pop_ally_row_may_self).
 /// Returns nullptr if no suitable ally exists.
 static map_session_data* population_shell_find_ally_target(
 	map_session_data *sd,
 	uint8_t condition, uint8_t threshold, int16_t sc_resolved,
-	int16_t scan_range = 9, sc_type gives_sc = SC_NONE)
+	int16_t scan_range = 9, sc_type gives_sc = SC_NONE, uint16 skill_id = 0)
 {
 	using C = PopSkillCondition;
 	const C cond = static_cast<C>(condition);
 	PopAllySearchCtx ctx{};
+	ctx.allow_self      = pop_ally_row_may_self(skill_id);
 	ctx.shell           = sd;
 	ctx.hp_threshold    = threshold;
 	ctx.sc_resolved     = sc_resolved;
@@ -647,6 +748,7 @@ static map_session_data* population_shell_find_ally_target(
 	ctx.best_hp_pct     = 101;
 	ctx.result          = nullptr;
 	ctx.gives_sc        = gives_sc;
+	ctx.skill_id        = skill_id;
 
 	switch (cond) {
 	case C::AllyHpBelow:
@@ -1040,6 +1142,10 @@ static bool pop_skill_state_ok(map_session_data *sd, uint16 skill_id, uint16 ski
 	// cast makes (unit_skilluse_id2), so it covers Silence, Berserk and the rest too.
 	if (!status_check_skilluse(sd, nullptr, skill_id, 0))
 		return false;
+	// RAGNAROKMAC (companion inventory): a companion pays its catalysts, so a skill whose items
+	// are not in its bag is passed over rather than refused on every try.
+	if (!population_shell_inventory_can_pay_skill(sd, skill_id, skill_lv))
+		return false;
 	const status_change *sc = &sd->sc;
 	switch (skill->require.state) {
 	case ST_HIDDEN:        return pc_ishiding(sd);
@@ -1079,6 +1185,16 @@ static inline bool pop_skill_cond_satisfied(map_session_data* sd, const SkillT& 
 		const int radius = pop_self_blast_radius(sk.skill_id, sk.skill_lv);
 		if (radius > 0)
 			return pop_enemies_within(sd, radius) >= static_cast<int>(sk.cond_value_num);
+	}
+	// A Target: ally row gated on an ally's HP or status: the target search answers it, with the
+	// caster among the allies when the skill may go to it. The plain condition counts only the
+	// others, so a companion with nobody else near never buffed itself.
+	if (!sk.expanded && sk.target == 2 && pop_is_ally_condition(sk.condition)) {
+		const int16_t range = static_cast<int16_t>(
+			std::max(1, skill_get_range2(sd, sk.skill_id, sk.skill_lv, true)));
+		return population_shell_find_ally_target(sd, sk.condition,
+			pop_ally_hp_threshold(sd, sk.skill_id, sk.condition, sk.cond_value_num),
+			sk.cond_sc_resolved, range, skill_get_sc(sk.skill_id), sk.skill_id) != nullptr;
 	}
 	if (sk.expanded) {
 		expanded_ai::TargetBag bag;
@@ -1288,6 +1404,9 @@ static void population_shell_pick_attack_skill(map_session_data *sd, uint16 &ski
 		if (!pop_skill_cond_satisfied(sd, sk, target_bl)) {
 			continue;
 		}
+		// RAGNAROKMAC (companion strategies): Ban: and Rotation: false for this monster.
+		if (!population_strategy_rotation_allows(sd, target_bl, sk.skill_id))
+			continue;
 		if (skill_isNotOk(sk.skill_id, *sd)) {
 			continue;
 		}
@@ -1455,6 +1574,29 @@ static bool pop_row_is_rescue(uint8_t condition)
 }
 
 /// `rescue_only`: just the rows gated on someone's HP (pop_row_is_rescue).
+// RAGNAROKMAC: Sanctuary heals every unit standing in it that is neither undead nor a demon --
+// monsters included (skill.cpp, UNT_SANCTUARY) -- and damages those two. Shells placed it at their
+// own or an ally's feet, where the monsters hitting them stood, and healed the monsters. It is not
+// placed while a monster it would heal is within its 5x5; over undead and demons alone it is.
+static int32 pop_sanctuary_heals_cb(block_list *bl, va_list ap)
+{
+	bool *found = va_arg(ap, bool *);
+	const status_data *st = status_get_status_data(*bl);
+	if (!*found && !status_isdead(*bl) && st != nullptr
+			&& !battle_check_undead(st->race, st->def_ele) && st->race != RC_DEMON)
+		*found = true;
+	return 0;
+}
+
+static bool pop_ground_heal_helps_enemy(const map_session_data *sd, uint16 skill_id, int16 x, int16 y)
+{
+	if (skill_id != PR_SANCTUARY)
+		return false;
+	bool found = false;
+	map_foreachinallarea(pop_sanctuary_heals_cb, sd->m, x - 2, y - 2, x + 2, y + 2, BL_MOB, &found);
+	return found;
+}
+
 static bool population_shell_cast_expired_self_buffs(map_session_data *sd, t_tick current_tick,
 	bool rescue_only = false)
 {
@@ -1478,6 +1620,9 @@ static bool population_shell_cast_expired_self_buffs(map_session_data *sd, t_tic
 
 	for (const PopulationShellBuffSkill &bs : sd->pop.buff_skills) {
 		if (rescue_only && !pop_row_is_rescue(bs.condition))
+			continue;
+		// RAGNAROKMAC (companion strategies): a plan's Allow and Ban bind the engine's own buffs.
+		if (!population_strategy_skill_allowed(sd, map_id2bl(sd->pop.target_id), bs.skill_id))
 			continue;
 		// YAML-authoritative: when the class doesn't have the skill learned
 		// (e.g. Monk/Champion using TF_HIDING), use the YAML level directly.
@@ -1518,7 +1663,7 @@ static bool population_shell_cast_expired_self_buffs(map_session_data *sd, t_tic
 			map_session_data *ally = population_shell_find_ally_target(
 				sd, bs.condition, pop_ally_hp_threshold(sd, bs.skill_id, bs.condition, bs.cond_value_num),
 				bs.cond_sc_resolved, skill_range,
-				skill_get_sc(bs.skill_id));
+				skill_get_sc(bs.skill_id), bs.skill_id);
 			if (!ally)
 				continue;
 			// Party-only skills (e.g. Devotion) are rejected server-side when party_id == 0.
@@ -1538,6 +1683,8 @@ static bool population_shell_cast_expired_self_buffs(map_session_data *sd, t_tic
 			if (skill_get_inf(bs.skill_id) & (INF_GROUND_SKILL | INF_TRAP_SKILL)) {
 				int16_t tx = sd->x, ty = sd->y;
 				population_shell_resolve_placement(sd, bs.around_range, tx, ty);
+				if (pop_ground_heal_helps_enemy(sd, bs.skill_id, tx, ty)) // RAGNAROKMAC: not on a monster
+					continue;
 				if (unit_skilluse_pos(sd, tx, ty, bs.skill_id, use_lv)) {
 					if (bs.cooldown_ms > 0) sd->pop.skill_next_use_tick[bs.skill_id] = current_tick + static_cast<t_tick>(bs.cooldown_ms);
 					sd->pop.last_cast_skill_id = bs.skill_id;
@@ -1605,6 +1752,8 @@ static bool population_shell_cast_expired_self_buffs(map_session_data *sd, t_tic
 		if (skill_get_inf(bs.skill_id) & (INF_GROUND_SKILL | INF_TRAP_SKILL)) {
 			int16_t tx = sd->x, ty = sd->y;
 			population_shell_resolve_placement(sd, bs.around_range, tx, ty);
+			if (pop_ground_heal_helps_enemy(sd, bs.skill_id, tx, ty)) // RAGNAROKMAC: not on a monster
+				continue;
 			if (unit_skilluse_pos(sd, tx, ty, bs.skill_id, use_lv)) {
 				if (bs.cooldown_ms > 0) sd->pop.skill_next_use_tick[bs.skill_id] = current_tick + static_cast<t_tick>(bs.cooldown_ms);
 				sd->pop.last_cast_skill_id = bs.skill_id;
@@ -1655,6 +1804,9 @@ static bool population_shell_cast_ally_attack_skill(map_session_data *sd, t_tick
 			continue;
 		if (rescue_only && !pop_row_is_rescue(sk.condition))
 			continue;
+		// RAGNAROKMAC (companion strategies): ... and its heals and ally buffs (no Sanctuary at a boss).
+		if (!population_strategy_skill_allowed(sd, map_id2bl(sd->pop.target_id), sk.skill_id))
+			continue;
 		if (!rescue_only && sk.rate < 10000 && static_cast<uint16_t>(rnd() % 10000) >= sk.rate)
 			continue;
 		// Condition check (no enemy target_bl for ally skills).
@@ -1687,7 +1839,7 @@ static bool population_shell_cast_ally_attack_skill(map_session_data *sd, t_tick
 		map_session_data *ally = population_shell_find_ally_target(
 			sd, sk.condition, pop_ally_hp_threshold(sd, sk.skill_id, sk.condition, sk.cond_value_num),
 			sk.cond_sc_resolved, skill_range,
-			skill_get_sc(sk.skill_id));
+			skill_get_sc(sk.skill_id), sk.skill_id);
 		if (!ally)
 			continue;
 		// Skip if the ally already carries the SC this skill would apply — without
@@ -1706,6 +1858,8 @@ static bool population_shell_cast_ally_attack_skill(map_session_data *sd, t_tick
 		if (skill_get_inf(sk.skill_id) & (INF_GROUND_SKILL | INF_TRAP_SKILL)) {
 			int16_t tx = sd->x, ty = sd->y;
 			population_shell_resolve_placement(sd, sk.around_range, tx, ty);
+			if (pop_ground_heal_helps_enemy(sd, sk.skill_id, tx, ty)) // RAGNAROKMAC: not on a monster
+				continue;
 			used = unit_skilluse_pos(sd, tx, ty, sk.skill_id, sk.skill_lv);
 		} else
 			used = unit_skilluse_id(sd, ally->id, sk.skill_id, sk.skill_lv);
@@ -1750,15 +1904,21 @@ static void population_shell_combat_process_tick(map_session_data *sd, t_tick cu
 
 	const bool flag_attack_only = (sd->pop.flags & PSF::AttackOnly) != 0
 		|| sd->sc.getSCE(SC_BERSERK) != nullptr; // Frenzy: auto-attack only, no skills
-	const bool flag_skill_only  = (sd->pop.flags & PSF::SkillOnly)  != 0;
+	const bool flag_skill_only  = (sd->pop.flags & PSF::SkillOnly)  != 0
+		|| !population_strategy_attack_allowed(sd); // RAGNAROKMAC (companion strategies): Attack: false
 	const PopulationRoleType shell_role = static_cast<PopulationRoleType>(sd->pop.role);
 	const int32 pai = battle_config.population_engine_ai;
 
 	// Party resurrection outranks ordinary role behaviour.  This intentionally
 	// also applies to a priest assigned Tank, Attacker, or None: class capability
 	// determines whether the party can recover from a death.
-	if (!flag_attack_only && do_skills &&
+	// RAGNAROKMAC (companion strategies): unless the companion's plan revives with its own rule.
+	if (!flag_attack_only && do_skills && !population_strategy_handles_resurrection(sd) &&
 		population_shell_try_party_resurrection(sd, current_tick))
+		return;
+
+	// RAGNAROKMAC (companion strategies): then the rules; one that acts ends the turn.
+	if (population_strategy_turn(sd, current_tick, do_skills, flag_attack_only))
 		return;
 
 	// --- PANIC INTERRUPT: emergency hide dodge ---
@@ -1778,7 +1938,9 @@ static void population_shell_combat_process_tick(map_session_data *sd, t_tick cu
 		if (!already_hiding) {
 			const PopulationShellBuffSkill *hide_bs = nullptr;
 			for (const PopulationShellBuffSkill &b : sd->pop.buff_skills) {
-				if (b.skill_id == TF_HIDING || b.skill_id == AS_CLOAKING) {
+				// RAGNAROKMAC (companion strategies): ... and its emergency Hiding.
+				if ((b.skill_id == TF_HIDING || b.skill_id == AS_CLOAKING)
+						&& population_strategy_skill_allowed(sd, map_id2bl(sd->pop.target_id), b.skill_id)) {
 					hide_bs = &b;
 					break;
 				}
@@ -2001,8 +2163,10 @@ static void population_shell_combat_process_tick(map_session_data *sd, t_tick cu
 
 	// Owner-follow controls movement for hired companions. With no party-approved
 	// target they remain calm here while support/heal logic above still runs.
-	if (hired_companion && tid == 0)
+	if (hired_companion && tid == 0) {
+		population_companion_roam_step(sd, current_tick); // RAGNAROKMAC (roam): unless it roams
 		return;
+	}
 
 	// Async A* path follower removed — movement is now driven directly by
 	// unit_walktoxy / unit_walktobl which use rAthena's built-in BFS path search.
@@ -2795,6 +2959,17 @@ int population_engine_combat_per_tick(map_session_data *sd, bool do_skills)
 		return 0;
 	}
 
+	// RAGNAROKMAC (shell looting): an ambient shell goes for its own drops before
+	// picking the next fight. Looting decides itself when combat should win (an
+	// ordinary drop while something attacks the shell); when it claims the tick,
+	// combat sits this one out. Off unless population_engine_loot_enable.
+	// No homunculus turn on this early return: only companions have one, and
+	// looting never runs for them.
+	if (!hired_companion && population_shell_loot_tick(sd, current_tick)) {
+		population_shell_status_checkmapchange(sd);
+		return 0;
+	}
+
 	// Do not drop a chase target just because it is outside client sight yet — that prevented pathing.
 	// Hired companions receive targets from their owner/party-threat controller
 	// and must never fall back to the shell's ambient town/field target scan.
@@ -2969,6 +3144,7 @@ void population_engine_combat_cleanup_player(map_session_data *sd)
 	}
 	pe.session_guard = pe.session_guard + 1;
 	pe.recently_cleared_targets.clear();
+	population_shell_loot_clear(sd);
 }
 
 void do_init_population_engine_combat()

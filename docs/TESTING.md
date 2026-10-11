@@ -144,6 +144,9 @@ place. It refuses an existing world directory, and never deletes a data disk.
 
 macOS example (use equivalent runtime/client-selection paths on Windows/Linux):
 
+The paths below are macOS's; on Linux the app's data folder is
+`${XDG_DATA_HOME:-$HOME/.local/share}/Ragnarok Offline`.
+
 ```sh
 export RO_E2E_WORLD="$PWD/artifacts/issue-6/my-world"
 export RO_E2E_RUNTIME="$HOME/Library/Application Support/Ragnarok Offline/runtime"

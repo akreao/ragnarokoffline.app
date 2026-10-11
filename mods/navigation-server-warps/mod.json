@@ -1,0 +1,11 @@
+{
+  "name": "navigation-server-warps",
+  "version": "1.0.0",
+  "author": "Ragnarok Offline",
+  "description": "Navigation routes over this server's own warp portals, including the ones mods add, instead of kRO's.",
+  "default": "off",
+  "requires": {
+    "app": ">=1.5.2",
+    "era": "any"
+  }
+}

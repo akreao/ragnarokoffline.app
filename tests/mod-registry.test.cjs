@@ -117,7 +117,7 @@ test('tags, pictures and dependencies come through the index', () => {
   const body = JSON.stringify({ version: 1, mods: [{
     name: 'shiny', tags: ['ui', 'Quality-Of-Life', 'ok-tag', 'x'.repeat(30)],
     icon: 'images/icon.png', screenshots: ['a.png', 'b.jpg', 'c.gif', 'd.webp', 'e.png'],
-    requires: { mods: ['base'], era: 'renewal', app: '>=1.2.0' },
+    requires: { mods: ['base'], era: 'renewal', app: '>=1.2.0', client: ['kRO', 'j/RO', 7] },
     files: ['mod.json', 'images/icon.png', 'a.png', 'b.jpg', 'c.gif', 'd.webp', 'e.png']
       .map(p => ({ path: p, sha256: sha(p) })),
   }] });
@@ -127,7 +127,8 @@ test('tags, pictures and dependencies come through the index', () => {
   assert.strictEqual(mod.icon, 'images/icon.png');
   // Capped at four, in the order given.
   assert.deepStrictEqual(mod.screenshots, ['a.png', 'b.jpg', 'c.gif', 'd.webp']);
-  assert.deepStrictEqual(mod.requires, { mods: ['base'], era: 'renewal', app: '>=1.2.0' });
+  // A client that isn't a plain name is dropped, like a bad tag.
+  assert.deepStrictEqual(mod.requires, { mods: ['base'], era: 'renewal', client: ['kRO'], app: '>=1.2.0' });
 });
 
 test('a picture the mod does not ship is not shown', () => {
@@ -166,5 +167,29 @@ test('a picture whose bytes were swapped is refused', async () => {
   }] });
   await assert.rejects(
     registry.image('tidy-mod', 'icon.png', { url: INDEX, fetch: fakeRegistry({ 'icon.png': 'swapped' }, body) }),
+    /does not match the reviewed copy/);
+});
+
+test('a CHANGELOG.md is fetched alone, verified, and cached by its digest', async () => {
+  const text = '## 1.1.0\n- Faster.\n\n## 1.0.0\n- First.\n';
+  const body = catalogue([{ path: 'mod.json', sha256: sha('m') }, { path: 'CHANGELOG.md', sha256: sha(text) }]);
+  const fetched = [];
+  const inner = fakeRegistry({ 'CHANGELOG.md': text }, body);
+  const fetch = async (url, limit) => { fetched.push(url); return inner(url, limit); };
+  const cache = new Map();
+  assert.strictEqual(await registry.changelog('tidy-mod', { url: INDEX, fetch, cache }), text);
+  assert.strictEqual(await registry.changelog('tidy-mod', { url: INDEX, fetch, cache }), text);
+  // The index each time (no listing was passed in), the file once, mod.json never.
+  assert.deepStrictEqual(fetched.filter(u => u !== INDEX),
+    ['https://raw.githubusercontent.com/example/mods/main/mods/tidy-mod/CHANGELOG.md']);
+});
+
+test('a mod without a CHANGELOG.md has no notes, and a swapped one is refused', async () => {
+  const none = catalogue([{ path: 'mod.json', sha256: sha('m') }]);
+  assert.strictEqual(await registry.changelog('tidy-mod', { url: INDEX, fetch: fakeRegistry({}, none) }), '');
+  assert.strictEqual(await registry.changelog('other-mod', { url: INDEX, fetch: fakeRegistry({}, none) }), '');
+  const swapped = catalogue([{ path: 'mod.json', sha256: sha('m') }, { path: 'CHANGELOG.md', sha256: sha('expected') }]);
+  await assert.rejects(
+    registry.changelog('tidy-mod', { url: INDEX, fetch: fakeRegistry({ 'CHANGELOG.md': 'swapped' }, swapped) }),
     /does not match the reviewed copy/);
 });

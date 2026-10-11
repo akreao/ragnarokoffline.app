@@ -80,3 +80,25 @@ test('the real supervisor rejects corrupt policy before startup or Repair reache
     assert.equal(fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n'), '{"open_registration":"false"}');
   }
 });
+
+test('the server clock takes a zone name or null, and nothing that could leave the docker command line', t => {
+  const file = fixture(t);
+  for (const zone of [null, 'UTC', 'Europe/Berlin', 'America/Argentina/Buenos_Aires', 'Etc/GMT+5', 'America/Port-au-Prince']) {
+    store.write(file, { server_timezone: zone }, defaults);
+    assert.equal(store.read(file, defaults).server_timezone, zone);
+  }
+  for (const zone of ['', 'Europe/', '/UTC', 'Europe/Berlin; rm -rf /', 'UTC TZ=x', '../etc/passwd', 'a/b/c/d', 9, true, 'A'.repeat(65)]) {
+    assert.throws(() => store.write(file, { server_timezone: zone }, defaults), /server clock setting/, String(zone));
+  }
+});
+
+test('favourite mods are a list of mod folder names, and nothing else', t => {
+  const file = fixture(t);
+  for (const list of [[], ['prontera-vendors'], ['autoloot', 'royal-nightmare', 'whosell'], Array.from({ length: 500 }, (_, i) => `mod-${i}`)]) {
+    store.write(file, { mod_favorites: list }, defaults);
+    assert.deepEqual(store.read(file, defaults).mod_favorites, list);
+  }
+  for (const bad of ['autoloot', [''], ['../mods'], ['a b'], [7], [null], ['x'.repeat(65)], Array.from({ length: 501 }, (_, i) => `m${i}`)]) {
+    assert.throws(() => store.write(file, { mod_favorites: bad }, defaults), /favourite mods/, JSON.stringify(bad).slice(0, 40));
+  }
+});

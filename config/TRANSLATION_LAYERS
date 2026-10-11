@@ -1,0 +1,42 @@
+# What the English translation takes from ROenglishRE's Compatibility layers.
+#
+# A layer is dated by the client program it was made for: ROenglishRE's
+# ClientGenerator stacks every layer up to the date of the player's Ragexe. Here
+# the program reading the files is roBrowser at the chosen packet version, so
+# link-assets stacks every layer dated on or before that version, oldest first,
+# using a layer's Renewal/ or Pre-Renewal/ folder when it has one -- the same
+# rule ClientGenerator follows.
+#
+# Not everything in a layer is taken. Tables such as EnchantList,
+# ItemReformSystem and the Laphine boxes are older English snapshots of content
+# a player's own GRF carries newer; swapping them in would trade entries for
+# English. What is taken is what only replaces Korean with English:
+#
+#   take <prefix>   a path under a layer, or the start of one
+#   skip <prefix>   an exception to the takes
+#
+# package.sh ships what matches; link-assets copies it into place. Single
+# files that ignore the date are in TRANSLATION_EXTRAS, which is applied after.
+
+# Images with their words drawn in: buttons and window art.
+take	data/texture/
+
+# Reputation group and faction names (read from 20220330).
+take	data/contentdata/repute/
+
+# Emotion names (read from 20230302).
+take	data/simplemsg/msg_emotion.csv
+
+# Tip of the Day pictures. The client has no tip window, and two differ in
+# size from kRO's.
+skip	data/texture/À¯ÀúÀÎÅÍÆäÀÌ½º/tipbox/tip
+
+# Not the size of kRO's own, after stacking (checked against a 2025-11-05 kRO
+# data.grf), so a window laid out for those would clip or stretch them: the
+# mail list tabs (74x28, kRO 68x28) and the second Cancel button (56x20, kRO
+# 58x20). Every other image taken matches -- including the rune set tabs, whose
+# 2023-08-02 copies are too narrow but are replaced by 2024-10-16's wherever
+# both apply.
+skip	data/texture/À¯ÀúÀÎÅÍÆäÀÌ½º/basic_interface/rodexsystem/renewal/btn_listtab_
+skip	data/texture/À¯ÀúÀÎÅÍÆäÀÌ½º/btn_cancel2_
+skip	data/texture/À¯ÀúÀÎÅÍÆäÀÌ½º/basic_interface/btn_cancel2_

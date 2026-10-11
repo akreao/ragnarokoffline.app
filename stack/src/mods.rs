@@ -91,6 +91,9 @@ pub struct Manifest {
     pub requires_app: Option<String>,
     /// `"renewal"`, `"pre-renewal"`, or `"any"`.
     pub requires_era: Option<String>,
+    /// The clients the mod is for (`"requires": { "client": ["kRO"] }`), by
+    /// their service name, compared without regard to case. Empty for any.
+    pub requires_client: Vec<String>,
     /// Whether the mod is on before the player has said anything about it.
     ///
     /// Only meaningful for mods that ship with the app: a mod somebody went to
@@ -141,7 +144,44 @@ pub struct Manifest {
     /// the alternative was two mods that repeat everything else.
     pub renewal_folder: String,
     pub prerenewal_folder: String,
+    /// Folders applied over the mod's own (and its era folder) for one client
+    /// (`"clientFolders": { "kRO": "kro", "iRO": "iro" }`): the client's name,
+    /// then the folder. For data that only matches one client's GRFs -- an
+    /// iteminfo.lua written for kRO's item tables overwrites iRO's.
+    pub client_folders: Vec<(String, String)>,
+    /// How the client draws and plays a map: the sky behind it, its clouds,
+    /// its weather and its music
+    /// (`"maps": { "my_isle": { "sky": [r, g, b], "clouds": [r, g, b], "bgm": "my_isle.mp3" } }`).
+    ///
+    /// Official clients keep the sky table in the executable, and roBrowser in
+    /// `DB/Effects/WeatherEffect.js`: a dozen official maps, and black with no
+    /// clouds for every other, which meant every custom map. The music is one
+    /// table for the whole game, `data/mp3nametable.txt`, so a mod could only
+    /// name a map's music by replacing every map's. Our fork reads these from
+    /// the `customMaps` config (client_tables).
+    pub maps: Vec<MapLook>,
 }
+
+/// One map's entry in a manifest's `"maps"`.
+#[derive(Clone, PartialEq, Debug)]
+pub struct MapLook {
+    /// The map's name, lower case, without `.rsw`.
+    pub name: String,
+    /// RGBA, 0 to 1; given as RGB, the alpha is 1.
+    pub sky: Option<[f64; 4]>,
+    /// RGB, 0 to 1. Only with a sky: the clouds drift across it.
+    pub clouds: Option<[f64; 3]>,
+    /// One of [`WEATHERS`].
+    pub weather: Option<String>,
+    /// A file in `BGM/`: the mod's own, or one the client ships (`"08.mp3"`).
+    pub bgm: Option<String>,
+}
+
+/// The weather effects roBrowser's ScreenEffectManager starts by name.
+pub const WEATHERS: &[&str] = &[
+    "snow", "rain", "fireworks", "leaves", "sakura", "cloud", "cloud2", "cloud3", "cloud4", "cloud5",
+    "cloud6", "cloud7", "cloud8",
+];
 
 /// The values `"kind"` may take. Anything else is refused by name, the way a
 /// typo in `requires` is: a skin that silently stops being exclusive is the
@@ -199,6 +239,7 @@ impl Default for Manifest {
             description: String::new(),
             requires_app: None,
             requires_era: None,
+            requires_client: Vec::new(),
             default_on: true,
             settings: Vec::new(),
             requires_mods: Vec::new(),
@@ -207,8 +248,118 @@ impl Default for Manifest {
             kind: String::new(),
             renewal_folder: String::new(),
             prerenewal_folder: String::new(),
+            client_folders: Vec::new(),
+            maps: Vec::new(),
         }
     }
+}
+
+/// A manifest's `"maps"`, checked for shape. A mistake is a refusal with a
+/// reason, as anywhere else in mod.json: a colour that silently fails to
+/// apply looks exactly like a feature that does not work.
+fn map_looks(v: &json::Value) -> Result<Vec<MapLook>, String> {
+    let Some(maps) = v.get("maps") else {
+        return Ok(Vec::new());
+    };
+    let json::Value::Object(maps) = maps else {
+        return Err("mod.json: \"maps\" must be an object of map names, like { \"my_isle\": { \"sky\": [0.4, 0.6, 0.8] } }".into());
+    };
+    if maps.len() > 200 {
+        return Err("mod.json: \"maps\" may name at most 200 maps".into());
+    }
+    let color = |map: &str, key: &str, value: &json::Value, sizes: &[usize]| -> Result<Vec<f64>, String> {
+        let wrong = || {
+            let shape = if sizes.len() == 2 { "3 or 4" } else { "3" };
+            format!("mod.json: \"maps\".{map}.{key} must be a list of {shape} numbers from 0 to 1, like [0.4, 0.6, 0.8]")
+        };
+        let json::Value::Array(items) = value else { return Err(wrong()) };
+        if !sizes.contains(&items.len()) {
+            return Err(wrong());
+        }
+        items
+            .iter()
+            .map(|item| match item {
+                json::Value::Number(n) if n.is_finite() && (0.0..=1.0).contains(n) => Ok(*n),
+                _ => Err(wrong()),
+            })
+            .collect()
+    };
+    let mut out = Vec::new();
+    for (key, entry) in maps {
+        let name = key.to_ascii_lowercase();
+        let name = name.strip_suffix(".rsw").unwrap_or(&name).to_string();
+        // rAthena's limit; the same one the map cache enforces.
+        if name.is_empty()
+            || name.len() > 11
+            || !name.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'@' || b == b'-')
+        {
+            return Err(format!(
+                "mod.json: {key:?} in \"maps\" is not a map name -- letters, digits, _, @ and -, up to 11"
+            ));
+        }
+        let json::Value::Object(fields) = entry else {
+            return Err(format!("mod.json: \"maps\".{name} must be an object, like {{ \"sky\": [0.4, 0.6, 0.8] }}"));
+        };
+        for k in fields.keys() {
+            if !["sky", "clouds", "weather", "bgm"].contains(&k.as_str()) {
+                return Err(format!(
+                    "mod.json: \"maps\".{name} has no setting called \"{k}\" (this build understands \"sky\", \"clouds\", \"weather\" and \"bgm\")"
+                ));
+            }
+        }
+        let sky = match fields.get("sky") {
+            None => None,
+            Some(value) => {
+                let c = color(&name, "sky", value, &[3, 4])?;
+                Some([c[0], c[1], c[2], c.get(3).copied().unwrap_or(1.0)])
+            }
+        };
+        let clouds = match fields.get("clouds") {
+            None => None,
+            Some(_) if sky.is_none() => {
+                return Err(format!("mod.json: \"maps\".{name} has clouds but no sky for them to drift across -- add \"sky\""))
+            }
+            Some(value) => {
+                let c = color(&name, "clouds", value, &[3])?;
+                Some([c[0], c[1], c[2]])
+            }
+        };
+        let weather = match fields.get("weather") {
+            None => None,
+            Some(json::Value::String(w)) if WEATHERS.contains(&w.as_str()) => Some(w.clone()),
+            Some(_) => {
+                return Err(format!(
+                    "mod.json: \"maps\".{name}.weather must be one of {}",
+                    WEATHERS.iter().map(|w| format!("\"{w}\"")).collect::<Vec<_>>().join(", ")
+                ))
+            }
+        };
+        // A file name in BGM/, as the client asks for it. `BGM.play` cuts any
+        // name that mentions "bgm" down to its last `\w+.mp3`, so a folder, or
+        // a "-" in such a name, would play some other file.
+        let playable = |f: &str| {
+            let lower = f.to_ascii_lowercase();
+            let Some(stem) = lower.strip_suffix(".mp3") else { return false };
+            !stem.is_empty()
+                && f.len() <= 64
+                && stem.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')
+                && !(stem.contains("bgm") && stem.contains('-'))
+        };
+        let bgm = match fields.get("bgm") {
+            None => None,
+            Some(json::Value::String(f)) if playable(f) => Some(f.clone()),
+            Some(_) => {
+                return Err(format!(
+                    "mod.json: \"maps\".{name}.bgm must be the name of an .mp3 in BGM/ -- letters, digits, _ and -, like \"my_isle.mp3\""
+                ))
+            }
+        };
+        if sky.is_none() && weather.is_none() && bgm.is_none() {
+            return Err(format!("mod.json: \"maps\".{name} sets nothing -- give it a \"sky\", a \"weather\" or a \"bgm\""));
+        }
+        out.push(MapLook { name, sky, clouds, weather, bgm });
+    }
+    Ok(out)
 }
 
 /// A list of mod names from the manifest, checked for shape.
@@ -420,8 +571,8 @@ fn read_manifest(dir: &Path) -> Result<Option<Manifest>, String> {
             }
             m.settings.push(Setting { key, label, description, value, min, max });
         }
-        if m.settings.len() > 20 {
-            return Err("mod.json: a mod may declare at most 20 settings".into());
+        if m.settings.len() > 40 {
+            return Err("mod.json: a mod may declare at most 40 settings".into());
         }
     }
     if let Some(req) = v.get("requires") {
@@ -430,14 +581,15 @@ fn read_manifest(dir: &Path) -> Result<Option<Manifest>, String> {
         }
         m.requires_app = req.str("app").map(str::to_string);
         m.requires_era = req.str("era").map(str::to_string);
+        m.requires_client = client_names(req)?;
         // Named rather than ignored: a typo in a key that gates installation
         // is the kind of mistake that looks like it worked.
         if let json::Value::Object(map) = req {
             for k in map.keys() {
-                if k != "app" && k != "era" && k != "mods" {
+                if k != "app" && k != "era" && k != "mods" && k != "client" {
                     return Err(format!(
                         "mod.json: \"requires\" has no setting called \"{k}\" \
-                         (this build understands \"app\", \"era\" and \"mods\")"
+                         (this build understands \"app\", \"era\", \"mods\" and \"client\")"
                     ));
                 }
             }
@@ -462,12 +614,67 @@ fn read_manifest(dir: &Path) -> Result<Option<Manifest>, String> {
     }
     m.renewal_folder = era_folder(dir, &v, "renewalFolder")?;
     m.prerenewal_folder = era_folder(dir, &v, "prerenewalFolder")?;
+    m.client_folders = client_folders(dir, &v)?;
+    m.maps = map_looks(&v)?;
     Ok(Some(m))
 }
 
 /// The top-level folders a mod's layers live in. An era folder named like one
 /// of them would be read twice, as a layer and as the era's copy of the mod.
 const LAYER_FOLDERS: [&str; 8] = ["data", "db", "npc", "conf", "lua", "System", "BGM", "client"];
+
+/// A client's service name as a mod writes it: `kRO`, `iRO`, `twRO`. Letters
+/// and digits, so a typo can't smuggle in a path or a pattern.
+fn client_name(name: &str) -> bool {
+    !name.is_empty() && name.len() <= 12 && name.bytes().all(|b| b.is_ascii_alphanumeric())
+}
+
+/// `requires.client`: one client name or a list of them. `"any"` (or none)
+/// is no requirement.
+fn client_names(req: &json::Value) -> Result<Vec<String>, String> {
+    let Some(raw) = req.get("client") else { return Ok(Vec::new()) };
+    let items: Vec<&json::Value> = match raw {
+        json::Value::String(_) => vec![raw],
+        json::Value::Array(items) => items.iter().collect(),
+        other => return Err(format!("mod.json: \"requires.client\" must be a client like \"kRO\", or a list of them, not {other}")),
+    };
+    let mut out: Vec<String> = Vec::new();
+    for item in items {
+        let json::Value::String(name) = item else {
+            return Err("mod.json: every entry in \"requires.client\" must be a client like \"kRO\"".into());
+        };
+        if !client_name(name) {
+            return Err(format!("mod.json: {name:?} in \"requires.client\" is not a client name -- like \"kRO\" or \"iRO\""));
+        }
+        if name.eq_ignore_ascii_case("any") {
+            return Ok(Vec::new());
+        }
+        if !out.iter().any(|n| n.eq_ignore_ascii_case(name)) {
+            out.push(name.clone());
+        }
+    }
+    Ok(out)
+}
+
+/// `clientFolders`: `{ "<client>": "<folder>" }`, each folder checked as an
+/// era folder is.
+fn client_folders(dir: &Path, v: &json::Value) -> Result<Vec<(String, String)>, String> {
+    let Some(raw) = v.get("clientFolders") else { return Ok(Vec::new()) };
+    let json::Value::Object(map) = raw else {
+        return Err(format!("mod.json: \"clientFolders\" must be an object like {{ \"kRO\": \"kro\" }}, not {raw}"));
+    };
+    let mut out = Vec::new();
+    for (client, folder) in map {
+        if !client_name(client) || client.eq_ignore_ascii_case("any") {
+            return Err(format!("mod.json: {client:?} in \"clientFolders\" is not a client name -- like \"kRO\" or \"iRO\""));
+        }
+        let json::Value::String(path) = folder else {
+            return Err(format!("mod.json: \"clientFolders\" for {client} must be a folder name like \"kro\", not {folder}"));
+        };
+        out.push((client.clone(), folder_in_mod(dir, path, &format!("clientFolders.{client}"))?));
+    }
+    Ok(out)
+}
 
 /// `renewalFolder` / `prerenewalFolder`, checked: a relative path to a folder
 /// that is actually in the mod, that does not climb out of it and is not one
@@ -477,6 +684,12 @@ fn era_folder(dir: &Path, v: &json::Value, key: &str) -> Result<String, String> 
     let Some(path) = v.str(key) else {
         return Err(format!("mod.json: \"{key}\" must be a folder name like \"renewal\", not {raw}"));
     };
+    folder_in_mod(dir, path, key)
+}
+
+/// A folder named in mod.json (`key` says which setting, for the message):
+/// relative, inside the mod, not a layer folder, and actually there.
+fn folder_in_mod(dir: &Path, path: &str, key: &str) -> Result<String, String> {
     let path = path.trim_end_matches('/');
     let shaped = !path.is_empty()
         && path.len() <= 100
@@ -588,6 +801,27 @@ pub(crate) fn compare_versions(a: &str, b: &str) -> std::cmp::Ordering {
         }
     }
     std::cmp::Ordering::Equal
+}
+
+/// Whether the running client (`client`, as detected from its GRFs) is one
+/// the mod is for. An undetected client refuses nothing: the mod may well be
+/// right for it, and refusing would turn a detection gap into a broken mod.
+fn client_requirement_met(wanted: &[String], client: Option<&str>) -> Result<(), String> {
+    let (Some(client), false) = (client, wanted.is_empty()) else { return Ok(()) };
+    if wanted.iter().any(|w| w.eq_ignore_ascii_case(client)) {
+        return Ok(());
+    }
+    Err(format!("is for {}, and this client is {client}", wanted.join(" or ")))
+}
+
+/// The client the app detected from the player's GRFs (`state/client-detected.json`,
+/// written by the shell each time it indexes the client): `kRO`, `iRO`, ...
+/// None when it couldn't tell, or nothing has been detected yet.
+pub fn detected_client(state: &Path) -> Option<String> {
+    let text = fs::read_to_string(state.join("client-detected.json")).ok()?;
+    let v = json::parse(&text).ok()?;
+    let name = v.str("client")?;
+    client_name(name).then(|| name.to_string())
 }
 
 fn era_requirement_met(rule: &str, prerenewal: bool) -> Result<(), String> {
@@ -965,7 +1199,7 @@ fn read_plain_conf(dir: &Path, name: &str, out: &mut BTreeMap<String, Vec<(Strin
 // ---------------------------------------------------------------------------
 
 /// Whether a mod is applied, and why not when it is not.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Status {
     On,
     /// Switched off in `disabled.txt`.
@@ -995,11 +1229,34 @@ pub struct Installed {
 
 impl Installed {
     /// The roots of a mod in the given era: its folder, then its era folder.
-    fn era_roots(dir: &Path, manifest: &Manifest, prerenewal: bool) -> Vec<PathBuf> {
+    fn era_roots(dir: &Path, manifest: &Manifest, prerenewal: bool, client: Option<&str>) -> Vec<PathBuf> {
         let era = if prerenewal { &manifest.prerenewal_folder } else { &manifest.renewal_folder };
         let mut roots = vec![dir.to_path_buf()];
         if !era.is_empty() {
             roots.push(dir.join(era));
+        }
+        // The client's folder last, so its copy of a file wins over both.
+        if let Some(client) = client {
+            for (name, folder) in &manifest.client_folders {
+                if name.eq_ignore_ascii_case(client) {
+                    roots.push(dir.join(folder));
+                }
+            }
+        }
+        roots
+    }
+
+    /// Every folder the mod could read from, in any era or client: for the
+    /// checks drawn for mods that are off, where switching era is one click.
+    fn all_roots(&self) -> Vec<PathBuf> {
+        let mut roots = vec![self.dir.clone()];
+        for era in [&self.manifest.renewal_folder, &self.manifest.prerenewal_folder] {
+            if !era.is_empty() {
+                roots.push(self.dir.join(era));
+            }
+        }
+        for (_, folder) in &self.manifest.client_folders {
+            roots.push(self.dir.join(folder));
         }
         roots
     }
@@ -1019,14 +1276,8 @@ impl Installed {
     pub fn grants_commands(&self) -> bool {
         let whole = |dir: &Path| CONF_WHOLE_FILE.iter().any(|f| dir.join(f).is_file());
         // A grant behind one of the mod's own options is still a grant, and so
-        // is one only the other era would apply: switching era is one click.
-        let mut roots = vec![self.dir.clone()];
-        for era in [&self.manifest.renewal_folder, &self.manifest.prerenewal_folder] {
-            if !era.is_empty() {
-                roots.push(self.dir.join(era));
-            }
-        }
-        roots.iter().any(|root| {
+        // is one only the other era (or another client) would apply.
+        self.all_roots().iter().any(|root| {
             let conf = root.join("conf");
             whole(&conf)
                 || fs::read_dir(conf.join("when"))
@@ -1050,13 +1301,25 @@ impl Installed {
     /// folders: the list is drawn for mods that are off, and switching era is
     /// one click.
     pub fn has_client_layers(&self) -> bool {
-        let mut roots = vec![self.dir.clone()];
-        for era in [&self.manifest.renewal_folder, &self.manifest.prerenewal_folder] {
-            if !era.is_empty() {
-                roots.push(self.dir.join(era));
-            }
-        }
-        roots.iter().any(|root| CLIENT_LAYERS.iter().any(|layer| root.join(layer).is_dir()))
+        self.all_roots().iter().any(|root| CLIENT_LAYERS.iter().any(|layer| root.join(layer).is_dir()))
+    }
+
+    /// Whether the mod has the map server load scripts: its own `npc/`, or
+    /// stock ones named in `stock-npc.txt`. Server-side, except that with
+    /// navigation-server-npcs on they reach the client's NPC table too.
+    pub fn has_npc_layers(&self) -> bool {
+        self.roots.iter().any(|root| root.join("npc").is_dir() || root.join("stock-npc.txt").is_file())
+    }
+
+    /// Whether the mod changes one `db/` table, directly or behind a setting.
+    pub fn has_db_table(&self, table: &str) -> bool {
+        self.roots.iter().any(|root| {
+            let db = root.join("db");
+            db.join(table).is_file()
+                || fs::read_dir(db.join("when"))
+                    .map(|rd| rd.flatten().any(|e| e.path().join(table).is_file()))
+                    .unwrap_or(false)
+        })
     }
 }
 
@@ -1078,6 +1341,7 @@ pub fn scan(cfg: &Config) -> Vec<Installed> {
     let enabled = read_list(&cfg.state, "enabled.txt");
     let prerenewal = crate::cmds::is_prerenewal(cfg);
     let app = cfg.app_version.as_deref();
+    let client = detected_client(&cfg.state);
 
     let mut found: BTreeMap<String, (PathBuf, bool)> = BTreeMap::new();
     for (root, bundled) in [(cfg.root.join("mods"), true), (user, false)] {
@@ -1106,6 +1370,11 @@ pub fn scan(cfg: &Config) -> Vec<Installed> {
                         if let Err(e) = era_requirement_met(rule, prerenewal) {
                             problem = Some(e);
                         }
+                    }
+                }
+                if problem.is_none() {
+                    if let Err(e) = client_requirement_met(&m.requires_client, client.as_deref()) {
+                        problem = Some(e);
                     }
                 }
                 (m, problem)
@@ -1138,7 +1407,7 @@ pub fn scan(cfg: &Config) -> Vec<Installed> {
                 manifest.name
             );
         }
-        let roots = Installed::era_roots(&dir, &manifest, prerenewal);
+        let roots = Installed::era_roots(&dir, &manifest, prerenewal, client.as_deref());
         out.push(Installed { name, dir, status, manifest, bundled, roots });
     }
 
@@ -1205,9 +1474,39 @@ pub fn check_dir(dir: &Path) -> Result<String, String> {
     }
 }
 
-/// The mods that are actually being applied, in merge order.
+/// The mods that are switched on, in scan order.
 pub fn enabled(cfg: &Config) -> Vec<Installed> {
     scan(cfg).into_iter().filter(|m| m.status == Status::On).collect()
+}
+
+/// The mods `assemble` applies to the server, in the order it applies them:
+/// `apply_order`, without any caught in an `after` loop. For anything that
+/// has to merge server tables the way the server's import does (navmob.rs).
+pub fn applied(cfg: &Config) -> Vec<Installed> {
+    let mut live = enabled(cfg);
+    sort_applied(&mut live);
+    live
+}
+
+/// Sort switched-on mods into `apply_order`, dropping the ones in an `after`
+/// loop, whose names are returned.
+fn sort_applied<M: std::borrow::Borrow<Installed>>(live: &mut Vec<M>) -> Vec<String> {
+    let declared: Vec<(String, Vec<String>)> = live
+        .iter()
+        .map(|m| (m.borrow().name.clone(), m.borrow().manifest.after.clone()))
+        .collect();
+    match apply_order(&declared) {
+        Ok(order) => {
+            let rank: BTreeMap<&str, usize> =
+                order.iter().enumerate().map(|(i, n)| (n.as_str(), i)).collect();
+            live.sort_by_key(|m| rank.get(m.borrow().name.as_str()).copied().unwrap_or(usize::MAX));
+            Vec::new()
+        }
+        Err(cycle) => {
+            live.retain(|m| !cycle.contains(&m.borrow().name));
+            cycle
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1444,28 +1743,15 @@ pub fn assemble(cfg: &Config) -> Result<Assembled, String> {
 
     // The order layers are applied in, which is what decides who wins a
     // repeated key. Alphabetical unless a mod asked to come later.
-    let declared: Vec<(String, Vec<String>)> = live
-        .iter()
-        .map(|m| (m.name.clone(), m.manifest.after.clone()))
-        .collect();
-    match apply_order(&declared) {
-        Ok(order) => {
-            let rank: BTreeMap<&str, usize> =
-                order.iter().enumerate().map(|(i, n)| (n.as_str(), i)).collect();
-            live.sort_by_key(|m| rank.get(m.name.as_str()).copied().unwrap_or(usize::MAX));
-        }
-        Err(cycle) => {
-            // A loop cannot be ordered, so none of the mods in it are applied.
-            // Naming the ring is the only useful thing to say about it.
-            let names = cycle.join(", ");
-            for name in &cycle {
-                out.refused.push((
-                    name.clone(),
-                    format!("\"after\" forms a loop with {names}, so none of them were applied"),
-                ));
-            }
-            live.retain(|m| !cycle.contains(&m.name));
-        }
+    let cycle = sort_applied(&mut live);
+    // A loop cannot be ordered, so none of the mods in it are applied.
+    // Naming the ring is the only useful thing to say about it.
+    let names = cycle.join(", ");
+    for name in &cycle {
+        out.refused.push((
+            name.clone(),
+            format!("\"after\" forms a loop with {names}, so none of them were applied"),
+        ));
     }
 
     // Rebuilt from scratch every start: a mod removed from state/mods must stop
@@ -1904,6 +2190,63 @@ fn write_map_layer(db: &Path, maps: &[mapcache::Map]) -> Result<(), String> {
         body.push('\n');
     }
     fs::write(&index, body).map_err(|e| format!("writing {}: {e}", index.display()))
+}
+
+/// The scripts a mod has the map server load, for the navigation table
+/// (navnpc.rs): the stock ones its `stock-npc.txt` names, and its own `.txt`
+/// files as `assemble` lays them down -- every root, a later root's file
+/// replacing an earlier one of the same path, and a `when/<setting>/` folder
+/// only while that setting is on.
+pub fn npc_sources(cfg: &Config, m: &Installed) -> Result<(Vec<String>, Vec<PathBuf>), String> {
+    fn walk(dir: &Path, rel: &str, top: bool, out: &mut BTreeMap<String, PathBuf>) {
+        let Ok(rd) = fs::read_dir(dir) else { return };
+        for e in rd.flatten() {
+            let name = e.file_name().to_string_lossy().into_owned();
+            let path = e.path();
+            if top && name == "when" && path.is_dir() {
+                continue;
+            }
+            let rel = if rel.is_empty() { name.clone() } else { format!("{rel}/{name}") };
+            if path.is_dir() {
+                walk(&path, &rel, false, out);
+            } else if name.ends_with(".txt") {
+                out.insert(rel, path);
+            }
+        }
+    }
+    let saved = read_settings(&cfg.state)?;
+    let settings = effective(&m.manifest, saved.get(&m.name));
+    let mut stock = Vec::new();
+    let mut files = BTreeMap::new();
+    for root in &m.roots {
+        read_stock_npc(root, &m.name, &mut stock);
+        let npc = root.join("npc");
+        walk(&npc, "", true, &mut files);
+        for (key, folder) in conditional_folders(&npc, &m.name, "npc", &settings) {
+            walk(&folder, &format!("when/{key}"), false, &mut files);
+        }
+    }
+    Ok((stock, files.into_values().collect()))
+}
+
+/// A mod's copies of one `db/` table, in the order `assemble` merges them:
+/// the last root's own copy (an era folder's replaces the mod's, as they share
+/// an owner), then every root's `when/<setting>/` copies while that setting is
+/// on, which are merged into it. For the navigation monster table (navmob.rs),
+/// which reads mob_db.yml the way the server's import does.
+pub fn db_sources(cfg: &Config, m: &Installed, table: &str) -> Result<Vec<PathBuf>, String> {
+    let saved = read_settings(&cfg.state)?;
+    let settings = effective(&m.manifest, saved.get(&m.name));
+    let mut out: Vec<PathBuf> =
+        m.roots.iter().map(|r| r.join("db").join(table)).filter(|p| p.is_file()).last().into_iter().collect();
+    for root in &m.roots {
+        for (_, folder) in conditional_folders(&root.join("db"), &m.name, "db", &settings) {
+            if folder.join(table).is_file() {
+                out.push(folder.join(table));
+            }
+        }
+    }
+    Ok(out)
 }
 
 /// Scripts rAthena already ships that a mod asks to switch on.
@@ -2585,8 +2928,16 @@ fn load_report(state: &Path) -> BTreeMap<String, Vec<String>> {
 pub fn list(cfg: &Config) -> Vec<[String; 14]> {
     let saved = read_settings(&cfg.state).unwrap_or_default();
     let reported = load_report(&cfg.state);
-    scan(cfg)
-        .into_iter()
+    let mods = scan(cfg);
+    // With navigation-server-npcs on, the client's NPC table is built from
+    // every mod's scripts (navnpc.rs), so a change to one needs the game
+    // reopened like any client file; so does switching that mod itself.
+    let navigation = mods.iter().any(|m| m.name == crate::navnpc::MOD && matches!(m.status, Status::On));
+    // And with navigation-server-monsters on, from their spawns and mob_db.
+    let monsters = mods.iter().any(|m| m.name == crate::navmob::MOD && matches!(m.status, Status::On));
+    // And with navigation-server-warps on, from their warps.
+    let warps = mods.iter().any(|m| m.name == crate::navwarp::MOD && matches!(m.status, Status::On));
+    mods.into_iter()
         .map(|m| {
             let (state, reason) = match &m.status {
                 Status::On => ("on", String::new()),
@@ -2636,7 +2987,18 @@ pub fn list(cfg: &Config) -> Vec<[String; 14]> {
                 // `client` when the mod has layers the game window loads, so
                 // Settings asks for the game to be reopened only after an
                 // Apply that changed one of those.
-                if m.has_client_layers() { "client" } else { "" }.to_string(),
+                if m.has_client_layers()
+                    || m.name == crate::navnpc::MOD
+                    || m.name == crate::navmob::MOD
+                    || m.name == crate::navwarp::MOD
+                    || ((navigation || warps) && m.has_npc_layers())
+                    || (monsters && (m.has_npc_layers() || m.has_db_table("mob_db.yml")))
+                {
+                    "client"
+                } else {
+                    ""
+                }
+                .to_string(),
             ]
         })
         .collect()
@@ -2779,6 +3141,37 @@ mod tests {
         assert_eq!(header_type(stub).as_deref(), Some("POPULATION_SPAWN_DB"));
         // A stub that cleared would empty the shipped table on every start.
         assert!(!header_clears(stub));
+    }
+
+    // Companion strategies arrive the same way, and the worked example must stay
+    // a table of the same Type or the merge would refuse it.
+    #[test]
+    fn the_population_strategy_table_still_imports_the_mod_overlay() {
+        let table = include_str!(
+            "../../third-party/population-engine/files/db/population_strategy.yml"
+        );
+        assert_eq!(header_type(table).as_deref(), Some("POPULATION_STRATEGY_DB"));
+        assert!(
+            table.contains("- Path: db/import/population_strategy.yml"),
+            "the engine would read nothing a mod ships"
+        );
+        let stub = include_str!(
+            "../../third-party/population-engine/files/db/import-tmpl/population_strategy.yml"
+        );
+        assert_eq!(header_type(stub).as_deref(), Some("POPULATION_STRATEGY_DB"));
+        assert!(!header_clears(stub));
+        let roles = include_str!(
+            "../../examples/mods/companion-roles/db/population_strategy.yml"
+        );
+        let tactics = include_str!(
+            "../../examples/mods/companion-tactics/db/population_strategy.yml"
+        );
+        assert_eq!(header_type(roles).as_deref(), Some("POPULATION_STRATEGY_DB"));
+        assert_eq!(header_type(tactics).as_deref(), Some("POPULATION_STRATEGY_DB"));
+        // The two example mods, which are meant to be on together, combine into one table.
+        let merged = merge_tables(roles, tactics).expect("same Type merges");
+        assert_eq!(merged.matches("\nBody:").count(), 1, "{merged}");
+        assert!(merged.contains("Mob: Boss") && merged.contains("Mob: PHREEONI"), "{merged}");
     }
 
     #[test]
@@ -3499,6 +3892,48 @@ mod tests {
         assert!(read_manifest(&d).is_err());
     }
 
+    #[test]
+    fn a_map_s_sky_clouds_and_weather_are_read_from_maps() {
+        let d = tmp("maps");
+        fs::write(
+            d.join("mod.json"),
+            r#"{"maps": {"My_Isle.rsw": {"sky": [0.4, 0.6, 0.8], "clouds": [1, 1, 1], "bgm": "my_isle.mp3"}, "my_cave": {"sky": [0, 0, 0.1, 1], "weather": "snow"}}}"#,
+        )
+        .unwrap();
+        let m = read_manifest(&d).unwrap().unwrap();
+        assert_eq!(
+            m.maps,
+            vec![
+                MapLook { name: "my_isle".into(), sky: Some([0.4, 0.6, 0.8, 1.0]), clouds: Some([1.0, 1.0, 1.0]), weather: None, bgm: Some("my_isle.mp3".into()) },
+                MapLook { name: "my_cave".into(), sky: Some([0.0, 0.0, 0.1, 1.0]), clouds: None, weather: Some("snow".into()), bgm: None },
+            ]
+        );
+    }
+
+    /// Each says what is wrong, by the map and the key, rather than drawing
+    /// black behind a map that was meant to have a sky.
+    #[test]
+    fn a_mistake_in_maps_is_refused_by_name() {
+        let d = tmp("bad-maps");
+        for (maps, says) in [
+            (r#"{"my_isle": {"sky": [0.4, 0.6]}}"#, "my_isle.sky"),
+            (r#"{"my_isle": {"sky": [0.4, 0.6, 1.5]}}"#, "from 0 to 1"),
+            (r#"{"my_isle": {"clouds": [1, 1, 1]}}"#, "no sky"),
+            (r#"{"my_isle": {"weather": "hail"}}"#, "\"snow\""),
+            (r#"{"my_isle": {"skys": [0.4, 0.6, 0.8]}}"#, "skys"),
+            (r#"{"my_isle": {}}"#, "sets nothing"),
+            (r#"{"my_isle": {"bgm": "music/my_isle.mp3"}}"#, "my_isle.bgm"),
+            (r#"{"my_isle": {"bgm": "my_isle.ogg"}}"#, "my_isle.bgm"),
+            (r#"{"my_isle": {"bgm": "my-bgm.mp3"}}"#, "my_isle.bgm"),
+            (r#"{"a_name_too_long": {"sky": [0, 0, 0]}}"#, "up to 11"),
+            (r#"["my_isle"]"#, "must be an object"),
+        ] {
+            fs::write(d.join("mod.json"), format!(r#"{{"maps": {maps}}}"#)).unwrap();
+            let e = read_manifest(&d).unwrap_err();
+            assert!(e.contains(says), "{maps}: {e}");
+        }
+    }
+
     /// A misspelled requirement is the failure this whole mechanism exists to
     /// prevent, so it cannot be the one thing that passes silently.
     #[test]
@@ -3758,6 +4193,116 @@ mod tests {
         }
     }
 
+    /// `requires.client` takes one client or a list, and `"any"` is none.
+    #[test]
+    fn requires_client_names_the_clients_a_mod_is_for() {
+        let read = |body: &str| client_names(&json::parse(body).unwrap());
+        assert_eq!(read(r#"{"client": "kRO"}"#).unwrap(), vec!["kRO"]);
+        assert_eq!(read(r#"{"client": ["kRO", "jRO", "kro"]}"#).unwrap(), vec!["kRO", "jRO"]);
+        assert!(read(r#"{"client": "any"}"#).unwrap().is_empty());
+        assert!(read(r#"{}"#).unwrap().is_empty());
+        assert!(read(r#"{"client": "k/RO"}"#).is_err());
+        assert!(read(r#"{"client": 3}"#).is_err());
+        assert!(read(r#"{"client": [""]}"#).is_err());
+
+        assert!(client_requirement_met(&["kRO".into()], Some("kRO")).is_ok());
+        assert!(client_requirement_met(&["kRO".into()], Some("KRO")).is_ok(), "names compare without case");
+        assert_eq!(
+            client_requirement_met(&["kRO".into(), "jRO".into()], Some("iRO")).unwrap_err(),
+            "is for kRO or jRO, and this client is iRO"
+        );
+        assert!(client_requirement_met(&["kRO".into()], None).is_ok(), "an undetected client refuses nothing");
+        assert!(client_requirement_met(&[], Some("iRO")).is_ok());
+    }
+
+    /// A mod for another client is refused, with the reason Settings shows;
+    /// the client comes from state/client-detected.json, which the shell writes.
+    #[test]
+    fn a_mod_for_another_client_is_refused_by_name() {
+        let cfg = kind_config("client-refused");
+        install(&cfg, "kro-items", r#"{"requires": {"client": "kRO"}}"#);
+        let status = |cfg: &Config| scan(cfg).into_iter().find(|m| m.name == "kro-items").unwrap().status;
+        assert_eq!(status(&cfg), Status::On, "no client detected yet: nothing refused");
+        fs::write(cfg.state.join("client-detected.json"), r#"{"client": "iRO", "code": "us"}"#).unwrap();
+        assert_eq!(status(&cfg), Status::Refused("is for kRO, and this client is iRO".into()));
+        fs::write(cfg.state.join("client-detected.json"), r#"{"client": "kRO", "code": "kr"}"#).unwrap();
+        assert_eq!(status(&cfg), Status::On);
+        // An older manifest key list still names the new key in its message.
+        install(&cfg, "typo", r#"{"requires": {"clients": "kRO"}}"#);
+        let typo = scan(&cfg).into_iter().find(|m| m.name == "typo").unwrap().status;
+        assert!(matches!(&typo, Status::Refused(r) if r.contains("\"client\"")), "{typo:?}");
+    }
+
+    /// The running client's folder goes over the mod's own and over its era
+    /// folder; another client's folder is not read.
+    #[test]
+    fn the_running_clients_folder_takes_precedence() {
+        let cfg = kind_config("client-assemble");
+        fs::create_dir_all(cfg.root.join("db-import")).unwrap();
+        install(&cfg, "both-clients", r#"{"renewalFolder": "re", "clientFolders": {"kRO": "kro", "iRO": "iro"}}"#);
+        let dir = cfg.state.join("mods/both-clients");
+        for sub in ["db", "re/db", "kro/db", "iro/npc"] {
+            fs::create_dir_all(dir.join(sub)).unwrap();
+        }
+        fs::write(dir.join("db/item_db.yml"), "# shared\n").unwrap();
+        fs::write(dir.join("re/db/item_db.yml"), "# renewal\n").unwrap();
+        fs::write(dir.join("kro/db/item_db.yml"), "# kRO\n").unwrap();
+        fs::write(dir.join("iro/npc/iro.txt"), "iro").unwrap();
+        let build = cfg.state.join("modbuild");
+
+        let out = assemble(&cfg).unwrap();
+        assert_eq!(fs::read_to_string(build.join("db/item_db.yml")).unwrap(), "# renewal\n", "no client known: era folder only");
+        assert!(!out.npc_lines.contains("iro.txt"));
+
+        fs::write(cfg.state.join("client-detected.json"), r#"{"client": "kRO"}"#).unwrap();
+        let out = assemble(&cfg).unwrap();
+        assert_eq!(fs::read_to_string(build.join("db/item_db.yml")).unwrap(), "# kRO\n");
+        assert!(!out.npc_lines.contains("iro.txt"), "{}", out.npc_lines);
+
+        fs::write(cfg.state.join("client-detected.json"), r#"{"client": "iRO"}"#).unwrap();
+        let out = assemble(&cfg).unwrap();
+        assert_eq!(fs::read_to_string(build.join("db/item_db.yml")).unwrap(), "# renewal\n");
+        assert!(out.npc_lines.contains("npc: npc/mods/both-clients/iro.txt\n"), "{}", out.npc_lines);
+    }
+
+    /// A mod may declare up to 40 settings; one more is refused by name.
+    #[test]
+    fn a_mod_may_declare_forty_settings_and_no_more() {
+        let cfg = kind_config("settings-limit");
+        let dir = cfg.state.join("mods/m");
+        fs::create_dir_all(&dir).unwrap();
+        let settings = |n: usize| {
+            let list: Vec<String> = (0..n).map(|i| format!(r#"{{"key": "s{i}", "type": "boolean", "default": true}}"#)).collect();
+            format!(r#"{{"settings": [{}]}}"#, list.join(", "))
+        };
+        fs::write(dir.join("mod.json"), settings(40)).unwrap();
+        assert_eq!(read_manifest(&dir).unwrap().unwrap().settings.len(), 40);
+        fs::write(dir.join("mod.json"), settings(41)).unwrap();
+        assert!(read_manifest(&dir).unwrap_err().contains("at most 40 settings"));
+    }
+
+    #[test]
+    fn client_folders_are_checked_like_era_folders() {
+        let cfg = kind_config("client-folders");
+        let dir = cfg.state.join("mods/m");
+        fs::create_dir_all(dir.join("kro")).unwrap();
+        for (body, want) in [
+            (r#"{"clientFolders": {"kRO": "kro"}}"#, Ok(())),
+            (r#"{"clientFolders": {"kRO": "missing"}}"#, Err("not a folder in the mod")),
+            (r#"{"clientFolders": {"kRO": "db"}}"#, Err("layer folders")),
+            (r#"{"clientFolders": {"kRO": "../kro"}}"#, Err("inside the mod")),
+            (r#"{"clientFolders": {"k/RO": "kro"}}"#, Err("not a client name")),
+            (r#"{"clientFolders": ["kro"]}"#, Err("must be an object")),
+        ] {
+            fs::write(dir.join("mod.json"), body).unwrap();
+            match (read_manifest(&dir), want) {
+                (Ok(Some(m)), Ok(())) => assert_eq!(m.client_folders, vec![("kRO".to_string(), "kro".to_string())]),
+                (Err(e), Err(w)) => assert!(e.contains(w), "{body}: {e}"),
+                (got, _) => panic!("{body}: {:?}", got.map(|m| m.map(|m| m.client_folders))),
+            }
+        }
+    }
+
     /// The running era's folder is laid over the mod's own: its table replaces
     /// the mod's, its scripts join them, and the other era's folder is not
     /// read at all. Switching era switches which copy is in effect.
@@ -3896,6 +4441,41 @@ mod tests {
         }
     }
 
+    // The navigation monster table merges mods' mob_db.yml the way the server
+    // does (navmob.rs): mods in apply order, and within a mod the era folder's
+    // copy replacing the mod's own, with its switched-on parts added after.
+    #[test]
+    fn server_tables_are_read_in_the_order_and_shape_assemble_writes_them() {
+        let cfg = kind_config("applied");
+        install(&cfg, "a-late", r#"{"after": ["b-early"]}"#);
+        install(&cfg, "b-early", "{}");
+        assert_eq!(on(&cfg), ["a-late", "b-early"]);
+        let applied: Vec<String> = applied(&cfg).into_iter().map(|m| m.name).collect();
+        assert_eq!(applied, ["b-early", "a-late"]);
+
+        let dir = cfg.state.join("mods/eras");
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(
+            dir.join("mod.json"),
+            r#"{"renewalFolder": "re", "settings": [{"key": "x", "type": "boolean", "default": true}]}"#,
+        )
+        .unwrap();
+        for f in ["db/mob_db.yml", "re/db/mob_db.yml", "db/when/x/mob_db.yml", "re/db/when/x/mob_db.yml"] {
+            fs::create_dir_all(dir.join(f).parent().unwrap()).unwrap();
+            fs::write(dir.join(f), "Body:\n").unwrap();
+        }
+        let m = enabled(&cfg).into_iter().find(|m| m.name == "eras").unwrap();
+        let got: Vec<String> = db_sources(&cfg, &m, "mob_db.yml")
+            .unwrap()
+            .iter()
+            .map(|p| p.strip_prefix(&dir).unwrap().to_string_lossy().replace('\\', "/"))
+            .collect();
+        assert_eq!(got, ["re/db/mob_db.yml", "db/when/x/mob_db.yml", "re/db/when/x/mob_db.yml"]);
+        // Without the era copy, the mod's own.
+        fs::remove_file(dir.join("re/db/mob_db.yml")).unwrap();
+        assert_eq!(db_sources(&cfg, &m, "mob_db.yml").unwrap()[0], dir.join("db/mob_db.yml"));
+    }
+
     // A skin overlays the whole interface folder, so two at once is a
     // patchwork. Switching one on switches the other off; mods without a kind,
     // and mods of the other kind, are left alone.
@@ -3949,5 +4529,53 @@ mod tests {
         }
         let era = Manifest { prerenewal_folder: "pre-renewal".into(), ..Manifest::default() };
         assert!(mk("client-era", &["npc", "pre-renewal/data"], era).has_client_layers());
+    }
+
+    /// With navigation-server-npcs on, a mod's scripts reach the client's NPC
+    /// table, so changing one needs the game reopened; switching the
+    /// navigation mod itself always does. Other server-only mods still don't.
+    #[test]
+    fn scripts_count_as_client_side_while_server_npcs_feed_navigation() {
+        let cfg = kind_config("client-navnpc");
+        install(&cfg, crate::navnpc::MOD, r#"{"default": "off"}"#);
+        install(&cfg, "town", "{}");
+        install(&cfg, "healers", "{}");
+        install(&cfg, "rates", "{}");
+        let mods = cfg.state.join("mods");
+        fs::create_dir_all(mods.join("town/npc")).unwrap();
+        fs::write(mods.join("healers/stock-npc.txt"), "npc/custom/healer.txt\n").unwrap();
+        fs::create_dir_all(mods.join("rates/db")).unwrap();
+        let client = |cfg: &Config| -> Vec<String> {
+            list(cfg).into_iter().filter(|r| r[13] == "client").map(|r| r[1].clone()).collect()
+        };
+        assert_eq!(client(&cfg), [crate::navnpc::MOD]);
+        enable(&cfg, crate::navnpc::MOD).unwrap();
+        let mut on = client(&cfg);
+        on.sort();
+        assert_eq!(on, ["healers", crate::navnpc::MOD, "town"]);
+
+        // The monster table also reads mob_db: a mod changing it, even behind
+        // a setting, needs the game reopened while that mod is on.
+        set_enabled(&cfg.state, crate::navnpc::MOD, false).unwrap();
+        install(&cfg, crate::navmob::MOD, r#"{"default": "off"}"#);
+        install(&cfg, "tougher", "{}");
+        fs::create_dir_all(mods.join("tougher/db/when/hard")).unwrap();
+        fs::write(mods.join("tougher/db/when/hard/mob_db.yml"), "Body:\n").unwrap();
+        let mut off = client(&cfg);
+        off.sort();
+        assert_eq!(off, [crate::navmob::MOD, crate::navnpc::MOD]);
+        enable(&cfg, crate::navmob::MOD).unwrap();
+        let mut on = client(&cfg);
+        on.sort();
+        assert_eq!(on, ["healers", crate::navmob::MOD, crate::navnpc::MOD, "tougher", "town"]);
+
+        // With only navigation-server-warps on, scripts count (they may hold
+        // portals) and a mob_db does not.
+        set_enabled(&cfg.state, crate::navmob::MOD, false).unwrap();
+        install(&cfg, crate::navwarp::MOD, r#"{"default": "off"}"#);
+        enable(&cfg, crate::navwarp::MOD).unwrap();
+        let mut on = client(&cfg);
+        on.sort();
+        assert_eq!(on, ["healers", crate::navmob::MOD, crate::navnpc::MOD, crate::navwarp::MOD, "town"]);
     }
 }

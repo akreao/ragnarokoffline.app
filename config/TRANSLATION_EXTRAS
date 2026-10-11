@@ -4,12 +4,10 @@
 #   <path under Translation/>    <path under the staged translation>
 #
 # ROenglishRE's base layer (Translation/Renewal, Pre-Renewal) is written for a
-# 2015-10-29 client. Its ClientGenerator then stacks every Compatibility/<date>
-# layer up to the client's date. We cannot know that date -- the player points
-# us at a folder, not a version -- and a layer newer than the client replaces
-# the client's own files with a format it may not have. So this is not the
-# stack: it is only files roBrowser reads whose format does not depend on the
-# client's date.
+# 2015-10-29 client, and TRANSLATION_LAYERS stacks the Compatibility layers on
+# it up to the chosen packet version. These are single files taken whatever
+# that version is, applied after the layers: roBrowser reads them in a format
+# that does not depend on the client's date.
 #
 # package.sh ships each source; link-assets copies each into place.
 
@@ -23,11 +21,3 @@ Compatibility/2019-06-05/SystemEN/mapInfo.lub	SystemEN/mapInfo.lub
 # which has no .csv of its own, loses nothing to it.
 Compatibility/2023-08-02/data/msgstringtable.csv	data/msgstringtable.csv
 
-# The mail window's Reply and Delete buttons. Their words are drawn into the
-# image, and kRO's say 답장 and 삭제; the base layer has no copy of either.
-Compatibility/2017-06-14/data/texture/À¯ÀúÀÎÅÍÆäÀÌ½º/basic_interface/rodexsystem/renewal/btn_reply_out.bmp	data/texture/À¯ÀúÀÎÅÍÆäÀÌ½º/basic_interface/rodexsystem/renewal/btn_reply_out.bmp
-Compatibility/2017-06-14/data/texture/À¯ÀúÀÎÅÍÆäÀÌ½º/basic_interface/rodexsystem/renewal/btn_reply_over.bmp	data/texture/À¯ÀúÀÎÅÍÆäÀÌ½º/basic_interface/rodexsystem/renewal/btn_reply_over.bmp
-Compatibility/2017-06-14/data/texture/À¯ÀúÀÎÅÍÆäÀÌ½º/basic_interface/rodexsystem/renewal/btn_reply_press.bmp	data/texture/À¯ÀúÀÎÅÍÆäÀÌ½º/basic_interface/rodexsystem/renewal/btn_reply_press.bmp
-Compatibility/2017-06-14/data/texture/À¯ÀúÀÎÅÍÆäÀÌ½º/basic_interface/rodexsystem/renewal/btn_delete_out.bmp	data/texture/À¯ÀúÀÎÅÍÆäÀÌ½º/basic_interface/rodexsystem/renewal/btn_delete_out.bmp
-Compatibility/2017-06-14/data/texture/À¯ÀúÀÎÅÍÆäÀÌ½º/basic_interface/rodexsystem/renewal/btn_delete_over.bmp	data/texture/À¯ÀúÀÎÅÍÆäÀÌ½º/basic_interface/rodexsystem/renewal/btn_delete_over.bmp
-Compatibility/2017-06-14/data/texture/À¯ÀúÀÎÅÍÆäÀÌ½º/basic_interface/rodexsystem/renewal/btn_delete_press.bmp	data/texture/À¯ÀúÀÎÅÍÆäÀÌ½º/basic_interface/rodexsystem/renewal/btn_delete_press.bmp

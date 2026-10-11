@@ -1,4 +1,5 @@
-// The Autoloot window. Everything it shows and changes goes through
+// The Autoloot window, opened with Alt+O or from the option menu (Escape).
+// Everything it shows and changes goes through
 // api.server.request('modaloot', ...), answered by npc/autoloot.txt, which
 // runs @autoloot, @autoloottype and @autolootitem for the player.
 
@@ -266,4 +267,19 @@ export default function init(parameters, api) {
     const onKey = event => { if (event.altKey && event.code === 'KeyO') { event.preventDefault(); toggle(); } };
     addEventListener('keydown', onKey, true);
     api.cleanup(() => removeEventListener('keydown', onKey, true));
+
+    // And from the option menu (Escape), after its settings buttons. The
+    // pictures are data/texture/ui/esc_autoloot_*.bmp, lettered from the
+    // menu's own Settings button (mods/ui-scale/tools/make-menu-button.py
+    // --label Autoloot --name esc_autoloot). An app before 1.5.0 has no
+    // menu hook; Alt+O still opens the window there.
+    if (typeof api.ui.menuButton === 'function') {
+        api.ui.menuButton({
+            background: 'esc_autoloot_a.bmp',
+            hover: 'esc_autoloot_b.bmp',
+            down: 'esc_autoloot_c.bmp',
+            title: 'Autoloot',
+            onClick: toggle,
+        });
+    }
 }

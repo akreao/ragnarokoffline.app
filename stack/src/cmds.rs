@@ -1309,6 +1309,16 @@ const COMPANION_COLUMNS: &[(&str, &str)] = &[
     // v11: every worn piece in full -- refine, cards, options -- where the *_nameid
     // columns keep only an id. NULL on an existing row, which recalls as it always did.
     ("gear_detail", "TEXT NULL DEFAULT NULL"),
+    // v12: when the companion sits down to rest between fights, chosen in the Companions
+    // window. An existing row gets the defaults every companion starts with.
+    ("rest_below", "TINYINT NOT NULL DEFAULT 30"),
+    ("rest_until", "TINYINT NOT NULL DEFAULT 95"),
+    // v13: the companion's own bag beyond its worn gear. NULL on an existing row, which keeps
+    // what the recall spawn gives it until the first save makes that its own.
+    ("inventory_detail", "TEXT NULL DEFAULT NULL"),
+    // v14: the companion roams its owner's map instead of following, chosen in the Companions
+    // window. 0 on an existing row: every companion follows, as before.
+    ("roam", "TINYINT NOT NULL DEFAULT 0"),
 ];
 
 /// Indexes added after the table first shipped, as (name, columns).
@@ -1323,6 +1333,30 @@ fn companion_table_sql() -> String {
         .chain(COMPANION_INDEXES.iter().map(|(name, columns)| format!("ADD INDEX IF NOT EXISTS `{name}` ({columns})")))
         .collect();
     format!("{COMPANION_SCHEMA}\nALTER TABLE `cp_companion_persistence` {};\n", added.join(", "))
+}
+
+/// rAthena's web server: guild emblems, reached by the client only through
+/// the asset server (WEB_SERVER_TARGET). Not one of `SERVERS`: those decide
+/// whether a launch failed, and a world without emblems still plays.
+const WEB_SERVER: &str = "ragnarok-web";
+
+/// The web server keeps emblems here (rAthena sql-files/web.sql). main.sql
+/// does not create it, and the app never imported web.sql; its other tables
+/// (user, character and merchant configs) answer requests this client never
+/// makes, so only this one is created.
+const GUILD_EMBLEMS_TABLE: &str = "CREATE TABLE IF NOT EXISTS `guild_emblems` (
+  `world_name` varchar(32) NOT NULL,
+  `guild_id` int(11) unsigned NOT NULL,
+  `file_type` varchar(255) NOT NULL,
+  `file_data` blob,
+  `version` int(11) unsigned NOT NULL default '0',
+  PRIMARY KEY (`world_name`, `guild_id`)
+) ENGINE=MyISAM";
+
+fn ensure_guild_emblems_table(dk: &Docker) -> Result<(), String> {
+    dk.private_sql(GUILD_EMBLEMS_TABLE)
+        .map(|_| ())
+        .map_err(|e| format!("preparing the guild emblem table: {e}"))
 }
 
 fn ensure_companion_table(dk: &Docker) -> Result<(), String> {
@@ -1462,20 +1496,29 @@ fn run_server(cfg: &Config, dk: &Docker, name: &str, port: u16, binary: &str, la
     // the whole difference between "only this machine" and "anyone who can
     // reach this machine".
     let bind = if lan { "0.0.0.0" } else { "127.0.0.1" };
+    // The clock rAthena's localtime() reads: WoE, OnClock events, daily
+    // resets. See timezone.rs.
+    let zone = crate::timezone::chosen(cfg)?;
     let opts = vec![
         "-t".to_string(),
         "--network".into(), NET.into(),
         "-p".into(), format!("{bind}:{port}:{port}"),
+        "-e".into(), format!("TZ={zone}"),
     ];
     dk.run_container(name, &cfg.image, &[binary.to_string()], &mounts, &opts)
         .map_err(|e| format!("starting {name}: {e}"))
 }
 
+/// Stop the game servers the way rAthena expects to be stopped: SIGTERM, with
+/// time to finish. The map server goes first, while the char server it saves
+/// through is still up -- its shutdown quits every player, which writes them
+/// to the char server, and flushes that before exiting. Stopped in any other
+/// way (`rm -f` is SIGKILL) everything since the last autosave is lost.
 fn stop_game_services(cfg: &Config, dk: &Docker) -> Result<(), String> {
     crate::crashes::capture_all(cfg, dk);
-    for service in ["ragnarok-map", "ragnarok-char", "ragnarok-login"] {
+    for service in [WEB_SERVER, "ragnarok-map", "ragnarok-char", "ragnarok-login"] {
         if dk.is_running(service) && (dk.output(["stop", "-t", "30", service]).is_err() || dk.is_running(service)) {
-            return Err(format!("Could not stop {service} cleanly; database credentials were not changed."));
+            return Err(format!("Could not stop {service} cleanly"));
         }
     }
     Ok(())
@@ -1537,6 +1580,131 @@ fn audit_service_accounts(dk: &Docker, legacy: bool) -> Result<(), String> {
     Ok(())
 }
 
+/// Tables the mod reader never sees: `login` holds every account's password
+/// hash, e-mail and web token; `mod_store` holds every mod's own data, which
+/// only that mod may read (through the store, not SQL).
+const MOD_READER_HIDDEN: [&str; 2] = ["login", "mod_store"];
+
+/// The mod store's limits (rathena's mod_store_* battle settings), set here per
+/// release: raising one is a change to this table and nothing else, and a mod
+/// that needs more says so with requires.app. See docs/MOD_STORE.md.
+pub const MOD_STORE_LIMITS: [(&str, u64); 5] = [
+    ("mod_store_global_bytes", 1024 * 1024),
+    ("mod_store_account_bytes", 64 * 1024),
+    ("mod_store_char_bytes", 64 * 1024),
+    ("mod_store_value_bytes", 4096),
+    ("mod_store_depth", 8),
+];
+const MOD_STORE_CONF: &str = "mod_store_conf.txt";
+
+/// The store's table: the fork's own definition (sql-files/main.sql and
+/// upgrade_20261005.sql), repeated here so a world made before it has it. The
+/// map server only reads and writes it.
+const MOD_STORE_TABLE_SQL: &str = "CREATE TABLE IF NOT EXISTS `mod_store` (
+  `mod_name` varchar(64) CHARACTER SET ascii NOT NULL,
+  `scope` tinyint unsigned NOT NULL,
+  `owner` int unsigned NOT NULL DEFAULT '0',
+  `path` varchar(255) CHARACTER SET ascii NOT NULL,
+  `kind` char(1) CHARACTER SET ascii NOT NULL DEFAULT 'i',
+  `num` bigint NOT NULL DEFAULT '0',
+  `str` mediumblob NULL,
+  PRIMARY KEY (`mod_name`, `scope`, `owner`, `path`)
+) ENGINE=MyISAM;";
+
+/// The limits file, and the battle config's `import:` of it. battle_conf.txt is
+/// the shell's (it rewrites it from Settings before every start), so the line
+/// is put back here each time rather than written once.
+fn write_mod_store_limits(conf: &Path) -> Result<(), String> {
+    let limits: String = MOD_STORE_LIMITS.iter().map(|(key, value)| format!("{key}: {value}\n")).collect();
+    write_conf(conf, MOD_STORE_CONF, &limits)?;
+    let battle = conf.join("battle_conf.txt");
+    let existing = fs::read_to_string(&battle).unwrap_or_default();
+    let import = format!("import: conf/import/{MOD_STORE_CONF}");
+    if !existing.lines().any(|line| line.trim() == import) {
+        let sep = if existing.is_empty() || existing.ends_with('\n') { "" } else { "\n" };
+        fs::write(&battle, format!("{existing}{sep}{import}\n")).map_err(|_| "Cannot write the battle configuration")?;
+    }
+    Ok(())
+}
+
+/// Statements that create the mod reader (or reset its password to the one on
+/// disk) and take back whatever it was granted before.
+fn mod_reader_setup_sql(password: &str) -> String {
+    let user = format!("'{}'@'%'", crate::service_credentials::MOD_READER);
+    format!(
+        "CREATE USER IF NOT EXISTS {user} IDENTIFIED BY '{password}'; \
+         ALTER USER {user} IDENTIFIED BY '{password}'; \
+         REVOKE ALL PRIVILEGES, GRANT OPTION FROM {user};"
+    )
+}
+
+/// One `GRANT SELECT` per table in `tables` (one name per line, as
+/// information_schema lists them), skipping the hidden ones and any name that
+/// isn't a plain identifier. Batched so a large schema stays under the SQL
+/// input limit.
+fn mod_reader_grant_sql(tables: &str) -> Vec<String> {
+    let user = format!("'{}'@'%'", crate::service_credentials::MOD_READER);
+    let grants: Vec<String> = tables
+        .lines()
+        .map(str::trim)
+        .filter(|t| !t.is_empty() && t.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_'))
+        .filter(|t| !MOD_READER_HIDDEN.contains(t))
+        .map(|t| format!("GRANT SELECT ON `ragnarok`.`{t}` TO {user};"))
+        .collect();
+    grants.chunks(100).map(|c| c.join(" ")).collect()
+}
+
+/// The login mods' scripts query as (rathena's map_query_server_id and
+/// log_query_db_id): SELECT on every table but the hidden ones, and nothing
+/// else -- no writes, no DDL, no FILE. Redone on every start, so tables added
+/// since the last one are readable and the grants never drift.
+///
+/// It only counts once the database confirms the grants. A reader with none
+/// can log in but not open the database, and rathena stops the map server when
+/// script SQL can't connect -- so a run that can't confirm them falls back to
+/// the map server's own login instead (the caller drops the reader).
+fn grant_mod_reader(dk: &Docker, password: &str, legacy_root: bool) -> Result<(), String> {
+    dk.root_sql(&mod_reader_setup_sql(password), legacy_root)
+        .map_err(|_| "could not create the read-only login")?;
+    let tables = dk.root_sql(
+        "SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE';",
+        legacy_root,
+    )?;
+    let expected = mod_reader_grant_count(&tables)?;
+    for batch in mod_reader_grant_sql(&tables) {
+        dk.root_sql(&batch, legacy_root).map_err(|_| "could not grant it read access")?;
+    }
+    let granted = dk.root_sql(MOD_READER_GRANTS_SQL, legacy_root)
+        .map_err(|_| "could not confirm its read access")?;
+    mod_reader_grants_confirmed(expected, &granted)
+}
+
+/// How many SELECT grants the reader holds on the game's database.
+const MOD_READER_GRANTS_SQL: &str = "SELECT COUNT(*) FROM information_schema.table_privileges \
+     WHERE grantee = CONCAT(QUOTE('ragnarok_mods'), '@', QUOTE('%')) \
+     AND table_schema = 'ragnarok' AND privilege_type = 'SELECT';";
+
+/// The number of tables the reader is about to be granted. None is an error,
+/// never "nothing to do": the schema always has tables, so an empty list means
+/// the answer was lost on the way back, and granting nothing leaves a
+/// login the map server can't use.
+fn mod_reader_grant_count(tables: &str) -> Result<usize, String> {
+    let n: usize = mod_reader_grant_sql(tables).iter().map(|b| b.matches("GRANT SELECT").count()).sum();
+    if n == 0 { return Err("could not list the tables to grant it".into()); }
+    Ok(n)
+}
+
+/// Whether the database's count of the reader's grants (`answer`) covers every
+/// table granted. Anything else -- fewer, nothing, an unreadable answer -- is
+/// not a confirmation.
+fn mod_reader_grants_confirmed(expected: usize, answer: &str) -> Result<(), String> {
+    match answer.trim().parse::<usize>() {
+        Ok(n) if n >= expected => Ok(()),
+        Ok(n) => Err(format!("only {n} of its {expected} grants took effect")),
+        Err(_) => Err("could not confirm its read access".into()),
+    }
+}
+
 fn migrate_service_credentials(dk: &Docker, credentials: &crate::service_credentials::Credentials) -> Result<(), String> {
     // Pending journals may be retried after any individual ALTER succeeds.
     // Ready journals never fall back to the published legacy root password.
@@ -1572,7 +1740,7 @@ pub fn secure_services(cfg: &Config, dk: &Docker, lan: bool, ram_mib: Option<u32
         // includes all player data; secure its host directory before writing.
         crate::private_fs::directory(&cfg.state)?;
         let backups = cfg.state.join("backups"); crate::private_fs::directory(&backups)?;
-        stop_game_services(cfg, dk)?;
+        stop_game_services(cfg, dk).map_err(|e| format!("{e}; database credentials were not changed."))?;
         let destination = backups.join(format!("before-service-credentials-{}-{}.sql", crate::service_credentials::era(cfg), crate::private_fs::random_hex(8)?));
         if let Err(error) = backup_snapshot(cfg, dk, &destination.to_string_lossy(), true) {
             return Err(format!("Service credentials were not changed: {error}. Start the server to reconnect."));
@@ -1598,6 +1766,11 @@ pub fn up(cfg: &Config, dk: &Docker, lan: bool, ram_mib: Option<u32>) -> Result<
     }
     let lan = scope.lan();
     let credentials = crate::service_credentials::load(&cfg.state, crate::service_credentials::era(cfg))?;
+    // Every install's mods query as the read-only mod reader, managed
+    // credentials or not. A password that can't be made is logged, not fatal.
+    let mut mod_reader = crate::service_credentials::mod_reader_password(&cfg.state, crate::service_credentials::era(cfg))
+        .map_err(|error| eprintln!("warning: mods' database access is not read-only this time: {error}"))
+        .ok();
     let conf = cfg.state.join("conf");
     for d in ["conf", "sql", "backups"] {
         fs::create_dir_all(cfg.state.join(d)).map_err(|e| format!("creating {d}: {e}"))?;
@@ -1609,12 +1782,21 @@ pub fn up(cfg: &Config, dk: &Docker, lan: bool, ram_mib: Option<u32>) -> Result<
     let _lock = Lock::acquire(cfg)?;
     phase(cfg, "Starting the virtual machine…");
     ensure_engine(cfg, dk, lan, ram_mib)?;
+    // A start with the game already running -- Apply in Settings, a mod
+    // switched on, a restore -- replaces every server below, and replacing
+    // one removes it with `rm -f`. Stop them properly first, so the players
+    // in the world are saved instead of rolled back to the last autosave.
+    if SERVERS.iter().chain([&WEB_SERVER]).any(|s| dk.is_running(s)) {
+        phase(cfg, "Saving and stopping the game servers…");
+        stop_game_services(cfg, dk)
+            .map_err(|e| format!("{e}; nothing was changed. Try again."))?;
+    }
     if let Some(credentials) = &credentials {
         credentials.write_files()?;
         protect_game_config(cfg)?;
         // Recreate the database with the private bind/copy, including after a
-        // failed migration or a runtime update. Flush players first.
-        stop_game_services(cfg, dk)?;
+        // failed migration or a runtime update. The game servers were stopped
+        // above.
         if dk.is_running(DB_CONTAINER) && (dk.output(["stop", "-t", "30", DB_CONTAINER]).is_err() || dk.is_running(DB_CONTAINER)) {
             return Err("Could not stop the database cleanly; credentials were not changed".into());
         }
@@ -1650,6 +1832,7 @@ pub fn up(cfg: &Config, dk: &Docker, lan: bool, ram_mib: Option<u32>) -> Result<
     if !battle.exists() {
         let _ = fs::write(&battle, "");
     }
+    write_mod_store_limits(&conf)?;
 
     ensure_images(cfg, dk)?;
     if credentials.is_some() { require_private_database_image(cfg, dk)?; }
@@ -1670,7 +1853,7 @@ pub fn up(cfg: &Config, dk: &Docker, lan: bool, ram_mib: Option<u32>) -> Result<
         // kills their chance to save when run_server later removes them.
         // Stop MariaDB cleanly too; rm -f would make every era switch a crash
         // recovery (including MyISAM tables such as loginlog).
-        for service in ["ragnarok-map", "ragnarok-char", "ragnarok-login", DB_CONTAINER] {
+        for service in [WEB_SERVER, "ragnarok-map", "ragnarok-char", "ragnarok-login", DB_CONTAINER] {
             if dk.is_running(service)
                 && (dk.output(["stop", "-t", "30", service]).is_err() || dk.is_running(service))
             {
@@ -1689,6 +1872,24 @@ pub fn up(cfg: &Config, dk: &Docker, lan: bool, ram_mib: Option<u32>) -> Result<
     phase(cfg, "Starting the database…");
     if let Some(credentials) = &credentials { migrate_service_credentials(dk, credentials)?; }
     wait_for_db(dk)?;
+    // Before the reader's grants, which list the tables. Without it the map
+    // server starts with the store off and says so; the game is unaffected.
+    if let Err(e) = dk.private_sql(MOD_STORE_TABLE_SQL) {
+        eprintln!("warning: mods can't keep data this time: preparing the mod store's table: {e}");
+    }
+    if let Some(password) = mod_reader.as_deref() {
+        // Root's login: the managed one once migrated, else the install's
+        // default. Never a reason not to start: without the reader, scripts'
+        // SQL keeps the map server's own login, as before, and the log says so.
+        let legacy_root = credentials.is_none();
+        match grant_mod_reader(dk, password, legacy_root) {
+            Ok(()) => println!("Mods read the database as {}: SELECT only, never `login`.", crate::service_credentials::MOD_READER),
+            Err(error) => {
+                eprintln!("warning: mods' database access is not read-only this time: {error}");
+                mod_reader = None;
+            }
+        }
+    }
     // The login server turns plain-text passwords into salted hashes the
     // first time it starts on a world from before 1.4.0, and that can't be
     // undone: an earlier release can no longer log those accounts in. Keep a
@@ -1743,6 +1944,7 @@ pub fn up(cfg: &Config, dk: &Docker, lan: bool, ram_mib: Option<u32>) -> Result<
     // can read it. An error stops the start: a map server without this table logs a
     // failed query on every recall and snapshot, and nothing on screen says why.
     ensure_companion_table(dk)?;
+    ensure_guild_emblems_table(dk)?;
 
     // Every client arrives through the WebSocket proxy, so every connection has
     // the same source address; rAthena's per-IP flood protection trips on sight
@@ -1750,6 +1952,7 @@ pub fn up(cfg: &Config, dk: &Docker, lan: bool, ram_mib: Option<u32>) -> Result<
     // client sits on the char socket parsing its databases, which can exceed
     // the default 60s stall_time on a modern client.
     write_conf(&conf, "packet_conf.txt", "stall_time: 300\nenable_ip_rules: no\n")?;
+    write_conf(&conf, "web_conf.txt", &cfg.ports.web_conf())?;
     write_conf(&conf, "inter_conf.txt", concat!(
         "login_server_ip: ragnarok-db\n", "ipban_db_ip: ragnarok-db\n",
         "char_server_ip: ragnarok-db\n", "map_server_ip: ragnarok-db\n",
@@ -1758,6 +1961,11 @@ pub fn up(cfg: &Config, dk: &Docker, lan: bool, ram_mib: Option<u32>) -> Result<
         let file = conf.join("inter_conf.txt");
         let existing = fs::read_to_string(&file).map_err(|_| "Cannot read generated SQL configuration")?;
         write_conf(&conf, "inter_conf.txt", &format!("{existing}{}", credentials.inter_config()))?;
+    }
+    if let Some(password) = &mod_reader {
+        let file = conf.join("inter_conf.txt");
+        let existing = fs::read_to_string(&file).map_err(|_| "Cannot read generated SQL configuration")?;
+        write_conf(&conf, "inter_conf.txt", &format!("{existing}{}", crate::service_credentials::mod_reader_config(password)))?;
     }
     // The address char and map hand the client to reconnect to. This is the
     // one that actually decides whether a LAN player can play: everything can
@@ -1893,6 +2101,11 @@ pub fn up(cfg: &Config, dk: &Docker, lan: bool, ram_mib: Option<u32>) -> Result<
     run_server(cfg, dk, "ragnarok-login", ports.login, &format!("/rathena/login-server{ver}"), lan)?;
     run_server(cfg, dk, "ragnarok-char", ports.char, &format!("/rathena/char-server{era}{ver}"), lan)?;
     run_server(cfg, dk, "ragnarok-map", ports.map, &format!("/rathena/map-server{era}{ver}"), lan)?;
+    // Loopback even when hosting: players reach it through the asset server,
+    // which forwards only the two emblem paths. Its build is era-independent.
+    if let Err(e) = run_server(cfg, dk, WEB_SERVER, ports.web, &format!("/rathena/web-server{ver}"), false) {
+        eprintln!("warning: guild emblems are unavailable: {e}");
+    }
     phase(cfg, "Loading maps and NPCs…");
     wait_for_maps(dk)?;
     // After the map server has read its tables and before anyone is told the
@@ -1922,10 +2135,11 @@ fn endpoint_json(advertise: &str, ports: &crate::ports::Ports) -> String {
 
 pub fn down(cfg: &Config, dk: &Docker) -> Result<(), String> {
     let _lock = Lock::acquire(cfg)?;
-    stop_game_services(cfg, dk)?;
+    stop_game_services(cfg, dk).map_err(|e| format!("{e}; it was left running to protect the save."))?;
     for c in SERVERS {
         dk.remove_container(c);
     }
+    dk.remove_container(WEB_SERVER);
     if dk.is_running(DB_CONTAINER) && (dk.output(["stop", "-t", "30", DB_CONTAINER]).is_err() || dk.is_running(DB_CONTAINER)) {
         return Err("Could not stop the database cleanly; the VM was left running to protect the save.".into());
     }
@@ -2153,6 +2367,41 @@ pub fn sql(cfg: &Config, dk: &Docker, args: &[String]) -> Result<(), String> {
     if write {
         eprintln!("applied; game services are back as they were");
     }
+    Ok(())
+}
+
+/// A mod name as the store keys it: the mod's folder name (lowercase letters,
+/// digits, `-`, `_`), so it can go into SQL as a literal.
+fn mod_store_name(name: &str) -> Result<&str, String> {
+    let ok = !name.is_empty()
+        && name.len() <= 64
+        && name.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-' || b == b'_');
+    if ok { Ok(name) } else { Err(format!("{name:?} is not a mod name")) }
+}
+
+/// `mod-data-reset <mod>`: delete everything `mod` keeps in the store, in every
+/// scope and for every player. The map server keeps documents in memory and
+/// would write them back, so the game is stopped around it, and a backup is
+/// saved first, as for `sql --write`.
+pub fn mod_data_reset(cfg: &Config, dk: &Docker, name: &str) -> Result<(), String> {
+    let name = mod_store_name(name)?;
+    crate::accounts::verify_era(cfg, dk, crate::service_credentials::era(cfg))?;
+    let exists = dk.console_sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'mod_store';")?;
+    if exists.trim() != "1" {
+        println!("{name} has no data: the mod store has not been used in this world yet.");
+        return Ok(());
+    }
+    let removed = crate::accounts::with_servers_stopped(cfg, dk, "mod data", || {
+        let safety = cfg.state.join("backups").join(format!(
+            "before-mod-data-reset-{name}-{}-{}.sql",
+            crate::service_credentials::era(cfg),
+            crate::private_fs::random_hex(8)?
+        ));
+        backup_snapshot(cfg, dk, &safety.to_string_lossy(), false)?;
+        eprintln!("saved {} first", safety.display());
+        dk.console_sql(&format!("DELETE FROM mod_store WHERE mod_name = '{name}'; SELECT ROW_COUNT();"))
+    })?;
+    println!("{name}: {} stored value(s) deleted.", removed.trim());
     Ok(())
 }
 
@@ -2837,7 +3086,7 @@ mod tests {
     /// added.
     #[test]
     fn the_endpoint_names_the_configured_ports() {
-        let moved = crate::ports::Ports { asset: 13338, login: 16900, char: 16121, map: 15121, agent: 17490 };
+        let moved = crate::ports::Ports { asset: 13338, login: 16900, char: 16121, map: 15121, web: 18888, agent: 17490 };
         assert_eq!(
             super::endpoint_json("127.0.0.1", &moved),
             "{\"host\":\"127.0.0.1\",\"login\":16900,\"char\":16121,\"map\":15121,\"asset\":13338}\n"
@@ -3083,5 +3332,88 @@ mod tests {
         assert_eq!(sql.matches("ALTER TABLE").count(), 1, "one ALTER, not one call per column");
         assert_eq!(sql.matches("ADD COLUMN IF NOT EXISTS").count(), COMPANION_COLUMNS.len());
         assert!(!sql.contains("REPLACE") && !sql.contains("DROP"), "only new objects, nothing one-way");
+    }
+
+    #[test]
+    fn a_mod_reader_is_only_used_once_its_grants_are_confirmed() {
+        // An empty table list (an answer lost on the way back) grants nothing:
+        // that must fail, not succeed with a login the map server can't use.
+        assert!(mod_reader_grant_count("").is_err());
+        assert!(mod_reader_grant_count("\n\n").is_err());
+        assert!(mod_reader_grant_count("login\nmod_store\n").is_err(), "only hidden tables is nothing to grant");
+        assert_eq!(mod_reader_grant_count("char\ninventory\nlogin\n").unwrap(), 2);
+        let many: String = (0..250).map(|i| format!("t{i}\n")).collect();
+        assert_eq!(mod_reader_grant_count(&many).unwrap(), 250, "counted across batches");
+
+        assert!(mod_reader_grants_confirmed(2, "2\n").is_ok());
+        assert!(mod_reader_grants_confirmed(2, "3").is_ok(), "a table added meanwhile is still confirmed");
+        assert!(mod_reader_grants_confirmed(2, "1").is_err());
+        assert!(mod_reader_grants_confirmed(2, "0").is_err());
+        assert!(mod_reader_grants_confirmed(2, "").is_err(), "no answer is not a confirmation");
+        assert!(mod_reader_grants_confirmed(2, "Error").is_err());
+        assert!(MOD_READER_GRANTS_SQL.contains(crate::service_credentials::MOD_READER));
+    }
+
+    #[test]
+    fn the_mod_reader_reads_every_table_but_login_and_nothing_more() {
+        let setup = mod_reader_setup_sql(&"a".repeat(64));
+        assert!(setup.contains("CREATE USER IF NOT EXISTS 'ragnarok_mods'@'%'"));
+        assert!(setup.contains("ALTER USER 'ragnarok_mods'@'%' IDENTIFIED BY"), "an existing login gets the password on disk");
+        assert!(setup.contains("REVOKE ALL PRIVILEGES, GRANT OPTION FROM 'ragnarok_mods'@'%'"), "grants are rebuilt, never accumulated");
+        assert!(!setup.contains("GRANT ALL") && !setup.contains("WITH GRANT OPTION"));
+
+        let tables = "char\nlogin\npicklog\nmapreg\n\nweird`name\nbad name\n";
+        let batches = mod_reader_grant_sql(tables);
+        assert_eq!(batches.len(), 1);
+        let sql = &batches[0];
+        for table in ["char", "picklog", "mapreg"] {
+            assert!(sql.contains(&format!("GRANT SELECT ON `ragnarok`.`{table}` TO 'ragnarok_mods'@'%';")), "{table}");
+        }
+        assert!(!sql.contains("`login`"), "account passwords stay hidden");
+        assert!(!sql.contains("weird") && !sql.contains("bad name"), "only plain identifiers");
+        assert_eq!(sql.matches("GRANT ").count(), 3);
+        assert!(!sql.contains("INSERT") && !sql.contains("UPDATE") && !sql.contains("ALL"));
+
+        let many: String = (0..250).map(|i| format!("t{i}\n")).collect();
+        let batches = mod_reader_grant_sql(&many);
+        assert_eq!(batches.len(), 3, "batched under the SQL input limit");
+        assert!(batches.iter().all(|b| b.len() < crate::docker::SQL_INPUT_LIMIT));
+    }
+
+    #[test]
+    fn mod_store_table_only_adds() {
+        assert_eq!(MOD_STORE_TABLE_SQL.matches("CREATE TABLE IF NOT EXISTS `mod_store`").count(), 1);
+        for word in ["DROP", "ALTER", "DELETE", "TRUNCATE"] {
+            assert!(!MOD_STORE_TABLE_SQL.to_ascii_uppercase().contains(word), "{word}");
+        }
+        for column in ["`mod_name`", "`scope`", "`owner`", "`path`", "`kind`", "`num`", "`str`"] {
+            assert!(MOD_STORE_TABLE_SQL.contains(column), "{column}");
+        }
+    }
+
+    #[test]
+    fn mod_store_limits_are_written_and_imported_once() {
+        let conf = std::env::temp_dir().join(format!("ro-modstore-conf-{}", crate::private_fs::random_hex(8).unwrap()));
+        fs::create_dir_all(&conf).unwrap();
+        fs::write(conf.join("battle_conf.txt"), "base_exp_rate: 200").unwrap();
+        write_mod_store_limits(&conf).unwrap();
+        write_mod_store_limits(&conf).unwrap();
+        let battle = fs::read_to_string(conf.join("battle_conf.txt")).unwrap();
+        assert_eq!(battle, "base_exp_rate: 200\nimport: conf/import/mod_store_conf.txt\n", "the shell's settings kept, imported once");
+        let limits = fs::read_to_string(conf.join(MOD_STORE_CONF)).unwrap();
+        assert!(limits.contains("mod_store_global_bytes: 1048576\n"));
+        assert!(limits.contains("mod_store_char_bytes: 65536\n"));
+        assert_eq!(limits.lines().count(), MOD_STORE_LIMITS.len());
+        assert!(mod_reader_grant_sql("char\nmod_store\nlogin\n")[0].matches("GRANT").count() == 1, "mod_store is hidden from SQL");
+        fs::remove_dir_all(conf).unwrap();
+    }
+
+    #[test]
+    fn mod_data_reset_takes_only_a_mod_folder_name() {
+        assert_eq!(mod_store_name("prontera-vendors").unwrap(), "prontera-vendors");
+        assert_eq!(mod_store_name("bounty_hunt2").unwrap(), "bounty_hunt2");
+        for bad in ["", "Bad", "a'b", "x; DROP TABLE login", "../x", &"a".repeat(65)] {
+            assert!(mod_store_name(bad).is_err(), "{bad}");
+        }
     }
 }

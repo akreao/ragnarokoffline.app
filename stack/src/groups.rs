@@ -44,17 +44,22 @@ pub struct Grants {
 impl Grants {
     /// What the server holds before any mod's file is read.
     pub fn stock() -> Grants {
-        let mut held: BTreeMap<(u32, bool), BTreeMap<String, String>> = BTreeMap::new();
-        let mut known = BTreeSet::new();
+        let mut g = Grants {
+            held: BTreeMap::new(),
+            known: STOCK_GROUPS.iter().copied().collect(),
+            aliases: STOCK_ALIASES.iter().map(|(a, c)| (a.to_string(), c.to_string())).collect(),
+        };
+        // Under the command each one names, as dedupe looks them up: the stock
+        // file grants some by an alias (`noks`, `alootid`, `block`).
         for (id, char_commands, name) in STOCK_GRANTS {
-            known.insert(*id);
-            held.entry((*id, *char_commands))
+            g.known.insert(*id);
+            let command = g.resolve(name);
+            g.held
+                .entry((*id, *char_commands))
                 .or_default()
-                .insert(name.to_string(), "rAthena's own groups.yml".to_string());
+                .insert(command, "rAthena's own groups.yml".to_string());
         }
-        known.extend(STOCK_GROUPS.iter().copied());
-        let aliases = STOCK_ALIASES.iter().map(|(a, c)| (a.to_string(), c.to_string())).collect();
-        Grants { held, known, aliases }
+        g
     }
 
     /// Learn the aliases a mod's `atcommands.yml` defines, so a grant spelled
@@ -337,6 +342,24 @@ mod tests {
         assert!(notes[0].contains("@accinfo (as \"AccountInfo\")"), "{notes:?}");
     }
 
+    /// rAthena's own file grants some commands by an alias; a mod naming the
+    /// command, or the alias, repeats them all the same.
+    #[test]
+    fn a_stock_grant_written_as_an_alias_is_the_command_it_names() {
+        let mut g = Grants::stock();
+        let text = format!(
+            "{HEADER}  - Id: 1\n    Commands:\n      autolootitem: true\n      ksprotection: true\n      noks: true\n      \
+             jumpto: true\n  - Id: 10\n    Commands:\n      char_block: true\n"
+        );
+        let (out, notes) = g.dedupe(&text, "m");
+        for name in ["autolootitem", "ksprotection", "noks", "char_block"] {
+            assert!(!out.contains(name), "{name} kept: {out}");
+        }
+        assert!(out.contains("jumpto: true"), "{out}");
+        assert_eq!(notes.len(), 4, "{notes:?}");
+        assert!(notes.iter().all(|n| n.contains("rAthena's own groups.yml")), "{notes:?}");
+    }
+
     #[test]
     fn a_mod_s_own_alias_is_learned() {
         let mut g = Grants::stock();
@@ -414,18 +437,42 @@ mod tests {
         }
     }
 
-    /// The tables above are generated from the pinned rAthena. When that
-    /// checkout is present, prove they still describe it; CI's supervisor job
-    /// does not fetch it, so there this has nothing to compare against.
+    /// The tables above are generated from the pinned rAthena. When
+    /// vendor/rathena is checked out, prove they still describe it. A checkout
+    /// off the pin can fail for differences no release ships, so a failure
+    /// there says so. CI's server-language job fetches the pin and sets
+    /// REQUIRE_PINNED_RATHENA, so there the test can neither skip nor run
+    /// against anything else.
     #[test]
     fn stock_tables_match_the_pinned_server() {
-        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../vendor/rathena/conf");
+        let app = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
+        let rathena = app.join("vendor/rathena");
+        let pins = std::fs::read_to_string(app.join("config/VENDOR_PINS")).unwrap_or_default();
+        let pin = pins.lines().find_map(|l| {
+            let cols: Vec<_> = l.split_whitespace().collect();
+            (cols.first() == Some(&"rathena")).then(|| cols.get(2).map(|s| s.to_string())).flatten()
+        });
+        let head = std::process::Command::new("git").arg("-C").arg(&rathena).args(["rev-parse", "HEAD"]).output().ok()
+            .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string());
+        let required = std::env::var_os("REQUIRE_PINNED_RATHENA").is_some();
+        assert!(!required || (pin.is_some() && head == pin), "vendor/rathena is not at the pin");
         let (Ok(groups), Ok(atcommands)) = (
-            std::fs::read_to_string(root.join("groups.yml")),
-            std::fs::read_to_string(root.join("atcommands.yml")),
+            std::fs::read_to_string(rathena.join("conf/groups.yml")),
+            std::fs::read_to_string(rathena.join("conf/atcommands.yml")),
         ) else {
+            assert!(!required, "vendor/rathena not checked out");
             eprintln!("vendor/rathena not checked out; skipping");
             return;
+        };
+        // Appended to every failure below, so a drifted checkout is not
+        // mistaken for a stale table.
+        let drift = match (&head, &pin) {
+            (Some(h), Some(p)) if h == p => String::new(),
+            (h, p) => format!(
+                " (vendor/rathena is at {}, the pin is {}; run scripts/vendor-fetch.sh rathena vendor/rathena first)",
+                h.as_deref().unwrap_or("an unknown commit"),
+                p.as_deref().unwrap_or("not in config/VENDOR_PINS"),
+            ),
         };
         // Every stock grant, read back through the same dedupe: an exact
         // restatement of the stock file must be entirely repeats.
@@ -434,18 +481,18 @@ mod tests {
         // does not; a grant missing from the table is no repeat, so it shows
         // up as the same shortfall from the other side.
         let (_, notes) = g.dedupe(&groups, "stock");
-        assert!(notes.iter().all(|n| n.contains("rAthena's own groups.yml")), "{notes:?}");
-        assert_eq!(notes.len(), STOCK_GRANTS.len(), "STOCK_GRANTS no longer matches the pinned groups.yml");
+        assert!(notes.iter().all(|n| n.contains("rAthena's own groups.yml")), "{notes:?}{drift}");
+        assert_eq!(notes.len(), STOCK_GRANTS.len(), "STOCK_GRANTS no longer matches the pinned groups.yml{drift}");
         let mut fresh = Grants { held: BTreeMap::new(), known: STOCK_GROUPS.iter().copied().collect(), aliases: BTreeMap::new() };
         let (_, none) = fresh.dedupe(&groups, "stock");
-        assert!(none.is_empty(), "the pinned groups.yml repeats itself: {none:?}");
+        assert!(none.is_empty(), "the pinned groups.yml repeats itself: {none:?}{drift}");
         let held: usize = fresh.held.values().map(BTreeMap::len).sum();
-        assert_eq!(held, STOCK_GRANTS.len(), "STOCK_GRANTS no longer matches the pinned groups.yml");
+        assert_eq!(held, STOCK_GRANTS.len(), "STOCK_GRANTS no longer matches the pinned groups.yml{drift}");
         let mut learned = Grants { held: BTreeMap::new(), known: BTreeSet::new(), aliases: BTreeMap::new() };
         learned.learn_aliases(&atcommands);
         let stock: BTreeMap<String, String> =
             STOCK_ALIASES.iter().map(|(a, c)| (a.to_string(), c.to_string())).collect();
-        assert_eq!(learned.aliases, stock, "STOCK_ALIASES differs from the pinned atcommands.yml");
+        assert_eq!(learned.aliases, stock, "STOCK_ALIASES differs from the pinned atcommands.yml{drift}");
     }
 }
 

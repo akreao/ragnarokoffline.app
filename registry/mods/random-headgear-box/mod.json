@@ -1,0 +1,17 @@
+{
+  "name": "random-headgear-box",
+  "author": "rhewid",
+  "description": "Every monster can drop a Random Headgear Box (0.05% by default, adjustable). Opening one gives a random headgear that nothing in the stock item database drops or sells: 417 in pre-renewal, including Snake Head and Skull Cap, and 1,207 in renewal. Works in both eras.",
+  "tags": [
+    "drops",
+    "equipment",
+    "headgear",
+    "pre-renewal",
+    "renewal"
+  ],
+  "homepage": "https://github.com/rhewid/random-headgear-box",
+  "source": {
+    "github": "rhewid/random-headgear-box",
+    "asset": "random-headgear-box-*.zip"
+  }
+}

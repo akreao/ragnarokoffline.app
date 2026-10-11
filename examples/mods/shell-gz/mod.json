@@ -1,0 +1,7 @@
+{
+  "name": "shell-gz",
+  "version": "1.0.0",
+  "author": "Ragnarok Offline",
+  "description": "AI characters near you stop and say \"gz\" when you level up. Also a GM test bench (whisper npc:shelltest) for the shell control commands.",
+  "requires": { "app": ">=1.5.0", "era": "any" }
+}

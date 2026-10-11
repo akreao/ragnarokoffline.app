@@ -1,0 +1,113 @@
+# skill-tuning, RENEWAL only: Fire Bolt and Cold Bolt cast faster.
+#
+# The renewal half of pre-renewal/db/when/faster_bolts/skill_db.yml; read that
+# file first for why it sits in an era folder and under db/when/.
+#
+# Renewal splits a cast in two:
+#   CastTime        the variable part. DEX and INT shorten it.
+#   FixedCastTime   the fixed part. Stats do not shorten it (a few skills and
+#                   items do), so it is what really limits how often a bolt
+#                   can be cast.
+#
+#              stock (lv 1 .. lv 10)       here
+#   CastTime   500 .. 3200, +300 a level   20% less: 400 .. 2560
+#   FixedCast  300 .. 1200, +100 a level   halved:   150 .. 600
+#
+# A pre-renewal server does not read FixedCastTime at all (rAthena only parses
+# it when built with RENEWAL_CAST), so putting it in a file both eras load is
+# harmless but does nothing in pre-renewal. To slow a pre-renewal skill the
+# way fixed cast would, raise its AfterCastActDelay: DEX does not shorten that.
+
+Header:
+  Type: SKILL_DB
+  Version: 4
+
+Body:
+  - Id: 19
+    Name: MG_FIREBOLT
+    CastTime:
+      - Level: 1
+        Time: 400
+      - Level: 2
+        Time: 640
+      - Level: 3
+        Time: 880
+      - Level: 4
+        Time: 1120
+      - Level: 5
+        Time: 1360
+      - Level: 6
+        Time: 1600
+      - Level: 7
+        Time: 1840
+      - Level: 8
+        Time: 2080
+      - Level: 9
+        Time: 2320
+      - Level: 10
+        Time: 2560
+    FixedCastTime:
+      - Level: 1
+        Time: 150
+      - Level: 2
+        Time: 200
+      - Level: 3
+        Time: 250
+      - Level: 4
+        Time: 300
+      - Level: 5
+        Time: 350
+      - Level: 6
+        Time: 400
+      - Level: 7
+        Time: 450
+      - Level: 8
+        Time: 500
+      - Level: 9
+        Time: 550
+      - Level: 10
+        Time: 600
+  - Id: 14
+    Name: MG_COLDBOLT
+    CastTime:
+      - Level: 1
+        Time: 400
+      - Level: 2
+        Time: 640
+      - Level: 3
+        Time: 880
+      - Level: 4
+        Time: 1120
+      - Level: 5
+        Time: 1360
+      - Level: 6
+        Time: 1600
+      - Level: 7
+        Time: 1840
+      - Level: 8
+        Time: 2080
+      - Level: 9
+        Time: 2320
+      - Level: 10
+        Time: 2560
+    FixedCastTime:
+      - Level: 1
+        Time: 150
+      - Level: 2
+        Time: 200
+      - Level: 3
+        Time: 250
+      - Level: 4
+        Time: 300
+      - Level: 5
+        Time: 350
+      - Level: 6
+        Time: 400
+      - Level: 7
+        Time: 450
+      - Level: 8
+        Time: 500
+      - Level: 9
+        Time: 550
+      - Level: 10
+        Time: 600

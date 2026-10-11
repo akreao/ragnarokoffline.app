@@ -6,9 +6,14 @@
 // Includes wander AI, combat AI, ambient chat, and YAML-driven equipment/skill profiles.
 
 #include "population_engine.hpp"
+#include "population_engine/population_shell_control.hpp" // RAGNAROKMAC
 
 #include "population_engine/runtime/population_engine_combat.hpp"
 #include "population_engine/runtime/population_shell_ammo.hpp"
+#include "population_engine/runtime/population_shell_inventory.hpp" // RAGNAROKMAC
+#include "population_engine/runtime/population_companion_roam.hpp" // RAGNAROKMAC (roam)
+#include "population_engine/runtime/population_shell_loot.hpp"
+#include "population_engine/runtime/population_shell_selling.hpp"
 #include "population_engine/runtime/population_shell_runtime.hpp"
 
 #include <algorithm>
@@ -129,6 +134,7 @@ static std::unordered_map<int32, t_tick> g_pop_chat_next_tick; ///< Per-shell ne
 /// RAGNAROKMAC: last vendor callout per map, for a mod vendor's Callouts MapGapSeconds.
 static std::unordered_map<int16, t_tick> g_pop_vendor_last_callout;
 static bool pop_mod_vendor_callout_pace(const map_session_data* sd, const PopulationVendorEntry* ve, int& lo, int& hi);
+static int pop_mod_vendor_lane_fill_pct(const std::string& key);
 static int32 g_pop_chat_timer = INVALID_TIMER;
 static int32 g_population_combat_global_timer = INVALID_TIMER;
 static size_t g_chat_cursor = 0;    ///< Round-robin index for batched chat replies.
@@ -438,6 +444,9 @@ TIMER_FUNC(population_engine_chat_timer) {
 		if (raw_sd->prev == nullptr)
 			continue;
 		if (map_id2bl(raw_sd->id) != raw_sd)
+			continue;
+		// RAGNAROKMAC (shell control API): a held shell says what its script says.
+		if (population_engine_shell_is_held(raw_sd))
 			continue;
 
 		std::shared_ptr<PopulationEngine> equipment = population_engine_db_for_shell(raw_sd).find(raw_sd->status.class_);
@@ -791,11 +800,14 @@ static map_session_data* population_engine_spawn_shell(int16_t map_id, int x, in
 	PopulationDbSource db_source = PopulationDbSource::Main,
 	const PopulationVendorEntry* mod_entry = nullptr,
 	const PopulationModSpawn* mod_spawn = nullptr,
-	int16_t mod_seat = -1);
+	int16_t mod_seat = -1,
+	const PopulationShellReturn* returning = nullptr);
 static std::string generate_bot_name(uint32_t index);
 static std::string generate_population_pc_name(uint32_t index, const PopulationEngine* cfg);
 static int16_t get_random_job_id();
 static char    get_job_required_sex(uint16_t job_id);
+static uint16_t get_job_max_cloth_color(uint16_t job_id);
+static uint16_t population_fit_cloth_color(uint16_t job_id, uint16_t color);
 static uint16_t get_base_job(uint16_t job_id);
 static uint16_t get_job_weapon(uint16_t job_id);
 static uint16_t get_random_headgear(uint8_t slot);
@@ -848,7 +860,8 @@ static void population_engine_destroy_failed_spawn(map_session_data* sd);
 static size_t population_engine_count_shells_on_map(int16_t map_id, uint16_t job_id = UINT16_MAX) {
     size_t count = 0;
     for (map_session_data* sd : g_population_engine_pcs) {
-        if (sd && sd->m == map_id) {
+        // RAGNAROKMAC: a script's population_spawn actor is outside every quota.
+        if (sd && sd->m == map_id && !sd->pop.hold.spawned) {
             if (job_id == UINT16_MAX || sd->status.class_ == job_id)
                 count++;
         }
@@ -864,7 +877,7 @@ static size_t population_engine_count_shells_on_map_for_profile(
 {
     size_t count = 0;
     for (map_session_data* sd : g_population_engine_pcs) {
-        if (!sd || sd->m != map_id) continue;
+        if (!sd || sd->m != map_id || sd->pop.hold.spawned) continue; // RAGNAROKMAC
         const uint16_t c = static_cast<uint16_t>(sd->status.class_);
         for (uint16_t j : jobs) {
             if (c == j) { ++count; break; }
@@ -1345,7 +1358,7 @@ static uint32_t population_engine_allocate_index()
 /// Returns the number of shells actually spawned.
 static size_t autosummon_fill_map(int16_t map_id, size_t want, uint16_t job_hint = UINT16_MAX,
                                   size_t* tick_budget = nullptr, uint8_t map_category = 0,
-                                  bool bypass_existing_check = false)
+                                  bool bypass_existing_check = false, const PopulationShellReturn* returning = nullptr)
 {
 	if (want == 0)
 		return 0;
@@ -1395,6 +1408,10 @@ static size_t autosummon_fill_map(int16_t map_id, size_t want, uint16_t job_hint
 	for (size_t j = 0; j < want; ++j) {
 		// Re-check global limit each iteration (other calls may have consumed slots).
 		if (g_population_engine_count.load() >= max_global)
+			break;
+		// Even below this profile's quota, another profile on the same map must
+		// not consume a selling shell's slot when the global cap is the limit.
+		if (!returning && !population_shell_returns_allow_fresh(map_id, g_population_engine_count.load(), max_global))
 			break;
 
 		// Pre-resolve the equipment/behavior for this slot so vendor placement constraints
@@ -1587,9 +1604,11 @@ static size_t autosummon_fill_map(int16_t map_id, size_t want, uint16_t job_hint
 		map_session_data* sd = population_engine_spawn_shell(
 			map_id, x, y, index, job_id, sex, hair_style,
 			hair_color, weapon, shield, head_top, head_mid, head_bottom,
-			0 /*option*/, cloth_color, garment, init_script, skip_arrow, pop_cfg, map_category, pre_src);
+			0 /*option*/, cloth_color, garment, init_script, skip_arrow, pop_cfg, map_category, pre_src,
+			nullptr, nullptr, -1, returning);
 
 		if (sd) {
+			sd->pop.ambient_quota = !is_vendor_spawn && pre_src == PopulationDbSource::Main;
 			g_population_engine_pcs.push_back(sd);
 			g_population_engine_count++;
 			g_population_engine_stats.total_created++;
@@ -1695,39 +1714,80 @@ static const char *POP_SHOP_TITLES[] = {
 // to need no rebuild. So where the map has monsters, let them say what level
 // its inhabitants should be.
 //
-// The result is clamped to the profile's own range, which is not a nicety: gear
-// sets are chosen per profile and pc_equipitem enforces each item's equip level,
-// so a shell pushed below its profile's band would silently equip nothing and
-// stand there unarmed. Picking a *band* stays a YAML decision; this picks a
-// level within it.
+// The profile's minimum is a floor, which is not a nicety: gear sets are chosen
+// per profile and pc_equipitem enforces each item's equip level, so a shell
+// pushed below its profile's band would silently equip nothing and stand there
+// unarmed. The band's top is not a ceiling. The tier table puts a band on a map
+// once for both eras, and the eras disagree: Renewal's Payon Cave 4 is level 66
+// and its Glast Heim churches are 115, where the bands stop at 26 and 99. Held to
+// the band, those shells were the weakest thing on the map. So the monsters may
+// lift a shell past its band, up to its class's max base level. No shipped gear
+// set has a maximum equip level, so the gear still fits.
 static std::unordered_map<int16_t, int> g_pop_map_mob_level;
 
+using PopMobLevels = std::vector<std::pair<int, int>>; // level, count
+
 static int pop_collect_mob_level(struct block_list *bl, va_list ap) {
-	auto *out = va_arg(ap, std::vector<int>*);
-	if (bl == nullptr || out->size() >= 64)
+	auto *out = va_arg(ap, PopMobLevels*); // an alias: va_arg is a macro, and the pair's comma splits it
+	if (bl == nullptr)
 		return 0;
 	const int lv = status_get_lv(bl);
 	if (lv > 0)
-		out->push_back(lv);
+		out->emplace_back(lv, 1);
 	return 1;
 }
 
 /// Median monster level on a map, or 0 where it has none (towns). Computed once
-/// per map: mob spawns are in place long before shells are, and this is called
-/// on every spawn.
+/// per map, since this is called on every spawn.
+///
+/// Read from the map's spawn lines (mapdata->moblist, every line while
+/// dynamic_mobs is on, as it is by default), each weighted by its count. Live
+/// monsters were the source before, and they misled: dynamic_mobs removes them
+/// from a map nobody is on, and the sample stopped at the first 64 in block
+/// order, one corner of the map. Renewal's Payon Cave 2 (median 34 by its spawn
+/// lines) put level 13 shells there. Live monsters remain the fallback, and a
+/// map without any is not cached, so it is looked at again once they are back.
 static int pop_map_mob_level(int16_t m) {
 	const auto it = g_pop_map_mob_level.find(m);
 	if (it != g_pop_map_mob_level.end())
 		return it->second;
 
-	std::vector<int> levels;
-	map_foreachinmap(pop_collect_mob_level, m, BL_MOB, &levels);
+	PopMobLevels levels;
+	bool from_spawns = false;
+	if (const struct map_data *mapdata = map_getmapdata(m)) {
+		for (const struct spawn_data *spawn : mapdata->moblist) {
+			if (spawn == nullptr || spawn->num == 0)
+				continue;
+			int lv = static_cast<int>(spawn->level);
+			if (lv <= 0) {
+				const std::shared_ptr<s_mob_db> db = mob_db.find(static_cast<uint32>(spawn->id));
+				lv = db != nullptr ? db->lv : 0;
+			}
+			if (lv > 0) {
+				levels.emplace_back(lv, spawn->num);
+				from_spawns = true;
+			}
+		}
+	}
+	if (levels.empty())
+		map_foreachinmap(pop_collect_mob_level, m, BL_MOB, &levels);
 	int out = 0;
 	if (!levels.empty()) {
 		std::sort(levels.begin(), levels.end());
-		out = levels[levels.size() / 2];
+		int64_t total = 0;
+		for (const auto &l : levels)
+			total += l.second;
+		int64_t seen = 0;
+		for (const auto &l : levels) {
+			seen += l.second;
+			if (seen * 2 > total) {
+				out = l.first;
+				break;
+			}
+		}
 	}
-	g_pop_map_mob_level[m] = out;
+	if (from_spawns || out > 0)
+		g_pop_map_mob_level[m] = out;
 	return out;
 }
 
@@ -2144,12 +2204,28 @@ static uint32 pop_companion_combat_target(map_session_data *sd, map_session_data
 
 /// Keep a real-party shell close to the player who recruited it.
 /// Returns true when normal combat/support processing may run this tick.
+/// RAGNAROKMAC (rest): stand a shell up, the way a player's client does.
+static void pop_shell_stand(map_session_data *sd)
+{
+	sd->pop.resting = false;
+	if (pc_issit(sd) && pc_setstand(sd, false)) {
+		skill_sit(sd, false);
+		clif_standing(*sd);
+	}
+}
+
 static bool pop_companion_follow_owner(map_session_data *sd, map_session_data *owner, t_tick now)
 {
 	if (!sd || !owner || pc_isdead(sd))
 		return false;
-	if (pc_issit(sd) && pc_setstand(sd, false))
-		clif_standing(*sd);
+	// A resting companion stays down while its owner stands still; pop_companion_rest decides
+	// when it gets up, and anything below that moves it stands it first.
+	// RAGNAROKMAC (companion strategies): so does one a Sit rule sat down. Standing it here sat
+	// it again on the same tick's strategy turn: it bobbed up and down, and the sitting skills
+	// (Gangster's Paradise, the Taekwon ones) toggled with it.
+	if (pc_issit(sd) && !((sd->pop.resting || population_strategy_keeps_seated(sd))
+		&& (!unit_is_walking(owner) || population_companion_roams(sd)))) // RAGNAROKMAC (roam)
+		pop_shell_stand(sd);
 	if (sd->pop.companion_formation_active &&
 		(unit_is_walking(owner) || sd->pop.target_id != 0)) {
 		if (unit_is_walking(sd))
@@ -2158,6 +2234,7 @@ static bool pop_companion_follow_owner(map_session_data *sd, map_session_data *o
 	}
 
 	auto warp_near_owner = [&]() -> bool {
+		pop_shell_stand(sd);
 		sd->pop.companion_formation_active = false;
 		int16 x = owner->x;
 		int16 y = owner->y;
@@ -2223,6 +2300,12 @@ static bool pop_companion_follow_owner(map_session_data *sd, map_session_data *o
 		    && check_distance_bl(owner, target, AREA_SIZE))
 			leash = AREA_SIZE + 2;
 	}
+	// RAGNAROKMAC (companion strategies): a rule holding its ground gets the same leash as a fight in
+	// the owner's sight; the warps below still apply.
+	if (population_strategy_holds_position(sd, now))
+		leash = AREA_SIZE + 2;
+	if (population_companion_roams(sd)) // RAGNAROKMAC (roam): the whole map; only a map change brings it back
+		leash = INT16_MAX;
 
 	if (now < sd->pop.companion_follow_next)
 		return sd->m == owner->m && check_distance_bl(sd, owner, leash);
@@ -2235,12 +2318,15 @@ static bool pop_companion_follow_owner(map_session_data *sd, map_session_data *o
 		return false;
 	}
 
+	if (population_companion_roams(sd)) // RAGNAROKMAC (roam)
+		return true;
 	const int owner_distance = distance_bl(sd, owner);
 	if (owner_distance > AREA_SIZE + 2) {
 		warp_near_owner();
 		return false;
 	}
 	if (owner_distance > leash) {
+		pop_shell_stand(sd);
 		population_shell_target_change(sd, 0);
 		unit_stop_attack(sd);
 		// RAGNAROKMAC: Intensive Aim (Night Watch) is a toggle that roots its user until it is cast
@@ -2257,6 +2343,166 @@ static bool pop_companion_follow_owner(map_session_data *sd, map_session_data *o
 		unit_walktobl(sd, owner, 3, 0);
 		return false;
 	}
+	return true;
+}
+
+/// RAGNAROKMAC (rest): a shell low on SP or HP sits down between fights, as a player rests.
+/// Sitting halves the natural regen interval and lets sitting-regen skills work
+/// (status_natural_heal), and once shells pay for their skills (0029) one that ran dry
+/// otherwise stood about for minutes. It sits below the lower mark of either and gets up at
+/// the upper mark of both, or as soon as it is needed: a target, or a hit on itself; for a
+/// companion also a threat to the party, its owner moving off, or, for a healer, its owner
+/// hurt; for an ambient shell also a drop it means to pick up. An ambient shell's marks are
+/// fixed (POP_REST_*); a companion's are its owner's choice, from the Companions window.
+/// Returns true while it rests; the combat tick is skipped then.
+static constexpr int16_t POP_REST_BELOW_PCT = 30;
+static constexpr int16_t POP_REST_UNTIL_PCT = 95;
+
+/// RAGNAROKMAC (potions): a shell carries a few of the potions a player of its level buys from a
+/// Tool Dealer, and drinks one while it is needed (the same test as for standing up from a rest)
+/// and below POP_POTION_*_PCT. Out of a fight it rests instead. The stock is given on its first
+/// combat tick, so a recalled companion gets its own level's potions rather than those of the
+/// level 99 it is spawned at, and a vendor, which never fights, gets none. It is topped up when
+/// a rest ends at the upper mark, and a shell back from a selling trip is a new shell with a
+/// new stock.
+static constexpr int16_t POP_POTION_HP_PCT = 40;
+static constexpr int16_t POP_POTION_SP_PCT = 20;
+static constexpr int POP_POTION_HP_STOCK = 10;
+static constexpr int POP_POTION_SP_STOCK = 5;
+static constexpr t_itemid POP_POTIONS[] = { 501, 502, 503, 504, 533, 505 };
+
+static t_itemid pop_shell_hp_potion(const map_session_data *sd)
+{
+	const int lv = sd->status.base_level;
+	return lv >= 80 ? 504 : lv >= 55 ? 503 : lv >= 30 ? 502 : 501; // White, Yellow, Orange, Red
+}
+
+static t_itemid pop_shell_sp_potion(const map_session_data *sd)
+{
+	return sd->status.base_level >= 55 ? 505 : 533; // Blue Potion, Grape Juice
+}
+
+/// Tops the stock up to POP_POTION_*_STOCK of its level's potions, and drops any other tier's: a
+/// companion that has levelled since moves on to the next potion.
+static void pop_shell_stock_potions(map_session_data *sd)
+{
+	sd->pop.potions_stocked = true;
+	// A companion drinks what its owner gave it (population_shell_inventory).
+	if (population_shell_has_own_inventory(sd))
+		return;
+	const t_itemid hp = pop_shell_hp_potion(sd), sp = pop_shell_sp_potion(sd);
+	for (const t_itemid nameid : POP_POTIONS) {
+		if (nameid == hp || nameid == sp)
+			continue;
+		const int16 idx = pc_search_inventory(sd, nameid);
+		if (idx >= 0)
+			pc_delitem(sd, idx, sd->inventory.u.items_inventory[idx].amount, 0, 0, LOG_TYPE_NONE);
+	}
+	for (const auto &want : { std::make_pair(hp, POP_POTION_HP_STOCK), std::make_pair(sp, POP_POTION_SP_STOCK) }) {
+		const int16 idx = pc_search_inventory(sd, want.first);
+		const int have = idx >= 0 ? sd->inventory.u.items_inventory[idx].amount : 0;
+		if (have >= want.second || !itemdb_exists(want.first))
+			continue;
+		struct item it = {};
+		it.nameid = want.first;
+		it.identify = 1;
+		pc_additem(sd, &it, want.second - have, LOG_TYPE_NONE, false);
+	}
+}
+
+/// Drinks one potion if HP or SP is below its mark: HP first, as a player would.
+static void pop_shell_drink(map_session_data *sd, int hp_pct, int sp_pct, t_tick now)
+{
+	if (DIFF_TICK(now, sd->pop.next_potion_tick) < 0 || pc_isdead(sd) || pc_issit(sd))
+		return;
+	int16 idx = -1;
+	if (hp_pct < POP_POTION_HP_PCT)
+		idx = population_shell_inventory_find_potion(sd, pop_shell_hp_potion(sd), true);
+	if (idx < 0 && sp_pct < POP_POTION_SP_PCT)
+		idx = population_shell_inventory_find_potion(sd, pop_shell_sp_potion(sd), false);
+	if (idx < 0)
+		return;
+	// The player's own path: item delay, the heal script.
+	const t_itemid nameid = sd->inventory.u.items_inventory[idx].nameid;
+	const int32 had = sd->inventory.u.items_inventory[idx].amount;
+	if (!pc_useitem(sd, idx))
+		return;
+	sd->pop.next_potion_tick = now + 1000;
+	// And the use animation for everyone around, which clif_useitemack sends only for a
+	// character with a session: a shell's potion healed it with nothing to show for it.
+	if (!session_isActive(sd->fd)) {
+		PACKET_ZC_USE_ITEM_ACK p = {};
+		p.packetType = useItemAckType;
+		p.index = idx + 2;
+#if PACKETVER >= 3
+		const t_itemid view = itemdb_viewid(nameid); // clif.cpp's client_nameid, which is static there
+		p.itemId = static_cast<decltype(p.itemId)>(view > 0 ? view : nameid);
+		p.AID = sd->id;
+#endif
+		p.amount = had - 1;
+		p.result = true;
+		clif_send(&p, sizeof(p), sd, AREA_WOS);
+	}
+}
+
+static bool pop_shell_rest(map_session_data *sd, map_session_data *owner, uint32 target, t_tick now)
+{
+	// Never a dead shell: pc_setsit writes state.dead_sit = 2 over the 1 that pc_isdead reads,
+	// so sitting one down stood it back up, alive at 0 HP.
+	if (pc_isdead(sd) || status_isdead(*sd)) {
+		sd->pop.resting = false;
+		return false;
+	}
+	const int below = owner != nullptr ? sd->pop.companion_rest_below : POP_REST_BELOW_PCT;
+	// Never stand up below the mark it sat down at, or it would sit straight back down.
+	const int until = std::max(below + 1, static_cast<int>(owner != nullptr ? sd->pop.companion_rest_until : POP_REST_UNTIL_PCT));
+	auto pct = [](uint32 cur, uint32 max) {
+		return max > 0 ? static_cast<int>(static_cast<uint64>(cur) * 100 / max) : 100;
+	};
+	const int sp = pct(sd->battle_status.sp, sd->battle_status.max_sp);
+	const int hp = pct(sd->battle_status.hp, sd->battle_status.max_hp);
+	bool needed = target != 0
+		|| (sd->pop.last_attacked_tick != 0 && DIFF_TICK(now, sd->pop.last_attacked_tick) <= 5000);
+	if (owner != nullptr)
+		needed = needed
+			|| pc_isdead(owner)
+			|| (unit_is_walking(owner) && !population_companion_roams(sd)) // RAGNAROKMAC (roam)
+			|| (pc_checkskill(sd, AL_HEAL) > 0
+				&& pct(owner->battle_status.hp, owner->battle_status.max_hp) < sd->pop.companion_heal_at)
+			|| pop_companion_party_threat(sd) != 0;
+	else
+		needed = needed || population_shell_loot_busy(sd);
+
+	if (!sd->pop.potions_stocked)
+		pop_shell_stock_potions(sd);
+	if (sd->pop.resting) {
+		if (needed || !pc_issit(sd) || below <= 0 || (sp >= until && hp >= until)) {
+			// A rest that ran its course restocks the potions; one cut short does not.
+			if (!needed && sp >= until && hp >= until)
+				pop_shell_stock_potions(sd);
+			pop_shell_stand(sd);
+			if (needed)
+				pop_shell_drink(sd, hp, sp, now);
+			return false;
+		}
+		return true;
+	}
+	if (needed)
+		pop_shell_drink(sd, hp, sp, now);
+	if (below <= 0 || needed || pc_issit(sd) || unit_is_walking(sd) || (sp >= below && hp >= below))
+		return false;
+	// The checks a player's sit request passes (clif_parse_ActionRequest_sub, DMG_SIT_DOWN).
+	if (sd->ud.skilltimer != INVALID_TIMER || (sd->sc.opt1 && sd->sc.opt1 != OPT1_STONEWAIT && sd->sc.opt1 != OPT1_BURNING)
+		|| sd->sc.getSCE(SC_DANCING)
+		|| (sd->sc.getSCE(SC_GRAVITATION) && sd->sc.getSCE(SC_GRAVITATION)->val3 == BCT_SELF)
+		|| (sd->state.block_action & PCBLOCK_SITSTAND))
+		return false;
+	unit_stop_attack(sd);
+	sd->pop.companion_formation_active = false;
+	pc_setsit(sd);
+	skill_sit(sd, true);
+	clif_sitting(*sd);
+	sd->pop.resting = true;
 	return true;
 }
 
@@ -2387,16 +2633,20 @@ static bool pop_mod_vendor_near_npc(int16_t m, int16_t x, int16_t y) {
 /// leaves a gap), or anywhere in it when the lane is empty or its run is boxed
 /// in (an NPC, a wall). A lane's share is LaneFillPct of its usable cells
 /// (walkable, vending allowed, clear of NPCs), rolled once per lane in its
-/// [min, max]; 100 fills it. Once every lane has its share the rest fill in
-/// the same order, so a high Count still finds room. False if no cell is free.
+/// [min, max]; 100 fills it. A mod's population_vendor_lanefill replaces it,
+/// for a block without LaneFillPct too. Once every lane has its share the
+/// rest go to whichever lane is least full, so a high Count still finds room
+/// and no lane ends up packed beside empty ones. False if no cell is free.
 static bool pop_mod_vendor_lane_cell(int16_t m, const PopulationModSpawn& sp,
 	const std::vector<std::pair<int16_t, int16_t>>& mine, int16_t& out_x, int16_t& out_y)
 {
 	static std::unordered_map<std::string, int> lane_pct; // per lane, rolled once per run
 	const int reach = sp.min_spacing + 2;
+	const int mod_pct = pop_mod_vendor_lane_fill_pct(sp.spawn_id);
 	struct Lane {
 		std::vector<std::pair<int16_t, int16_t>> beside, free_cells;
 		bool has_shells = false, at_share = false;
+		int shells = 0, usable = 0;
 	};
 	std::vector<Lane> lanes(sp.areas.size());
 	for (size_t li = 0; li < sp.areas.size(); ++li) {
@@ -2431,7 +2681,9 @@ static bool pop_mod_vendor_lane_cell(int16_t m, const PopulationModSpawn& sp,
 			}
 		}
 		int pct = 100;
-		if (sp.lane_fill_min < 100) {
+		if (mod_pct > 0) {
+			pct = mod_pct;
+		} else if (sp.lane_fill_min < 100) {
 			const std::string key = sp.spawn_id + "#" + std::to_string(li);
 			auto it = lane_pct.find(key);
 			if (it == lane_pct.end())
@@ -2440,6 +2692,8 @@ static bool pop_mod_vendor_lane_cell(int16_t m, const PopulationModSpawn& sp,
 			pct = it->second;
 		}
 		lane.at_share = shells * 100 >= usable * pct;
+		lane.shells = shells;
+		lane.usable = usable;
 	}
 	auto take = [&](const Lane& lane) {
 		const auto& from = (lane.has_shells && !lane.beside.empty()) ? lane.beside : lane.free_cells;
@@ -2453,8 +2707,16 @@ static bool pop_mod_vendor_lane_cell(int16_t m, const PopulationModSpawn& sp,
 	for (const Lane& lane : lanes)
 		if (!lane.at_share && take(lane))
 			return true;
-	for (const Lane& lane : lanes) // every lane has its share: the rest, in order
-		if (take(lane))
+	// Every lane has its share: the rest, the least full lane first.
+	std::vector<const Lane*> rest;
+	for (const Lane& lane : lanes)
+		if (lane.usable > 0)
+			rest.push_back(&lane);
+	std::stable_sort(rest.begin(), rest.end(), [](const Lane* a, const Lane* b) {
+		return static_cast<int64_t>(a->shells) * b->usable < static_cast<int64_t>(b->shells) * a->usable;
+	});
+	for (const Lane* lane : rest)
+		if (take(*lane))
 			return true;
 	return false;
 }
@@ -2526,6 +2788,7 @@ struct PopModVendorSettings {
 	int callout_max_sec = -1;
 	int respect_limit = -1;    ///< population_vendor_limit: 0 = spawn even when the population is full
 	int price_pct = -1;        ///< population_vendor_price: every listed price × this / 100
+	int lane_fill_pct = -1;    ///< population_vendor_lanefill: a lane's share with Fill: Lanes, over LaneFillPct
 };
 static std::vector<PopModVendorSettings> g_pop_mod_vendor_settings;
 /// Breaks ties when a total is smaller than the number of blocks, so which
@@ -2586,6 +2849,53 @@ void population_engine_set_mod_vendor_price(const char* prefix, int pct) {
 	PopModVendorSettings& e = pop_mod_vendor_settings_for_prefix(prefix);
 	e.price_pct = pct > 0 ? std::min(pct, 100000) : -1;
 	ShowInfo("Population engine: mod vendors '%s*': prices at %d%%.\n", e.prefix.c_str(), pct > 0 ? e.price_pct : 100);
+}
+
+void population_engine_set_mod_vendor_lane_fill(const char* prefix, int pct) {
+	PopModVendorSettings& e = pop_mod_vendor_settings_for_prefix(prefix);
+	e.lane_fill_pct = pct > 0 ? std::min(pct, 100) : -1;
+	if (pct > 0)
+		ShowInfo("Population engine: mod vendors '%s*': lanes fill to %d%%.\n", e.prefix.c_str(), e.lane_fill_pct);
+	else
+		ShowInfo("Population engine: mod vendors '%s*': lanes fill as their YAML says.\n", e.prefix.c_str());
+}
+
+/// The lane share a mod set for the vendors a spawn id (or VendorKey) belongs
+/// to, in percent; -1 = not set, the block's LaneFillPct applies.
+static int pop_mod_vendor_lane_fill_pct(const std::string& key) {
+	const PopModVendorSettings* st = pop_mod_vendor_settings_for_key(key);
+	return st ? st->lane_fill_pct : -1;
+}
+
+/// RAGNAROKMAC: a price percentage for one item that a mod sets in
+/// $@pop_item_pct[<item id>] (unset or 0 = 100), on top of its mod's price
+/// level. Applied wherever the engine prices a mod's stalls and buyers and in
+/// the customers' market price, so a mod can move single prices at runtime: a
+/// sale, a seasonal surge, a market that follows trades.
+static int pop_item_price_pct(t_itemid id) {
+	static int32 key = 0;
+	if (key == 0)
+		key = add_str("$@pop_item_pct");
+	if (id == 0)
+		return 100;
+	const int64 v = mapreg_readreg(reference_uid(key, id));
+	return v > 0 ? static_cast<int>(std::min<int64>(v, 1000)) : 100;
+}
+
+/// RAGNAROKMAC: how many of an item a mod's stalls may list between them, as
+/// a mod sets it in $@pop_item_supply[<item id>]: unset or 0 = no limit, 1 =
+/// none, n = n - 1 (0 reads as unset, hence the offset). Only plain lines
+/// count (no refine, forge or cards), so a mod can tie them to a supply it
+/// keeps (what its world's hunters found) and leave crafted goods alone.
+/// Returns -1 for no limit.
+static int64 pop_item_supply_cap(t_itemid id) {
+	static int32 key = 0;
+	if (key == 0)
+		key = add_str("$@pop_item_supply");
+	if (id == 0)
+		return -1;
+	const int64 v = mapreg_readreg(reference_uid(key, id));
+	return v > 0 ? v - 1 : -1;
 }
 
 /// The price level a mod vendor's mod set, in percent (100 = as listed).
@@ -2738,7 +3048,7 @@ static bool pop_shell_open_buyingstore(map_session_data* sd, const PopulationVen
 		const PopulationVendorStock& vs = *cands[i];
 		std::shared_ptr<item_data> id = item_db.find(vs.nameid);
 		int64_t p = vs.price_max > vs.price ? vs.price + static_cast<int64_t>(rnd() % (vs.price_max - vs.price + 1)) : vs.price;
-		p = p * pct / 100;
+		p = p * pct / 100 * pop_item_price_pct(vs.nameid) / 100;
 		if (p >= 10000)     p = p / 500 * 500;
 		else if (p >= 1000) p = p / 50 * 50;
 		else if (p >= 100)  p = p / 5 * 5;
@@ -2935,6 +3245,8 @@ static void population_engine_mod_vendor_pass(size_t* pbudget, size_t max_global
 			// A vendor spawns as itself; a market spot rolls a theme and spawns
 			// as that, still counted as one of the market's spots.
 			auto spawn_here = [&](int16_t x, int16_t y, int16_t seat) -> bool {
+				if (respect && !population_shell_returns_allow_fresh(m, g_population_engine_count.load(), max_global))
+					return false;
 				if (!entry.is_market)
 					return pop_mod_vendor_spawn_one(m, entry, sp, *prof, x, y, seat);
 				const PopulationVendorEntry* theme = pop_market_pick(entry, m, sp, warned_no_profile);
@@ -3065,6 +3377,10 @@ TIMER_FUNC(population_engine_autosummon_timer)
 			continue;
 		if (pop_is_companion(sd))
 			continue;
+		// RAGNAROKMAC (shell control API): a script may walk or warp its shell
+		// anywhere; ending the hold settles where it lives.
+		if (sd->pop.hold.npc != 0)
+			continue;
 		if (sd->pop.spawn_map_id < 0 || sd->m == sd->pop.spawn_map_id)
 			continue;
 		struct map_data *mapdata = map_getmapdata(sd->pop.spawn_map_id);
@@ -3105,6 +3421,7 @@ TIMER_FUNC(population_engine_autosummon_timer)
 		// the map someone is standing on wins and grace is abandoned.
 		const size_t cap = static_cast<size_t>(max_global);
 		const bool under_pressure = g_population_engine_count.load() >= (cap - cap / 5);
+		population_shell_returns_prune(under_pressure);
 
 		std::vector<map_session_data*> abandoned;
 		for (map_session_data *sd : g_population_engine_pcs) {
@@ -3122,8 +3439,17 @@ TIMER_FUNC(population_engine_autosummon_timer)
 			population_engine_shell_release(sd);
 	}
 
-	if (g_population_engine_count.load() >= max_global)
-		return 0;
+	if (!battle_config.population_engine_demand_spawn)
+		population_shell_returns_prune(false);
+
+	// Selling is lifecycle work, not combat AI: a full shell may have wandered
+	// outside the player's viewport. Check only maps with a real player on them.
+	if (battle_config.population_engine_loot_enable) {
+		pop_occupancy_refresh();
+		for (map_session_data *sd : g_population_engine_pcs)
+			if (sd && g_pop_occupied_maps.count(sd->m) != 0)
+				population_shell_loot_try_unload(sd, tick);
+	}
 
 	const int32 batch_cfg = battle_config.population_engine_autosummon_batch_size;
 	size_t tick_budget = (batch_cfg > 0) ? static_cast<size_t>(batch_cfg) : 0;
@@ -3152,35 +3478,34 @@ TIMER_FUNC(population_engine_autosummon_timer)
 		// allow only one shell of a given job per map) does not throttle the
 		// per-shell loop here.
 		auto fill_category = [&](const std::vector<std::string>& maps, int32_t population, int32_t max_per_map, uint8_t category) -> bool {
-			if (population <= 0 || maps.empty())
+			if (maps.empty())
 				return false;
-			const size_t pop   = static_cast<size_t>(population);
+			const size_t pop   = static_cast<size_t>(std::max(0, population));
 			const size_t count = maps.size();
 			const size_t base  = pop / count;
 			const size_t extra = pop % count;
 			for (size_t i = 0; i < count; ++i) {
-				if (pbudget != nullptr && *pbudget == 0) return true;
 				size_t target = base + (i < extra ? 1u : 0u);
 				if (max_per_map > 0 && target > static_cast<size_t>(max_per_map))
 					target = static_cast<size_t>(max_per_map);
-				if (target == 0) continue;
 				const int16 mid = map_mapname2mapid(maps[i].c_str());
 				if (mid < 0) continue;
 				// RAGNAROKMAC: only populate maps somebody is on.
 				if (!pop_map_is_live(mid)) continue;
 				// Only spawn the deficit so the timer never stacks more shells
 				// than the YAML quota onto a map that is already at capacity.
-				const size_t existing_on_map =
-					population_engine_count_shells_on_map_for_profile(mid, profile_jobs);
-				if (existing_on_map >= target) continue;
-				const size_t deficit = target - existing_on_map;
+				size_t existing_on_map = population_engine_count_shells_on_map_for_profile(mid, profile_jobs);
+				population_shell_returns_fit(mid, profile_jobs, target, existing_on_map);
+				existing_on_map += population_shell_returns_fill(mid, profile_jobs, pbudget);
+				const size_t occupied = existing_on_map + population_shell_returns_count(mid, profile_jobs);
+				if (occupied >= target) continue;
+				const size_t deficit = target - occupied;
 				for (size_t s = 0; s < deficit; ++s) {
-					if (pbudget != nullptr && *pbudget == 0) return true;
-					if (g_population_engine_count.load() >= max_global) return true;
+					if (pbudget != nullptr && *pbudget == 0) break;
+					if (g_population_engine_count.load() >= max_global) break;
 					const uint16_t pick = profile_jobs[rnd() % profile_jobs.size()];
 					autosummon_fill_map(mid, 1, pick, pbudget, category, /*bypass_existing_check=*/true);
 				}
-				if (g_population_engine_count.load() >= max_global) return true;
 			}
 			return false;
 		};
@@ -3332,9 +3657,16 @@ static int32 pop_combat_tick_bot_in_range(block_list *bl, va_list ap)
 		if (!pop_is_companion(sd))
 			pop_companion_set_owner(sd, nullptr);
 	}
+	// RAGNAROKMAC (shell control API): a held shell does what its script says.
+	if (population_engine_shell_is_held(sd))
+		return 0;
 	// Dedupe across multiple real-PC viewers.
 	if (!ctx->ticked.insert(sd->id).second)
 		return 0;
+	// RAGNAROKMAC (rest): an ambient shell low on SP or HP sits between fights. Companions
+	// come through here too, but rest in the companion loop, at their owner's marks.
+	if (!pop_is_companion(sd) && pop_shell_rest(sd, nullptr, static_cast<uint32>(sd->pop.target_id), gettick()))
+		return 1;
 	population_engine_combat_per_tick(sd, true);
 	return 1;
 }
@@ -3372,6 +3704,13 @@ struct PopJobAdvance {
 	int32_t job_lv;  // job level gate (0 = none)
 };
 
+/// Is this transition a REBIRTH? Entering a transcendent class from a 2nd job is: the new class
+/// usually cannot wear what the companion has on, so it is the player's decision, never automatic.
+static bool pop_job_change_is_rebirth(uint16_t from, uint16_t to)
+{
+	return from >= 7 && from <= 20 && to >= 4008 && to <= 4022;
+}
+
 // 1st -> 2nd at base 40 (job_lv 0: fresh companions usually hit 40 before job 50;
 // the official quests also require job level but companions fight constantly so
 // base level is the friendlier gate), then trans/3rd/4th on the official gates.
@@ -3386,13 +3725,24 @@ static const PopJobAdvance kPopJobAdvanceTable[] = {
 	// 2nd -> trans (official rebirth gate: base 99 / job 70; we advance directly,
 	// no level reset — a companion suddenly going back to 1/1 High Novice would
 	// be a terrible feel in the middle of a hunt)
-	{ 7,  4008, 0, 99, 70 }, { 14, 4015, 0, 99, 70 },
-	{ 9,  4010, 0, 99, 70 }, { 16, 4017, 0, 99, 70 },
-	{ 11, 4012, 0, 99, 70 }, { 19, 4020, 0, 99, 70 }, // Bard->Clown (Dancer->Gypsy via 4021 below)
-	{ 8,  4009, 0, 99, 70 }, { 15, 4016, 0, 99, 70 },
-	{ 10, 4011, 0, 99, 70 }, { 18, 4019, 0, 99, 70 },
-	{ 12, 4013, 0, 99, 70 }, { 17, 4018, 0, 99, 70 },
-	{ 20, 4021, 0, 99, 70 }, // Dancer -> Gypsy
+	{ 7, 4008, 0, 99, 50 }, { 14, 4015, 0, 99, 50 },
+	{ 9, 4010, 0, 99, 50 }, { 16, 4017, 0, 99, 50 },
+	{ 11, 4012, 0, 99, 50 }, { 19, 4020, 0, 99, 50 }, // Bard->Clown (Dancer->Gypsy via 4021 below)
+	{ 8, 4009, 0, 99, 50 }, { 15, 4016, 0, 99, 50 },
+	{ 10, 4011, 0, 99, 50 }, { 18, 4019, 0, 99, 50 },
+	{ 12, 4013, 0, 99, 50 }, { 17, 4018, 0, 99, 50 },
+	{ 20, 4021, 0, 99, 50 }, // Dancer -> Gypsy
+	// Rebirth ladder (player-triggered from the Rebirth tab): High Novice -> a high 1st job at
+	// base 40 (a uniform roll, handled as a special case above like Novice), then a high 1st job ->
+	// its transcendent class on the SAME base-40 / job-0 gate as any other 1st -> 2nd step: these
+	// rows are not rebirths (pop_job_change_is_rebirth is false for them), so a reborn companion
+	// must not sit as a high 1st job from base 40 all the way to 99.
+	{ 4002, 4008, 4015, 40, 0 }, // High Swordman -> Lord Knight | Paladin
+	{ 4003, 4010, 4017, 40, 0 }, // High Mage     -> High Wizard | Scholar
+	{ 4004, 4012, 4020, 40, 0 }, // High Archer   -> Sniper | Minstrel (sex-adjusted)
+	{ 4005, 4009, 4016, 40, 0 }, // High Acolyte  -> High Priest | Champion
+	{ 4006, 4011, 4019, 40, 0 }, // High Merchant -> Mastersmith | Biochemist
+	{ 4007, 4013, 4018, 40, 0 }, // High Thief    -> Assassin Cross | Stalker
 	// trans -> 3rd (official: base 99 / job 70)
 	{ 4008, 4054, 0, 99, 70 }, { 4015, 4066, 0, 99, 70 },
 	{ 4010, 4055, 0, 99, 70 }, { 4017, 4067, 0, 99, 70 },
@@ -3485,34 +3835,56 @@ static void pop_companion_spend_stat_points(map_session_data *sd, std::shared_pt
 	}
 }
 
-static uint16_t pop_companion_next_job(uint16_t job_id, int32_t base_lv, int32_t job_lv)
+/// The next class this companion would change into, or 0 if none applies.
+///
+/// @param allow_rebirth  false on the automatic path: a rebirth is never taken on its own, because
+///                       the new class usually cannot wear the companion's gear. The Rebirth tab
+///                       issues it explicitly.
+static uint16_t pop_companion_next_job(uint16_t job_id, int32_t base_lv, int32_t job_lv,
+	bool allow_rebirth)
 {
 	// Novice: six-way uniform roll at base 10
 	if (job_id == 0 && base_lv >= 10)
 		return static_cast<uint16_t>(1 + rnd() % 6);
+	// High Novice: the same roll over the high first jobs, at base 40
+	if (job_id == JOB_NOVICE_HIGH && base_lv >= 40)
+		return static_cast<uint16_t>(JOB_SWORDMAN_HIGH + rnd() % 6);
 	for (const PopJobAdvance &a : kPopJobAdvanceTable) {
 		if (a.from != job_id) continue;
 		if (base_lv < a.base_lv || job_lv < a.job_lv) continue;
-		if (a.to_b != 0)
-			return (rnd() % 2) ? a.to_a : a.to_b;
-		return a.to_a;
+		const uint16_t target = (a.to_b != 0 && (rnd() % 2)) ? a.to_b : a.to_a;
+		// RAGNAROKMAC: a class this server's era has no job for (a third class in pre-renewal)
+		// is not a step: pc_jobchange refuses it, and the ladder asked again at every check.
+		if (!job_db.exists(target))
+			continue;
+		if (!allow_rebirth && pop_job_change_is_rebirth(job_id, target))
+			continue; // a rebirth waits for the player
+		return target;
 	}
 	return 0;
 }
 
 static uint32_t pop_companion_given_worn(const map_session_data *shell);
 static bool pop_companion_hand_back(map_session_data *owner, map_session_data *shell, int16 i,
-	e_log_pick_type log_type);
+	e_log_pick_type log_type, int32 amount = 0);
 
-static void pop_companion_try_job_advance(map_session_data *sd)
+/// Change this companion's class. Shared by the automatic path and the player-triggered rebirth.
+///
+/// @param forced_target  0 on the automatic path (the ladder decides); otherwise the class to change
+///                       into. A rebirth passes its target here so it runs the identical jobchange,
+///                       skill reseed and gear dance rather than a second implementation of them.
+/// @return true when the class actually changed.
+static bool pop_companion_apply_job_change(map_session_data *sd, uint16_t forced_target)
 {
-	const uint16_t next = pop_companion_next_job(sd->status.class_, sd->status.base_level, sd->status.job_level);
-	if (next == 0) return;
+	const uint16_t next = forced_target != 0 ? forced_target
+		: pop_companion_next_job(sd->status.class_, sd->status.base_level, sd->status.job_level,
+			/*allow_rebirth=*/false);
+	if (next == 0) return false;
 	// Player-given gear the new class cannot wear goes back to the player, so the player has to
 	// be here to take it. Otherwise wait: the next level-up check tries again.
 	map_session_data *owner = pop_companion_owner_session(sd);
 	if (pop_companion_given_worn(sd) != 0 && (owner == nullptr || !owner->state.active))
-		return;
+		return false;
 	std::vector<int16> given_before;
 	for (int16_t i = 0; i < MAX_INVENTORY; ++i) {
 		const struct item &w = sd->inventory.u.items_inventory[i];
@@ -3525,10 +3897,22 @@ static void pop_companion_try_job_advance(map_session_data *sd)
 	if (!pc_jobchange(sd, next, upper)) {
 		ShowWarning("Population engine: companion %s job change %hu -> %hu failed.\n",
 			sd->status.name, sd->status.class_, next);
-		return;
+		return false;
 	}
-	sd->status.job_level = 1;
-	sd->status.job_exp = 0;
+	// A rebirth proper resets the LEVEL as well: High Novice starts over at 1/1, and rAthena's own
+	// rebirth resets the build with it - npc/jobs/valkyrie.txt runs
+	// `jobchange Job_Novice_High; resetlvl(1);`, and pc_resetlvl(sd, 1) is that call: stats back
+	// to 1, the 100 status points, the platinum skills. Assigning the level by hand shipped a
+	// level-1 High Novice carrying its level-99 stats and skills. Granted skill flags survive
+	// pc_resetskill (it skips SKILL_FLAG_PERM_GRANTED), so the engine's own grants are untouched.
+	// Advancing straight to the transcendent class keeps the level and stats - that is the whole
+	// point of that option - and only the new job level starts over.
+	if (next == JOB_NOVICE_HIGH) {
+		pc_resetlvl(sd, 1);
+	} else {
+		sd->status.job_level = 1;
+		sd->status.job_exp = 0;
+	}
 	ShowInfo("Population engine: companion %s advanced from %s to %s (base %d/job %d).\n",
 		sd->status.name, old_name, job_name(next), sd->status.base_level, sd->status.job_level);
 	// Re-arm the skill preset for the new job. Clearing the cooldowns alone was NOT
@@ -3591,11 +3975,88 @@ static void pop_companion_try_job_advance(map_session_data *sd)
 	// mado that the old one did not have (Swordsman -> Knight, Blacksmith -> Mechanic, ...).
 	population_engine_sync_shell_vehicle(sd);
 	population_engine_sync_shell_homunculus(sd);
+	// RAGNAROKMAC: the new class may have fewer palettes than the old (Swordsman 0-4,
+	// Crusader 0-3).
+	const uint16_t cloth = population_fit_cloth_color(sd->status.class_, sd->status.clothes_color);
+	if (cloth != sd->status.clothes_color)
+		pc_changelook(sd, LOOK_CLOTHES_COLOR, cloth);
 	// Persist the new job + reset job level right away so a crash can't roll it back.
 	population_engine_persist_companion_gear(sd);
+	return true;
 }
 
-/// RAGNAROKMAC (Phase 2): set the support healer thresholds for every summoned
+/// RAGNAROKMAC (rebirth) ---------------------------------------------------------
+/// Rebirth a companion the PLAYER'S way, from the Rebirth tab.
+///
+/// Automation deliberately never does this: entering a transcendent class usually means the
+/// companion cannot wear much of what it has on, and gear the player handed over goes back to the
+/// player. That is a decision, not a level-up.
+///
+/// @param mode  0 = the proper rebirth (High Novice, level reset to 1/1); 1 = straight to the
+///              transcendent class, keeping the level.
+/// @return 1 on success, 0 when it is not ready yet, -1 when rejected (message in out_msg).
+int population_engine_companion_rebirth(uint32_t owner_account, const char *name_, int mode,
+	char *out_msg, size_t out_msg_len)
+{
+	if (mmysql_handle == nullptr || name_ == nullptr || !name_[0])
+		return -1;
+	uint32_t index_ = 0;
+	bool active = false;
+	if (!population_engine_companion_find(owner_account, name_, &index_, &active)) {
+		if (out_msg != nullptr)
+			safesnprintf(out_msg, out_msg_len, "No saved companion named %s.", name_);
+		return -1;
+	}
+	map_session_data *shell = nullptr;
+	for (map_session_data *cand : g_population_engine_pcs) {
+		if (cand == nullptr || !pop_is_companion(cand))
+			continue;
+		if (cand->pop.companion_owner_account != owner_account)
+			continue;
+		if (cand->status.char_id != POPULATION_ENGINE_CHAR_ID_BASE + index_)
+			continue;
+		shell = cand;
+		break;
+	}
+	if (shell == nullptr) {
+		if (out_msg != nullptr)
+			safesnprintf(out_msg, out_msg_len,
+				"%s is not summoned. Summon it first, then rebirth.", name_);
+		return -1;
+	}
+	// Eligibility is the SAME predicate the automatic path uses with rebirth allowed, so the two can
+	// never disagree about who is ready.
+	const uint16_t target = pop_companion_next_job(shell->status.class_, shell->status.base_level,
+		shell->status.job_level, /*allow_rebirth=*/true);
+	if (target == 0 || !pop_job_change_is_rebirth(shell->status.class_, target)) {
+		const char *cls = job_name(shell->status.class_);
+		if (out_msg != nullptr)
+			safesnprintf(out_msg, out_msg_len,
+				"%s (%s) cannot be reborn. Only a 2nd class that reached base 99 / job 50 can.",
+				name_, cls != nullptr ? cls : "?");
+		return 0;
+	}
+	const uint16_t chosen = (mode == 0) ? JOB_NOVICE_HIGH : target;
+	if (!pop_companion_apply_job_change(shell, chosen)) {
+		if (out_msg != nullptr)
+			safesnprintf(out_msg, out_msg_len, "The rebirth failed (see map-server console).");
+		return -1;
+	}
+	if (out_msg != nullptr) {
+		if (mode == 0)
+			safesnprintf(out_msg, out_msg_len,
+				"%s is reborn as High Novice at level 1. Gear it can no longer wear came back to you.",
+				name_);
+		else
+			safesnprintf(out_msg, out_msg_len, "%s advanced straight to %s.", name_,
+				job_name(chosen) != nullptr ? job_name(chosen) : "its transcendent class");
+	}
+	ShowInfo("Population engine: companion %s reborn as %s (owner %u)\n", name_,
+		mode == 0 ? "High Novice" : job_name(chosen), owner_account);
+	return 1;
+}
+
+// RAGNAROKMAC (Phase 2): set the support healer thresholds for every summoned
 /// companion belonging to `owner_account`, persisting each row. Returns how many
 /// live companions were updated (0 is still a success to the caller: the values
 /// are saved for the next summon).
@@ -3615,6 +4076,35 @@ int population_engine_companion_set_heal_thresholds(uint32_t owner_account, int1
 		population_engine_persist_companion_gear(sd);
 		++applied;
 	}
+	// Re-send the roster, which carries the thresholds, so an open Companions window shows them.
+	if (map_session_data *owner_sd = map_charid2sd(owner_char); owner_sd != nullptr)
+		population_engine_push_companion_list(owner_sd);
+	return applied;
+}
+
+/// RAGNAROKMAC (rest): when every summoned companion of `owner_account` rests: below
+/// `below` % of its SP or HP (0 = never) until both are back to `until` %. Persisted per
+/// row like the healer thresholds; returns how many live companions were updated, or -1
+/// for values out of range.
+int population_engine_companion_set_rest_thresholds(uint32_t owner_account, int16_t below, int16_t until)
+{
+	if (below < 0 || below > 90 || until < below + 5 || until > 100)
+		return -1;
+	int applied = 0;
+	const uint32_t owner_char = pop_online_char(owner_account);
+	for (map_session_data *sd : g_population_engine_pcs) {
+		if (!sd || !pop_is_companion(sd))
+			continue;
+		if (sd->pop.companion_owner_account != owner_account || sd->pop.companion_owner_char != owner_char)
+			continue;
+		sd->pop.companion_rest_below = below;
+		sd->pop.companion_rest_until = until;
+		population_engine_persist_companion_gear(sd);
+		++applied;
+	}
+	// Re-send the roster, which carries the thresholds, so an open Companions window shows them.
+	if (map_session_data *owner_sd = map_charid2sd(owner_char); owner_sd != nullptr)
+		population_engine_push_companion_list(owner_sd);
 	return applied;
 }
 
@@ -4454,7 +4944,10 @@ uint32_t population_engine_companion_hire(map_session_data *owner, uint16_t job_
 		return 0;
 	const int mode = population_engine_companion_hire_mode();
 	if (mode == 0) {
+		// RAGNAROKMAC: a free draft comes at its owner's level too, as a hired one does.
+		g_pop_draft_level = static_cast<int16_t>(owner->status.base_level);
 		const uint32_t made = population_engine_companion_draft(owner, job_id, 1, name_hint, sex);
+		g_pop_draft_level = 0;
 		if (made == 0)
 			msg = "Could not draft that companion (see map-server console).";
 		return made;
@@ -4530,6 +5023,9 @@ void population_engine_companion_terms(map_session_data *owner, int fd)
 TIMER_FUNC(population_engine_global_combat_timer)
 {
 	PE_PERF_SCOPE("timer.combat");
+	// RAGNAROKMAC (shell control API): first, so a held shell a script warped is
+	// back on the map before the stale sweep would take it for gone.
+	population_shell_control_sweep();
 	{
 		auto stale = population_engine_collect_stale_shells();
 		for (auto *s : stale)
@@ -4558,15 +5054,23 @@ TIMER_FUNC(population_engine_global_combat_timer)
 				const int32 jid = sd->status.class_;
 				const bool pre_third = (jid == 0) || (jid >= 1 && jid <= 23)
 					|| (jid >= 4001 && jid <= 4022);
-				if (!pre_third) {
+				// Paid per base level gained, not per poll: this runs every combat tick
+				// (population_engine_shell_timer_ms, 100 ms), and paying on each one
+				// handed a 3rd-job companion its whole profile's maxima at once.
+				const int16_t lv = static_cast<int16_t>(sd->status.base_level);
+				if (sd->pop.points_granted_level == 0 || lv < sd->pop.points_granted_level)
+					sd->pop.points_granted_level = lv;
+				if (!pre_third && lv > sd->pop.points_granted_level) {
 					const int grant = static_cast<int>(battle_config.population_engine_companion_points_per_level);
 					if (grant > 0) {
-						sd->status.status_point += grant;
-						sd->status.trait_point  += grant;
+						const int levels = lv - sd->pop.points_granted_level;
+						sd->status.status_point += grant * levels;
+						sd->status.trait_point  += grant * levels;
 					}
 				}
+				sd->pop.points_granted_level = lv;
 				pop_companion_spend_stat_points(sd, prof);
-				pop_companion_try_job_advance(sd);
+				(void)pop_companion_apply_job_change(sd, 0);
 				// RAGNAROKMAC: the party window shows levels from the map's own party
 				// data, and the stock level-up broadcast is a char-server round trip
 				// that drops shells. Re-broadcast locally when the level changed.
@@ -4582,6 +5086,8 @@ TIMER_FUNC(population_engine_global_combat_timer)
 					}
 				}
 			}
+			// RAGNAROKMAC (companion inventory): arrows, potions and catalysts used up since.
+			population_shell_inventory_save(sd, false);
 			const uint64_t h = pop_companion_gear_hash(sd);
 			auto it = g_pop_companion_gear_hash.find(sd->id);
 			if (it == g_pop_companion_gear_hash.end()) {
@@ -4616,9 +5122,16 @@ TIMER_FUNC(population_engine_global_combat_timer)
 		map_session_data *owner = pop_companion_owner(sd);
 		if (!owner)
 			continue;
+		population_companion_watch_life(sd); // RAGNAROKMAC (roam): its row shows it alive again
 		// Same-map companion corpses are deliberately inert but remain registered
 		// so party Resurrection and Yggdrasil Leaf can target the original actor.
 		if (pc_isdead(sd))
+			continue;
+		// RAGNAROKMAC: nor does one that can do nothing at all (petrified, frozen, asleep, stunned:
+		// no moving, casting or attacking). Only all three: Ankle Snare, Spider Web, Madness
+		// Canceller and Intensive Aim stop movement alone, and a companion under them still fights
+		// -- and has to, to turn a toggle like Intensive Aim back off.
+		if (sd->sc.cant.move && sd->sc.cant.cast && sd->sc.cant.attack)
 			continue;
 		// Town-origin Wander/Support shells do not normally own a combat session.
 		// Start one only after real party membership exists so every recruited
@@ -4637,7 +5150,10 @@ TIMER_FUNC(population_engine_global_combat_timer)
 		// Party modes make their target decision before the normal combat tick, so
 		// refresh the tracker here as well. Its internal interval keeps this cheap.
 		population_shell_update_mob_tracker(sd);
-		const uint32 desired_target = pop_companion_combat_target(sd, owner, now);
+		// RAGNAROKMAC (companion strategies): Targeting: Priority and Ignore have the last word.
+		// RAGNAROKMAC (roam): a roaming companion's own fight, before the strategies'.
+		const uint32 desired_target = population_strategy_target(sd, owner,
+			population_companion_roam_target(sd, pop_companion_combat_target(sd, owner, now)));
 		if (static_cast<uint32>(sd->pop.target_id) != desired_target)
 			population_shell_target_change(sd, static_cast<int>(desired_target));
 		if (desired_target != 0 && sd->pop.companion_formation_active) {
@@ -4653,13 +5169,19 @@ TIMER_FUNC(population_engine_global_combat_timer)
 			// a chase to drop. Halting it once the companion was within 4 cells, with the owner
 			// still moving, made it stop, snap in place and set off again 400 ms later; the faster
 			// the companion (a mounted Lord Knight), the more often it caught up and stuttered.
+			// RAGNAROKMAC (companion strategies): nor a walk a rule started (MoveTo, Leave, ...).
 			if (unit_is_walking(sd) && !sd->pop.companion_formation_active &&
-				sd->ud.target_to != owner->id)
+				sd->ud.target_to != owner->id && !population_strategy_holds_position(sd, now)
+				&& !population_companion_roams(sd)) // RAGNAROKMAC (roam): nor its own walk
 				unit_stop_walking(sd, USW_FIXPOS);
 		}
+		// RAGNAROKMAC (companion strategies): a fight that has just ended is seen by the rules first.
+		if (!population_strategy_wants_turn(sd, now) && pop_shell_rest(sd, owner, desired_target, now))
+			continue;
 		if (sd->state.population_combat)
 			population_engine_combat_per_tick(sd, true);
-		if (desired_target == 0)
+		if (desired_target == 0 && !population_strategy_holds_position(sd, now) // RAGNAROKMAC (companion strategies)
+			&& !population_companion_roams(sd)) // RAGNAROKMAC (roam)
 			pop_companion_update_formation(sd, owner);
 	}
 	map_foreachpc(pop_combat_tick_per_real_pc, &ctx);
@@ -4681,8 +5203,18 @@ TIMER_FUNC(population_engine_respawn_shell_timer)
 		ShowDebug("PopEngine respawn: engine stopped; skipping revive for shell %u.\n", sd->id);
 		return 0;
 	}
-	if (!pc_isdead(sd))
+	if (!pc_isdead(sd)) {
+		// #373 diagnostics: the shell died (pc_dead scheduled this timer) and lost its dead flag
+		// within the 5 s window, so it is never revived.
+		if (status_isdead(*sd))
+			ShowWarning("Population engine: [#373] respawn of shell %u (%s) skipped: 0 HP but not dead "
+				"(dead_sit %d, walking %d, behavior %u, %d ms since pc_dead) on %s (%d,%d).\n",
+				sd->id, sd->status.name, sd->state.dead_sit, unit_is_walking(sd) ? 1 : 0,
+				static_cast<unsigned>(sd->pop.behavior),
+				sd->pop.diag_death_tick ? static_cast<int>(DIFF_TICK(tick, sd->pop.diag_death_tick)) : -1,
+				mapindex_id2name(sd->mapindex), sd->x, sd->y);
 		return 0;
+	}
 	map_session_data *owner = pop_companion_owner(sd);
 	const int16_t respawn_map = owner ? owner->m : sd->pop.spawn_map_id;
 	struct map_data *mapdata = (respawn_map >= 0) ? map_getmapdata(respawn_map) : nullptr;
@@ -4761,6 +5293,8 @@ void population_engine_on_shell_death(map_session_data *sd)
 {
 	if (!sd)
 		return;
+	sd->pop.diag_death_tick = gettick(); // #373 diagnostics: pc_dead handled this death
+	population_shell_loot_clear(sd); // RAGNAROKMAC (shell looting): a corpse forgets its drops
 	if (!population_engine_shell_is_mortal(sd)) {
 		ShowDebug("PopEngine death: shell %u (%s) has no Mortal flag — no respawn scheduled.\n",
 			sd->id, sd->status.name);
@@ -4787,6 +5321,7 @@ void population_engine_on_shell_death(map_session_data *sd)
 			unit_stop_walking(sd, USW_FIXPOS);
 		ShowInfo("Population engine: companion %s died and remains available for resurrection.\n",
 			sd->status.name);
+		population_companion_on_down(sd); // RAGNAROKMAC (roam)
 		return;
 	}
 	// Ambient Mortal shells retain their original five-second respawn delay.
@@ -4844,6 +5379,21 @@ void population_engine_on_shell_kills_player(map_session_data *killer_sd, map_se
 // through a hundred teardowns.
 static constexpr size_t POP_VENDOR_ROTATION_MAX_PER_TICK = 8;
 
+/// RAGNAROKMAC: a mod vendor with nothing left to do: a stall sold out, a
+/// buyer that bought all it wanted (or ran out of zeny), or a stall that never
+/// opened because its mod's supply left its pool empty (pop_item_supply_cap).
+static bool pop_mod_vendor_done(const map_session_data* sd) {
+	if (sd->pop.vendor_spawn_id.empty())
+		return false;
+	if (sd->pop.vendor_buying)
+		return !sd->state.buyingstore;
+	if (sd->state.vending)
+		return sd->vend_num <= 0;
+	// Only a stall its supply kept shut: one that failed to open for any other reason stands
+	// idle as before, rather than being re-rolled every rotation tick.
+	return battle_config.population_engine_vending_enable != 0 && sd->pop.vendor_supply_empty;
+}
+
 TIMER_FUNC(population_engine_vendor_rotation_timer)
 {
 	const t_tick now = gettick();
@@ -4858,15 +5408,12 @@ TIMER_FUNC(population_engine_vendor_rotation_timer)
 	// Checked first and outside the per-tick cap, so a busy rotation can't keep
 	// an empty stall standing. Base vendors keep upstream's behaviour.
 	for (map_session_data *sd : g_population_engine_pcs)
-		if (sd && !sd->pop.vendor_spawn_id.empty() &&
-		    ((sd->state.vending && sd->vend_num <= 0) ||
-		     (sd->pop.vendor_buying && !sd->state.buyingstore))) // bought all it wanted, or out of zeny
+		if (sd && pop_mod_vendor_done(sd))
 			due.push_back(sd);
 	const size_t cap = due.size() + POP_VENDOR_ROTATION_MAX_PER_TICK;
 	for (map_session_data *sd : g_population_engine_pcs) {
 		if (!sd) continue;
-		if (!sd->pop.vendor_spawn_id.empty() &&
-		    ((sd->state.vending && sd->vend_num <= 0) || (sd->pop.vendor_buying && !sd->state.buyingstore)))
+		if (pop_mod_vendor_done(sd))
 			continue; // already taken above
 		if (sd->pop.vendor_rotation_at == 0) continue; // not a rotating vendor
 		if (now < sd->pop.vendor_rotation_at) continue;
@@ -4911,6 +5458,9 @@ void do_init_population_engine_load_databases() {
 		ShowWarning("Population engine: population_chat.yml missing or invalid; chat disabled until fixed.\n");
 	if (!population_skill_db().load())
 		ShowWarning("Population engine: population_skill_db.yml missing or invalid; no per-job skill overrides loaded.\n");
+	// RAGNAROKMAC (companion strategies): after mob, job, item and skill data, which its rules name.
+	if (!population_strategy_load())
+		ShowWarning("Population engine: population_strategy.yml missing or invalid; companions use no strategy rules.\n");
 	// Shared templates DB MUST load before the three job DBs so GearSet/Profile
 	// references in the job files can resolve via fallback lookup.
 	if (!population_shared_db().load())
@@ -4999,6 +5549,7 @@ void do_init_population_engine_load_databases() {
 
 bool population_engine_reload_equipment(uint32_t *out_entry_count)
 {
+	population_shell_returns_clear();
 	if (out_entry_count != nullptr)
 		*out_entry_count = 0;
 
@@ -5035,6 +5586,12 @@ bool population_engine_reload_equipment(uint32_t *out_entry_count)
 		ShowStatus("Population engine: population_skill_db.yml reloaded (%zu jobs).\n", population_skill_db().job_count());
 	else
 		ShowWarning("Population engine: population_skill_db.yml reload failed (missing or invalid).\n");
+
+	// RAGNAROKMAC (companion strategies)
+	if (population_strategy_reload())
+		ShowStatus("Population engine: population_strategy.yml reloaded (%zu rules).\n", population_strategy_rule_count());
+	else
+		ShowWarning("Population engine: population_strategy.yml reload failed (missing or invalid).\n");
 
 	const bool chat_re = population_chat_db().reload();
 	if (chat_re)
@@ -5132,6 +5689,132 @@ static void population_engine_sync_shell_vehicle(map_session_data *sd)
 		pc_setoption(sd, sd->sc.option | OPTION_MADOGEAR, MADO_ROBOT);
 }
 
+// ---- RAGNAROKMAC: shells built to their level -------------------------------
+//
+// Upstream rolled each stat straight from the profile's range, whatever the shell's
+// level, and a profile with no ranges got 90-109 in all six: a level 10 Swordsman or
+// Acolyte had ~100 everywhere, which a real character of that level could never buy.
+// Now the rolled values are only the shape of the build. The shell starts at 1 in every
+// stat with the points a character of its level has (as pc_resetstate gives them) and
+// spends them a point at a time on whichever stat is furthest behind its share of the
+// target, at the stock cost and within the job's cap. What is left stays in
+// status_point, for a companion's growth to spend later.
+
+/// A build for a profile that declares no stats, by job line: what a player of that
+/// line would put points into. Proportions, not values; Novice and anything not listed
+/// stay even.
+static void pop_shell_job_build(uint64 class_mapid, int16_t out[6])
+{
+	// STR, AGI, VIT, INT, DEX, LUK
+	static const int16_t even[6]       = { 50, 50, 50, 50, 50, 50 };
+	static const int16_t swordman[6]   = { 80, 40, 70,  1, 40, 10 };
+	static const int16_t mage[6]       = {  1, 20, 30, 90, 80,  1 };
+	static const int16_t archer[6]     = { 10, 70, 30, 10, 90, 30 };
+	static const int16_t acolyte[6]    = {  1, 20, 60, 90, 60, 10 };
+	static const int16_t merchant[6]   = { 80, 30, 60, 10, 50, 20 };
+	static const int16_t thief[6]      = { 60, 90, 40,  1, 50, 30 };
+	static const int16_t taekwon[6]    = { 70, 80, 40, 20, 50, 30 };
+	static const int16_t gunslinger[6] = { 20, 60, 30, 10, 90, 40 };
+	static const int16_t ninja[6]      = { 40, 70, 40, 60, 70, 20 };
+	const int16_t *b = even;
+	switch (class_mapid & MAPID_FIRSTMASK) {
+		case MAPID_SWORDMAN:   b = swordman; break;
+		case MAPID_MAGE:       b = mage; break;
+		case MAPID_ARCHER:     b = archer; break;
+		case MAPID_ACOLYTE:    b = acolyte; break;
+		case MAPID_MERCHANT:   b = merchant; break;
+		case MAPID_THIEF:      b = thief; break;
+		case MAPID_TAEKWON:    b = taekwon; break;
+		case MAPID_GUNSLINGER: b = gunslinger; break;
+		case MAPID_NINJA:      b = ninja; break;
+		default: break;
+	}
+	for (int i = 0; i < 6; ++i)
+		out[i] = b[i];
+}
+
+/// Spend the level's stat points toward `target` (STR..LUK). sd->status.base_level,
+/// class_ and sex must already be set; the six stats are overwritten.
+static void pop_shell_spend_to_level(map_session_data *sd, const int16_t target[6])
+{
+	uint16 *stat[6] = { &sd->status.str, &sd->status.agi, &sd->status.vit,
+		&sd->status.int_, &sd->status.dex, &sd->status.luk };
+	for (int i = 0; i < 6; ++i)
+		*stat[i] = 1;
+	int64 points = statpoint_db.get_table_point(sd->status.base_level);
+	if ((sd->class_ & JOBL_UPPER) || pc_is_primary_fourth(sd->class_))
+		points += battle_config.transcendent_status_points;
+
+	bool done[6];
+	for (int i = 0; i < 6; ++i)
+		done[i] = target[i] <= 1;
+	for (int guard = 0; guard < 4000; ++guard) {
+		// The stat furthest behind its share of the target: lowest cur/target.
+		int pick = -1;
+		for (int i = 0; i < 6; ++i) {
+			if (done[i])
+				continue;
+			if (*stat[i] >= target[i]) {
+				done[i] = true;
+				continue;
+			}
+			if (pick < 0 || static_cast<int64>(*stat[i]) * target[pick] < static_cast<int64>(*stat[pick]) * target[i])
+				pick = i;
+		}
+		if (pick < 0)
+			break;
+		// 0 at the job's cap; costs only rise, so a stat it cannot afford now is done.
+		const int32 cost = pc_need_status_point(sd, SP_STR + pick, 1);
+		if (cost <= 0 || cost > points) {
+			done[pick] = true;
+			continue;
+		}
+		points -= cost;
+		++*stat[pick];
+	}
+	sd->status.status_point = static_cast<uint32>(points);
+}
+
+/// The same for the 4th-job trait stats (POW..CRT): they start at 0, and the shell gets
+/// the trait points a character of its level has (0 up to level 200, about 4 a level
+/// after it; pc_resetstate's get_trait_table_point). A class without traits has a cap of
+/// 0, so nothing is spent and its traits stay 0.
+static void pop_shell_spend_traits_to_level(map_session_data *sd, const int16_t target[6])
+{
+	uint16 *trait[6] = { &sd->status.pow, &sd->status.sta, &sd->status.wis,
+		&sd->status.spl, &sd->status.con, &sd->status.crt };
+	for (int i = 0; i < 6; ++i)
+		*trait[i] = 0;
+	int64 points = statpoint_db.get_trait_table_point(sd->status.base_level);
+
+	bool done[6];
+	for (int i = 0; i < 6; ++i)
+		done[i] = target[i] <= 0;
+	for (int guard = 0; guard < 2000; ++guard) {
+		int pick = -1;
+		for (int i = 0; i < 6; ++i) {
+			if (done[i])
+				continue;
+			if (*trait[i] >= target[i]) {
+				done[i] = true;
+				continue;
+			}
+			if (pick < 0 || static_cast<int64>(*trait[i]) * target[pick] < static_cast<int64>(*trait[pick]) * target[i])
+				pick = i;
+		}
+		if (pick < 0)
+			break;
+		const int32 cost = pc_need_trait_point(sd, SP_POW + pick, 1);
+		if (cost <= 0 || cost > points) {
+			done[pick] = true;
+			continue;
+		}
+		points -= cost;
+		++*trait[pick];
+	}
+	sd->status.trait_point = static_cast<uint32>(points);
+}
+
 static map_session_data* population_engine_spawn_shell(int16_t map_id, int x, int y, uint32_t index,
 	uint16_t job_id, char sex, uint8_t hair_style, uint16_t hair_color,
 	uint16_t weapon, uint16_t shield, uint16_t head_top, uint16_t head_mid,
@@ -5141,7 +5824,8 @@ static map_session_data* population_engine_spawn_shell(int16_t map_id, int x, in
 	PopulationDbSource db_source,
 	const PopulationVendorEntry* mod_entry,
 	const PopulationModSpawn* mod_spawn,
-	int16_t mod_seat)
+	int16_t mod_seat,
+	const PopulationShellReturn* returning)
 {
 	PE_PERF_SCOPE("spawn_shell");
 	(void)skip_arrow; // Legacy GearSet Arrow toggle; unified ammo is managed at runtime.
@@ -5155,10 +5839,20 @@ static map_session_data* population_engine_spawn_shell(int16_t map_id, int x, in
 		return nullptr;
 	}
 
+	// Restore before equipment, skills or packets are produced. The snapshot owns
+	// only identity; inventory and combat state are freshly provisioned as usual.
+	if (returning) {
+		sex = returning->sex;
+		hair_style = returning->hair;
+		hair_color = returning->hair_color;
+		cloth_color = returning->cloth_color;
+		option = 0; // Let normal mount initialization create its status effects first.
+		weapon = shield = head_top = head_mid = head_bottom = garment = 0;
+	}
 	uint8_t eff_hair = hair_style;
 	uint16_t eff_hair_color = hair_color;
 	uint16_t eff_cloth = cloth_color;
-	if (pop_cfg != nullptr) {
+	if (pop_cfg != nullptr && !returning) {
 		if (pop_cfg->hair_min >= 0) {
 			const int16_t hmax = pop_cfg->hair_max >= 0 ? pop_cfg->hair_max : pop_cfg->hair_min;
 			const int16_t valid_min = cap_value(pop_cfg->hair_min, static_cast<int16_t>(MIN_HAIR_STYLE), static_cast<int16_t>(MAX_HAIR_STYLE));
@@ -5179,7 +5873,7 @@ static map_session_data* population_engine_spawn_shell(int16_t map_id, int x, in
 		}
 	}
 
-	std::string name = generate_population_pc_name(index, pop_cfg);
+	std::string name = returning ? returning->name : generate_population_pc_name(index, pop_cfg);
 	const uint32_t account_id = POPULATION_ENGINE_ACCOUNT_ID_BASE + index;
 	const uint32_t char_id    = POPULATION_ENGINE_CHAR_ID_BASE    + index;
 
@@ -5232,6 +5926,7 @@ static map_session_data* population_engine_spawn_shell(int16_t map_id, int x, in
 
 	sd->status.hair         = cap_value(eff_hair, MIN_HAIR_STYLE, MAX_HAIR_STYLE);
 	sd->status.hair_color   = cap_value(eff_hair_color, MIN_HAIR_COLOR, MAX_HAIR_COLOR);
+	eff_cloth = population_fit_cloth_color(job_id, eff_cloth); // RAGNAROKMAC
 	sd->status.clothes_color = cap_value(eff_cloth, MIN_CLOTH_COLOR, MAX_CLOTH_COLOR);
 	sd->status.body         = sd->status.class_;
 	// status.weapon is weapon_type enum, not an item id; pc_calcweapontype sets it after equip.
@@ -5248,23 +5943,32 @@ static map_session_data* population_engine_spawn_shell(int16_t map_id, int x, in
 	// MSI_OPEN_EQUIPEDITEM_REFUSED. Must sit after the memset of sd->status.
 	sd->status.show_equip = true;
 
-	if (pop_cfg != nullptr && pop_cfg->base_level_min >= 0) {
+	if (returning) {
+		sd->status.base_level = returning->level;
+	} else if (pop_cfg != nullptr && pop_cfg->base_level_min >= 0) {
 		const int16_t hi = pop_cfg->base_level_max >= 0 ? pop_cfg->base_level_max : pop_cfg->base_level_min;
 		int16_t rolled = population_roll_closed_range(pop_cfg->base_level_min, hi);
 		// RAGNAROKMAC: on a map with monsters, take the level from them rather
 		// than from a uniform roll across the profile's band. +8 because a
 		// player hunting a field is usually a little above what lives there.
+		// Past the band's top if they say so, never past the class's own cap.
 		if (battle_config.population_engine_level_from_map) {
-			const int mobs = pop_map_mob_level(sd->m);
+			// map_id, not sd->m: the shell is only put on its map further down (pc_setpos), so
+			// sd->m is still 0 here, a map without monsters, and every shell got the uniform roll.
+			const int mobs = pop_map_mob_level(map_id);
 			if (mobs > 0)
 				rolled = static_cast<int16_t>(cap_value(mobs + 8,
-					static_cast<int>(pop_cfg->base_level_min), static_cast<int>(hi)));
+					static_cast<int>(pop_cfg->base_level_min),
+					std::max(static_cast<int>(hi), static_cast<int>(pc_maxbaselv(sd)))));
 		}
 		// RAGNAROKMAC: a hired companion comes at its owner's level, within
 		// the band its profile allows (population_engine_companion_hire).
+		// Never below the band (a transcendent class has a floor), but past its top up to the
+		// class's own cap: the band is where the crowd rolls, not a limit on a player's party.
 		if (g_pop_draft_level > 0)
 			rolled = static_cast<int16_t>(cap_value(static_cast<int>(g_pop_draft_level),
-				static_cast<int>(pop_cfg->base_level_min), static_cast<int>(hi)));
+				static_cast<int>(pop_cfg->base_level_min),
+				std::max(static_cast<int>(hi), static_cast<int>(pc_maxbaselv(sd)))));
 		sd->status.base_level = cap_value(rolled, 1, MAX_LEVEL);
 	} else {
 		// Upstream defaults an undeclared BaseLevel to 99, which is how a
@@ -5272,7 +5976,9 @@ static map_session_data* population_engine_spawn_shell(int16_t map_id, int x, in
 		// declares one; this stays as the upstream fallback.
 		sd->status.base_level = 99;
 	}
-	if (pop_cfg != nullptr && pop_cfg->job_level_min >= 0) {
+	if (returning) {
+		sd->status.job_level = returning->job_level;
+	} else if (pop_cfg != nullptr && pop_cfg->job_level_min >= 0) {
 		const int16_t hi = pop_cfg->job_level_max >= 0 ? pop_cfg->job_level_max : pop_cfg->job_level_min;
 		sd->status.job_level = cap_value(population_roll_closed_range(pop_cfg->job_level_min, hi), 1, MAX_LEVEL);
 	} else {
@@ -5315,6 +6021,27 @@ static map_session_data* population_engine_spawn_shell(int16_t map_id, int x, in
 		sd->status.luk = static_cast<uint16_t>(90 + (rnd() % 20));
 	}
 
+	// RAGNAROKMAC: the rolls above are the shape of the build; spend the level's points
+	// toward them (pop_shell_spend_to_level). A stat the profile does not declare is not
+	// invested in, and a profile that declares none gets its job line's build instead of
+	// upstream's 90-109 everywhere.
+	{
+		const bool declared[6] = {
+			pop_cfg != nullptr && pop_cfg->str_min >= 0, pop_cfg != nullptr && pop_cfg->agi_min >= 0,
+			pop_cfg != nullptr && pop_cfg->vit_min >= 0, pop_cfg != nullptr && pop_cfg->intl_min >= 0,
+			pop_cfg != nullptr && pop_cfg->dex_min >= 0, pop_cfg != nullptr && pop_cfg->luk_min >= 0 };
+		const uint16 rolled[6] = { sd->status.str, sd->status.agi, sd->status.vit,
+			sd->status.int_, sd->status.dex, sd->status.luk };
+		int16_t target[6];
+		if (std::none_of(std::begin(declared), std::end(declared), [](bool d) { return d; })) {
+			pop_shell_job_build(sd->class_, target);
+		} else {
+			for (int i = 0; i < 6; ++i)
+				target[i] = declared[i] ? static_cast<int16_t>(rolled[i]) : 1;
+		}
+		pop_shell_spend_to_level(sd, target);
+	}
+
 	// RAGNAROKMAC: 4th-job trait stats (Renewal trait era). No profile default means
 	// 0 — the classic-stat fallback above is fine for base stats, but traits must not
 	// inherit the 90+ rnd%%20 fallback or every 1st/2nd job shell would be
@@ -5342,6 +6069,19 @@ static map_session_data* population_engine_spawn_shell(int16_t map_id, int x, in
 	if (pop_cfg != nullptr && pop_cfg->crt_min >= 0) {
 		const int16_t hi = pop_cfg->crt_max >= 0 ? pop_cfg->crt_max : pop_cfg->crt_min;
 		sd->status.crt = cap_value(static_cast<int16_t>(population_roll_closed_range(pop_cfg->crt_min, hi)), 0, 999);
+	}
+
+	// RAGNAROKMAC: as for the six stats above, the trait rolls are the shape of the build
+	// and the level's trait points are spent toward them. Undeclared traits stay 0.
+	{
+		const int16_t target[6] = {
+			(pop_cfg != nullptr && pop_cfg->pow_min >= 0) ? static_cast<int16_t>(sd->status.pow) : static_cast<int16_t>(0),
+			(pop_cfg != nullptr && pop_cfg->sta_min >= 0) ? static_cast<int16_t>(sd->status.sta) : static_cast<int16_t>(0),
+			(pop_cfg != nullptr && pop_cfg->wis_min >= 0) ? static_cast<int16_t>(sd->status.wis) : static_cast<int16_t>(0),
+			(pop_cfg != nullptr && pop_cfg->spl_min >= 0) ? static_cast<int16_t>(sd->status.spl) : static_cast<int16_t>(0),
+			(pop_cfg != nullptr && pop_cfg->con_min >= 0) ? static_cast<int16_t>(sd->status.con) : static_cast<int16_t>(0),
+			(pop_cfg != nullptr && pop_cfg->crt_min >= 0) ? static_cast<int16_t>(sd->status.crt) : static_cast<int16_t>(0) };
+		pop_shell_spend_traits_to_level(sd, target);
 	}
 
 	// HP/SP placeholders — status_calc_pc() overwrites these from job_stats.yml (includes
@@ -5392,7 +6132,11 @@ static map_session_data* population_engine_spawn_shell(int16_t map_id, int x, in
 	sd->canequip_tick     = 0;
 	sd->cantalk_tick      = 0;
 	sd->canskill_tick     = 0;
-	sd->state.autocast    = 1; // bypass skill_isNotOk checks that prevent skill spam
+	// RAGNAROKMAC: no sd->state.autocast here. It was set to get past skill_isNotOk's cast-spam
+	// check, but skill_amotion_leniency 0 (rAthena's default, which the app keeps) turns that check
+	// off, and raised it would only hold a shell to its attack speed, as it does a player.
+	// autocast also made every skill free (skill_consume_requirement), so shells cast without
+	// paying SP.
 	sd->cansendmail_tick  = 0;
 	sd->idletime          = tick;
 
@@ -5641,6 +6385,10 @@ static map_session_data* population_engine_spawn_shell(int16_t map_id, int x, in
 	// with ADDITEM_OVERWEIGHT. The final status_calc_pc at the end restores the correct value.
 	sd->max_weight = 2000000;
 
+	if (returning) {
+		for (const auto &gear : returning->gear)
+			population_engine_shell_equip_item(sd, gear.item_id, index, "return", gear.position);
+	} else {
 	if (weapon > 0) {
 		struct item tmp_item = {};
 		tmp_item.nameid   = weapon;
@@ -5805,6 +6553,8 @@ static map_session_data* population_engine_spawn_shell(int16_t map_id, int x, in
         population_engine_shell_equip_item(sd, pick_pool_cfg(pop_cfg->acc_r_pool),   index, "acc_r", EQP_ACC_R);
     }
 
+	} // Fresh shells draw gear from their profile; returns keep their worn choices.
+
     // Stock consumable trap items for jobs that use trap skills.
     // Hunter/Sniper use Booby_Trap (1065); Ranger uses Special_Alloy_Trap (7940);
     // Genetic uses Seed_Of_Horny_Plant (6210).  Amount is generous to avoid running out.
@@ -5884,6 +6634,16 @@ static map_session_data* population_engine_spawn_shell(int16_t map_id, int x, in
     sd->vd.look[LOOK_HEAD_MID] = sd->status.head_mid;
     sd->vd.look[LOOK_HEAD_BOTTOM] = sd->status.head_bottom;
     sd->vd.look[LOOK_ROBE] = sd->status.robe;
+
+    if (returning) {
+        const uint32 mount_options = OPTION_RIDING | OPTION_FALCON | OPTION_DRAGON
+            | OPTION_WUG | OPTION_WUGRIDER | OPTION_MADOGEAR;
+        pc_setoption(sd, (sd->sc.option & ~mount_options) | returning->option, MADO_ROBOT);
+        sd->status.hair = sd->vd.look[LOOK_HAIR] = returning->hair;
+        sd->status.hair_color = sd->vd.look[LOOK_HAIR_COLOR] = returning->hair_color;
+        sd->status.clothes_color = sd->vd.look[LOOK_CLOTHES_COLOR] =
+            population_fit_cloth_color(sd->status.class_, returning->cloth_color); // RAGNAROKMAC
+    }
 
     // Elysium stress_test fake PCs: sync paper doll to the map before spawn so observers match stock AC shells.
     clif_changelook(sd, LOOK_BASE, sd->vd.look[LOOK_BASE]);
@@ -6029,6 +6789,7 @@ static map_session_data* population_engine_spawn_shell(int16_t map_id, int x, in
 			struct TmpStock { t_itemid nameid; int16 amount; uint32_t price_override; const PopulationVendorStock* src = nullptr; };
 			std::vector<TmpStock> stock;
 			const int max_slots = vendor_cfg ? vendor_cfg->max_slots : 12;
+			bool supply_short = false; // RAGNAROKMAC: a mod's supply kept a Pool line out
 
 			if (vendor_cfg && vendor_cfg->type == PopulationVendorType::Static && !vendor_cfg->stock.empty()) {
 				// Static vending: use exactly the YAML-defined stock.
@@ -6107,6 +6868,11 @@ static map_session_data* population_engine_spawn_shell(int16_t map_id, int x, in
 						p = p * price_pct / 100;
 						band_lo = band_lo * price_pct / 100;
 					}
+					// RAGNAROKMAC: and the item's own price percentage, if its mod set one.
+					if (const int item_pct = pop_item_price_pct(vs.nameid); item_pct != 100) {
+						p = p * item_pct / 100;
+						band_lo = band_lo * item_pct / 100;
+					}
 					const bool plain = vs.refine_max == 0 && vs.element == 0 && vs.stars == 0 && vs.cards.empty();
 					if (plain && vendor_cfg->undercut_chance > 0 &&
 					    static_cast<int>(rnd() % 100) < vendor_cfg->undercut_chance) {
@@ -6138,14 +6904,51 @@ static map_session_data* population_engine_spawn_shell(int16_t map_id, int x, in
 					if (p > MAX_ZENY) p = MAX_ZENY;
 					return static_cast<uint32_t>(p);
 				};
-				for (int i = 0; i < want; ++i) {
+				// RAGNAROKMAC: a mod's supply limit (pop_item_supply_cap). What
+				// every shell stall already lists counts against it, so the stalls
+				// share one supply; a line with none left is passed over and the
+				// next one in the shuffle taken. Without a limit this takes the
+				// first `want` lines, as it always has.
+				std::unordered_map<t_itemid, int64> listed;
+				bool listed_built = false;
+				for (int i = 0; i < pool_n && static_cast<int>(stock.size()) < want; ++i) {
 					const auto &vs = vendor_cfg->pool[idx[i]];
-					stock.push_back({ vs.nameid, vs.amount, roll_price(vs), &vs });
+					int16 amount = vs.amount;
+					const bool plain = vs.refine_max == 0 && vs.element == 0 && vs.stars == 0 && vs.cards.empty();
+					const int64 cap = mod_entry != nullptr && plain ? pop_item_supply_cap(vs.nameid) : -1;
+					if (cap >= 0) {
+						if (!listed_built) {
+							for (map_session_data* osd : g_population_engine_pcs) {
+								if (!osd || osd == sd || !osd->state.vending) continue;
+								for (int vi = 0; vi < osd->vend_num; ++vi) {
+									const int16 ci = osd->vending[vi].index;
+									if (ci < 0 || ci >= MAX_CART) continue;
+									const struct item& ct = osd->cart.u.items_cart[ci];
+									if (ct.nameid != 0 && ct.refine == 0 && ct.card[0] == 0)
+										listed[ct.nameid] += osd->vending[vi].amount;
+								}
+							}
+							listed_built = true;
+						}
+						int64& used = listed[vs.nameid];
+						if (used >= cap) {
+							supply_short = true;
+							continue;
+						}
+						if (amount > cap - used)
+							amount = static_cast<int16>(cap - used);
+						std::shared_ptr<item_data> sid = item_db.find(vs.nameid);
+						used += sid && sid->equip != 0 ? 1 : amount; // equipment lists one a slot
+					}
+					stock.push_back({ vs.nameid, amount, roll_price(vs), &vs });
 				}
 
 				// Fallthrough to built-in defaults is undesirable for Pool: an
 				// empty pool is a config error, not a reason to serve potions.
-				if (stock.empty())
+				// RAGNAROKMAC: and a pool its mod's supply has emptied opens no
+				// stall at all; the rotation pass releases the shell and the mod
+				// pass rolls the spot again.
+				if (stock.empty() && !supply_short)
 					vendor_cfg = nullptr;
 
 			} else if (vendor_cfg && vendor_cfg->type == PopulationVendorType::Dynamic) {
@@ -6308,7 +7111,7 @@ static map_session_data* population_engine_spawn_shell(int16_t map_id, int x, in
 
 			}
 
-			if (!vendor_cfg || stock.empty()) {
+			if ((!vendor_cfg || stock.empty()) && !supply_short) {
 				// Built-in default consumable stock.
 				static const TmpStock kDefaultStock[] = {
 					{ 501, 100, 0 },  // Red Potion
@@ -6326,6 +7129,9 @@ static map_session_data* population_engine_spawn_shell(int16_t map_id, int x, in
 				for (const auto &s : kDefaultStock)
 					stock.push_back(s);
 			}
+
+			// RAGNAROKMAC: shut by its mod's supply, not by a failure (pop_mod_vendor_done).
+			sd->pop.vendor_supply_empty = supply_short && stock.empty();
 
 			// Grant MC_VENDING and cart.
 			pc_skill(sd, MC_VENDING, 10, ADDSKILL_PERMANENT_GRANTED);
@@ -6525,6 +7331,9 @@ static void population_engine_persist_companion_sql(
 		" duty=IF(owner_account_id=VALUES(owner_account_id) AND owner_char_id IN (0, VALUES(owner_char_id)), duty, 0),"
 		" heal_at=IF(owner_account_id=VALUES(owner_account_id) AND owner_char_id IN (0, VALUES(owner_char_id)), heal_at, 75),"
 		" emergency_at=IF(owner_account_id=VALUES(owner_account_id) AND owner_char_id IN (0, VALUES(owner_char_id)), emergency_at, 35),"
+		" rest_below=IF(owner_account_id=VALUES(owner_account_id) AND owner_char_id IN (0, VALUES(owner_char_id)), rest_below, 30),"
+		" rest_until=IF(owner_account_id=VALUES(owner_account_id) AND owner_char_id IN (0, VALUES(owner_char_id)), rest_until, 95),"
+		" roam=IF(owner_account_id=VALUES(owner_account_id) AND owner_char_id IN (0, VALUES(owner_char_id)), roam, 0)," // RAGNAROKMAC (roam)
 		" given_mask=IF(owner_account_id=VALUES(owner_account_id) AND owner_char_id IN (0, VALUES(owner_char_id)), given_mask, 0),"
 		" gear_detail=IF(owner_account_id=VALUES(owner_account_id) AND owner_char_id IN (0, VALUES(owner_char_id)), gear_detail, NULL),"
 		" owner_account_id=VALUES(owner_account_id), owner_char_id=VALUES(owner_char_id),"
@@ -6647,7 +7456,7 @@ static uint32_t pop_companion_given_worn(const map_session_data *shell)
 /// player's, and "inventory full" is not a reason for it to stop existing. Returns false (and
 /// leaves the item on the companion) only when it could neither be carried nor dropped.
 static bool pop_companion_hand_back(map_session_data *owner, map_session_data *shell, int16 i,
-	e_log_pick_type log_type)
+	e_log_pick_type log_type, int32 amount)
 {
 	struct item &slot = shell->inventory.u.items_inventory[i];
 	if (!slot.nameid || slot.amount <= 0)
@@ -6658,7 +7467,9 @@ static bool pop_companion_hand_back(map_session_data *owner, map_session_data *s
 	shell->pop.companion_given_mask &= ~worn;
 	struct item tmp = slot;
 	tmp.equip = 0;
-	const int32 amount = slot.amount;
+	// 0 = the whole stack. A trade passes what it added: the rest of the stack is the
+	// companion's own (its potions).
+	amount = (amount <= 0 || amount > slot.amount) ? slot.amount : amount;
 	if (pc_additem(owner, &tmp, amount, log_type) != ADDITEM_SUCCESS
 		&& map_addflooritem(&tmp, amount, owner->m, owner->x, owner->y, 0, 0, 0, 0, 0) == 0) {
 		ShowWarning("population_engine: could not return item %u from companion %u to owner %u; "
@@ -6671,8 +7482,8 @@ static bool pop_companion_hand_back(map_session_data *owner, map_session_data *s
 
 // Goal 2 (trade): after traded equipment lands in the companion's inventory,
 // equip every equip-flagged item immediately (the owner gave it to be worn).
-// Items without equip flags (consumables etc) are returned to the owner —
-// companions are gear carriers, not mules.
+// Items without equip flags (consumables etc) stay in a companion's bag, which is
+// saved with it (population_shell_inventory).
 void population_engine_companion_trade_snapshot(map_session_data *shell)
 {
 	if (!shell || !population_engine_is_population_pc(shell->id)) return;
@@ -6708,9 +7519,12 @@ void population_engine_companion_equip_traded(map_session_data *owner, map_sessi
 		if (!traded(i)) continue;
 		struct item_data *id = itemdb_search(slot.nameid);
 		if (!id) continue;
-		if (id->equip) {
-			// Player gear this piece pushes off goes back to the player: the companion's
-			// inventory is not persisted, so an item left there is gone at the next restart.
+		// A companion's ammunition stays in the bag: the ammo code picks the stack per target,
+		// and equipping each traded stack handed the one before it back to the owner.
+		if (id->equip && !((id->equip & EQP_AMMO) && population_shell_has_own_inventory(shell))) {
+			// Player gear this piece pushes off goes back to the player: without Companion
+			// inventory the companion's bag is not saved, so an item left there would be gone at
+			// the next restart; with it, the bag is saved, but the gear is still the player's.
 			std::vector<int16> given_before;
 			for (int16 j = 0; j < MAX_INVENTORY; ++j) {
 				const struct item &w = shell->inventory.u.items_inventory[j];
@@ -6726,9 +7540,16 @@ void population_engine_companion_equip_traded(map_session_data *owner, map_sessi
 					(void)pop_companion_hand_back(owner, shell, j, LOG_TYPE_TRADE);
 			}
 			shell->pop.companion_given_mask = pop_companion_given_worn(shell);
-		} else {
+		} else if (!population_shell_has_own_inventory(shell)) {
+			// A companion keeps it: potions, catalysts and the like are what it lives on
+			// (population_shell_inventory). Anyone else hands it back.
 			// Non-equipment goes back: into the owner's bag, or at their feet when it is full.
-			(void)pop_companion_hand_back(owner, shell, i, LOG_TYPE_TRADE);
+			// Only what the trade added: a potion of the kind the companion carries stacks
+			// onto its own, and handing back the whole stack gave the player those too.
+			const bool grew = before.size() == static_cast<size_t>(MAX_INVENTORY)
+				&& static_cast<uint32_t>(slot.nameid) == before[i].first;
+			(void)pop_companion_hand_back(owner, shell, i, LOG_TYPE_TRADE,
+				grew ? slot.amount - before[i].second : 0);
 		}
 	}
 	if (equipped_any)
@@ -7061,6 +7882,7 @@ void population_engine_persist_companion_gear(map_session_data *sd)
 		" shadow_shoes_nameid=%u, shadow_acc_l_nameid=%u, shadow_acc_r_nameid=%u,"
 		" base_level=%d, job_level=%d, job_id=%d, str_=%d, agi_=%d, vit_=%d, intl_=%d,"
 		" dex_=%d, luk_=%d, pow_=%d, sta_=%d, wis_=%d, spl_=%d, con_=%d, crt_=%d,"
+		" rest_below=%d, rest_until=%d,"
 		" mode=%d, duty=%d, heal_at=%d, emergency_at=%d, given_mask=%u, gear_detail='%s'%s"
 		" WHERE owner_account_id=%u AND owner_char_id=%u AND shell_index=%u",
 		weapon, shield, head_top, head_mid, head_low,
@@ -7070,6 +7892,7 @@ void population_engine_persist_companion_gear(map_session_data *sd)
 		sd->status.base_level, sd->status.job_level, sd->status.class_, sd->status.str, sd->status.agi,
 		sd->status.vit, sd->status.int_, sd->status.dex, sd->status.luk,
 		sd->status.pow, sd->status.sta, sd->status.wis, sd->status.spl, sd->status.con, sd->status.crt,
+		(int)sd->pop.companion_rest_below, (int)sd->pop.companion_rest_until,
 		(int)sd->pop.companion_mode, (int)sd->pop.role,
 		(int)sd->pop.companion_heal_at, (int)sd->pop.companion_emergency_at,
 		pop_companion_given_worn(sd),
@@ -7086,6 +7909,8 @@ void population_engine_persist_companion_gear(map_session_data *sd)
 		return;
 	}
 	ShowInfo("population_engine: gear re-snapshotted for companion %u (owner %u)\n", index_, owner);
+	// And the rest of the bag, which the trade, recall and logout paths that call this change too.
+	population_shell_inventory_save(sd, true);
 }
 
 void population_engine_persist_recruited_companion(map_session_data *sd, map_session_data *peer)
@@ -7703,7 +8528,7 @@ void population_engine_companion_list_raw(uint32_t owner_account, int fd)
 	if (mmysql_handle == nullptr) return;
 	char q[400];
 	snprintf(q, sizeof(q),
-		"SELECT name, job_id, active, favorite, base_level, hom_enabled, duty FROM `cp_companion_persistence`"
+		"SELECT name, job_id, active, favorite, base_level, hom_enabled, duty, job_level, heal_at, emergency_at, rest_below, rest_until, roam FROM `cp_companion_persistence`"
 		" WHERE owner_account_id=%u AND owner_char_id=%u ORDER BY favorite DESC, name ASC",
 		owner_account, pop_online_char(owner_account));
 	if (Sql_Query(mmysql_handle, q) != SQL_SUCCESS) {
@@ -7723,7 +8548,21 @@ void population_engine_companion_list_raw(uint32_t owner_account, int fd)
 		Sql_GetData(mmysql_handle, 4, &data, nullptr); int base_lv = atoi(data);
 		Sql_GetData(mmysql_handle, 5, &data, nullptr);
 		int hom_enabled = (data != nullptr && data[0] != '\0') ? atoi(data) : -1;
-		Sql_GetData(mmysql_handle, 6, &data, nullptr); int duty = data != nullptr ? atoi(data) : 0;
+		// Field 6 is the persisted duty (upstream) and 7 the job level this fork needs for
+		// rebirth readiness; both are read, and a summoned companion's live values win.
+		Sql_GetData(mmysql_handle, 6, &data, nullptr);
+		int duty = data != nullptr ? atoi(data) : 0;
+		Sql_GetData(mmysql_handle, 7, &data, nullptr);
+		int row_job_lv = (data != nullptr && data[0] != '\0') ? atoi(data) : 0;
+		// The Battle tab's thresholds, so it shows what is saved instead of its defaults.
+		Sql_GetData(mmysql_handle, 8, &data, nullptr); int heal_at = data != nullptr ? atoi(data) : 75;
+		Sql_GetData(mmysql_handle, 9, &data, nullptr); int emergency_at = data != nullptr ? atoi(data) : 35;
+		Sql_GetData(mmysql_handle, 10, &data, nullptr); int rest_below = data != nullptr ? atoi(data) : 30;
+		Sql_GetData(mmysql_handle, 11, &data, nullptr); int rest_until = data != nullptr ? atoi(data) : 95;
+		// RAGNAROKMAC (roam): whether it roams (-1 while the server does not allow roaming, so the
+		// window draws no control), and whether the summoned one is dead.
+		Sql_GetData(mmysql_handle, 12, &data, nullptr); int roam = data != nullptr ? atoi(data) : 0;
+		int dead = 0;
 		// and a name is player-chosen, so scrub before sending.
 		for (char *c = namebuf; *c != '\0'; ++c) {
 			if (*c == '|' || *c == '\n' || *c == '\r')
@@ -7734,6 +8573,7 @@ void population_engine_companion_list_raw(uint32_t owner_account, int fd)
 		// base_level is the spawn-time snapshot, which lags a companion that has
 		// been levelling in the party.
 		int live_lv = 0;
+		int live_jl = 0;
 		const char *live_job = nullptr;
 		// The live CLASS, not just its name: the pet switch's applicability is a
 		// property of the class, and a shell that just advanced must be judged on the
@@ -7756,6 +8596,13 @@ void population_engine_companion_list_raw(uint32_t owner_account, int fd)
 			live_class = sd->status.class_;
 			// The duty it is acting on; the row only catches up on the next snapshot.
 			duty = sd->pop.role;
+			heal_at = sd->pop.companion_heal_at;
+			emergency_at = sd->pop.companion_emergency_at;
+			rest_below = sd->pop.companion_rest_below;
+			rest_until = sd->pop.companion_rest_until;
+			roam = sd->pop.companion_roam ? 1 : 0; // RAGNAROKMAC (roam)
+			dead = pc_isdead(sd) ? 1 : 0;
+			live_jl = sd->status.job_level;
 			break;
 		}
 
@@ -7767,12 +8614,33 @@ void population_engine_companion_list_raw(uint32_t owner_account, int fd)
 		if (population_engine_class_can_have_homunculus(tree_class))
 			hom = (hom_enabled == 0) ? 0 : 1;
 
+		// Rebirth readiness, same tri-state idea: -1 = this class cannot be reborn at all,
+		// 0 = a 2nd class that has not met the gate yet, 1 = ready now. It uses the SAME
+		// predicate the rebirth command does, so the panel cannot offer a control the
+		// server would refuse.
+		int rebirth = -1;
+		{
+			const int32_t rb_base = live_lv > 0 ? live_lv : base_lv;
+			const int32_t rb_job = live_jl > 0 ? live_jl : row_job_lv;
+			const uint16_t rb_target = pop_companion_next_job(tree_class, rb_base, rb_job,
+				/*allow_rebirth=*/true);
+			if (rb_target != 0 && pop_job_change_is_rebirth(tree_class, rb_target))
+				rebirth = 1;
+			else if (tree_class >= 7 && tree_class <= 20)
+				rebirth = 0;
+		}
+
+		if (!battle_config.population_engine_companion_roam) // RAGNAROKMAC (roam)
+			roam = -1;
 		char msg[NAME_LENGTH + 160];
-		// The duty travels so the panel can show it: kept only in the panel's memory, its
-		// badge went blank on every restart or reload although the server still had it.
-		snprintf(msg, sizeof(msg), "@CP|%s|%s|%d|%d|%d|%d|%s|%d|%d",
+		// The duty travels so the panel can show it (kept only in the panel's memory, its
+		// badge went blank on every restart or reload although the server still had it), and
+		// rebirth readiness after it so both appended fields keep their positions.
+		// The thresholds come last, so every field before them keeps its position.
+		snprintf(msg, sizeof(msg), "@CP|%s|%s|%d|%d|%d|%d|%s|%d|%d|%d|%d|%d|%d|%d|%d|%d",
 			namebuf, job_name(job_id), base_lv, active, fav, live_lv,
-			live_job != nullptr ? live_job : "", hom, duty);
+			live_job != nullptr ? live_job : "", hom, duty, rebirth,
+			heal_at, emergency_at, rest_below, rest_until, roam, dead);
 		clif_displaymessage(fd, msg);
 		count++;
 	}
@@ -7908,6 +8776,12 @@ static void population_engine_recall_one_companion(map_session_data *owner, int1
 	shell->status.str = str; shell->status.agi = agi;
 	shell->status.vit = vit; shell->status.int_ = intl;
 	shell->status.dex = dex; shell->status.luk = luk;
+	// RAGNAROKMAC: the spawn above spent level 99's points on a job build and left
+	// what the build didn't need in status_point / trait_point. The saved build has
+	// replaced those stats, so the leftovers are not this companion's: kept, the
+	// next growth poll would spend them on top of it, on every recall.
+	shell->status.status_point = 0;
+	shell->status.trait_point  = 0;
 
 	population_engine_shell_equip_item(shell, armor, index_, "armor");
 	population_engine_shell_equip_item(shell, shoes, index_, "shoes");
@@ -7935,6 +8809,8 @@ static void population_engine_recall_one_companion(map_session_data *owner, int1
 	pop_companion_reequip_own(shell, (EQP_HAND_R | EQP_HAND_L | EQP_ARMOR | EQP_SHOES | EQP_GARMENT
 		| EQP_HEAD_TOP | EQP_HEAD_MID | EQP_HEAD_LOW | EQP_ACC_L | EQP_ACC_R)
 		& ~pop_companion_worn_positions(shell));
+	// RAGNAROKMAC (companion inventory): its own bag, not what the spawn stocked.
+	population_shell_inventory_restore(shell);
 	status_calc_pc(shell, SCO_NONE);
 
 	// Mark as the owner's companion and align membership with the owner.
@@ -8090,7 +8966,7 @@ int population_engine_recall_companions(map_session_data *owner, uint32_t only_i
 		" costume_top_nameid, costume_mid_nameid, costume_low_nameid, costume_garment_nameid,"
 		" shadow_armor_nameid, shadow_weapon_nameid, shadow_shield_nameid,"
 		" shadow_shoes_nameid, shadow_acc_l_nameid, shadow_acc_r_nameid, skill_preset, given_mask,"
-		" gear_detail FROM `cp_companion_persistence` WHERE owner_account_id=%u AND owner_char_id=%u AND active=1%s",
+		" rest_below, rest_until, gear_detail FROM `cp_companion_persistence` WHERE owner_account_id=%u AND owner_char_id=%u AND active=1%s",
 		owner->status.account_id, owner->status.char_id, only_index != 0 ? " AND shell_index=" : "");
 	// The index is a number, so append it rather than parameterising the format.
 	if (only_index != 0) {
@@ -8184,6 +9060,9 @@ int population_engine_recall_companions(map_session_data *owner, uint32_t only_i
 		const char* skill_preset = (data != nullptr) ? presetbuf : nullptr;
 		data = next(); const uint32_t given_mask = data != nullptr ? static_cast<uint32_t>(strtoul(data, nullptr, 10)) : 0;
 		// v11: every worn piece in full; NULL for a row saved before it existed.
+		// v12: when it rests; -1 when the row has no such columns.
+		data = next(); const int rest_below_ = data != nullptr ? atoi(data) : -1;
+		data = next(); const int rest_until_ = data != nullptr ? atoi(data) : -1;
 		data = next(); const std::string gear_detail = data != nullptr ? data : "";
 		if (index_ == 0 || job_id == 0) continue;
 		// The column holds rAthena's e_sex, written from status.sex: 0 = SEX_FEMALE, 1 = SEX_MALE.
@@ -8198,12 +9077,17 @@ int population_engine_recall_companions(map_session_data *owner, uint32_t only_i
 			namebuf, c_top, c_mid, c_low, c_garment, sh_armor, sh_weapon, sh_shield, sh_shoes, sh_acc_l, sh_acc_r,
 			pow_, sta_, wis_, spl_, con_, crt_, mode_, duty_, heal_at_, emergency_at_,
 			skill_preset, gear_detail.empty() ? nullptr : gear_detail.c_str());
-		// Which of the re-equipped pieces the player gave: restored here rather than threaded
-		// through recall_one_companion, and narrowed to what the shell actually wears.
+		// Which of the re-equipped pieces the player gave, and when it rests: restored here rather
+		// than threaded through recall_one_companion, the gear narrowed to what the shell wears.
 		for (map_session_data *shell : g_population_engine_pcs) {
 			if (shell != nullptr && shell->status.char_id == POPULATION_ENGINE_CHAR_ID_BASE + index_) {
 				shell->pop.companion_given_mask = given_mask;
 				shell->pop.companion_given_mask = pop_companion_given_worn(shell);
+				// v12: when it rests. 0 is a real choice (never); -1 is a row without the columns.
+				if (rest_below_ >= 0 && rest_below_ <= 90 && rest_until_ >= rest_below_ + 5 && rest_until_ <= 100) {
+					shell->pop.companion_rest_below = static_cast<int16_t>(rest_below_);
+					shell->pop.companion_rest_until = static_cast<int16_t>(rest_until_);
+				}
 				break;
 			}
 		}
@@ -8211,6 +9095,7 @@ int population_engine_recall_companions(map_session_data *owner, uint32_t only_i
 	}
 	if (recalled > 0) {
 		ShowInfo("Population engine: recalled %d companion(s) for owner %u\n", recalled, owner->status.account_id);
+		population_companion_roam_restore(owner); // RAGNAROKMAC (roam)
 		// Roster changed: refresh any open panel without making it poll.
 		population_engine_push_companion_list(owner);
 		// RAGNAROKMAC: re-sync the party list after a recall, from the map's own
@@ -8440,6 +9325,56 @@ static char get_job_required_sex(uint16_t job_id) {
     return '\0';
 }
 
+/// RAGNAROKMAC: the highest clothes colour the official client has a body palette for.
+///
+/// MAX_CLOTH_COLOR (max_cloth_color, 7) is right for 3rd and 4th classes, which ship
+/// palettes 0-7, but most older classes ship fewer: a shell rolled past them asks the
+/// client for a .pal that does not exist and is drawn in the default colours. Counted
+/// from kRO's and iRO's data.grf (data/palette/몸/<class>_<sex>_<n>.pal), both sexes,
+/// and the Peco a Knight or Crusader rides, since the engine mounts them.
+static uint16_t get_job_max_cloth_color(uint16_t job_id) {
+    switch (job_id) {
+        // Palettes 0-3
+        case JOB_ASSASSIN: case JOB_CRUSADER: case JOB_CRUSADER2: case JOB_MONK:
+        case JOB_SAGE: case JOB_ROGUE: case JOB_DANCER:
+        case JOB_LORD_KNIGHT: case JOB_LORD_KNIGHT2: case JOB_HIGH_PRIEST:
+        case JOB_HIGH_WIZARD: case JOB_WHITESMITH: case JOB_SNIPER:
+        case JOB_ASSASSIN_CROSS: case JOB_PALADIN: case JOB_PALADIN2:
+        case JOB_CHAMPION: case JOB_PROFESSOR: case JOB_STALKER: case JOB_CREATOR:
+        case JOB_CLOWN: case JOB_GYPSY:
+        case JOB_BABY_ASSASSIN: case JOB_BABY_CRUSADER: case JOB_BABY_CRUSADER2:
+        case JOB_BABY_MONK: case JOB_BABY_SAGE: case JOB_BABY_ROGUE:
+            return static_cast<uint16_t>(std::min<int32>(3, MAX_CLOTH_COLOR));
+
+        // Palettes 0-4
+        case JOB_SWORDMAN: case JOB_MAGE: case JOB_ARCHER: case JOB_ACOLYTE:
+        case JOB_MERCHANT: case JOB_THIEF:
+        case JOB_KNIGHT: case JOB_KNIGHT2: case JOB_PRIEST: case JOB_WIZARD:
+        case JOB_BLACKSMITH: case JOB_HUNTER: case JOB_ALCHEMIST: case JOB_BARD:
+        case JOB_SWORDMAN_HIGH: case JOB_MAGE_HIGH: case JOB_ARCHER_HIGH:
+        case JOB_ACOLYTE_HIGH: case JOB_MERCHANT_HIGH: case JOB_THIEF_HIGH:
+        case JOB_BABY_SWORDMAN: case JOB_BABY_MAGE: case JOB_BABY_ARCHER:
+        case JOB_BABY_ACOLYTE: case JOB_BABY_MERCHANT: case JOB_BABY_THIEF:
+        case JOB_BABY_KNIGHT: case JOB_BABY_KNIGHT2: case JOB_BABY_PRIEST:
+        case JOB_BABY_WIZARD: case JOB_BABY_BLACKSMITH: case JOB_BABY_HUNTER:
+        case JOB_BABY_ALCHEMIST: case JOB_BABY_BARD: case JOB_BABY_DANCER:
+            return static_cast<uint16_t>(std::min<int32>(4, MAX_CLOTH_COLOR));
+
+        default:
+            return MAX_CLOTH_COLOR;
+    }
+}
+
+/// RAGNAROKMAC: `color` if this class has a palette for it, otherwise a colour it does have.
+/// Re-rolled rather than clamped, so the class's top colour is not picked more often than
+/// the rest.
+static uint16_t population_fit_cloth_color(uint16_t job_id, uint16_t color) {
+    const int32 max = get_job_max_cloth_color(job_id);
+    if (color <= max || max < MIN_CLOTH_COLOR)
+        return color;
+    return static_cast<uint16_t>(population_roll_closed_range(MIN_CLOTH_COLOR, max));
+}
+
 char population_engine_job_required_sex(uint16_t job_id) {
     return get_job_required_sex(job_id);
 }
@@ -8485,6 +9420,16 @@ static uint16_t find_valid_equip_item(uint32 equip_type) {
 // Get appropriate weapon item ID for a job
 // Get base job class (1st class) from any job ID
 static uint16_t get_base_job(uint16_t job_id) {
+    // RAGNAROKMAC: rAthena's own answer first. The ranges below start with
+    // JOB_KNIGHT..JOB_ROYAL_GUARD, which is ids 7..4066: nearly every job came back a
+    // Swordman, so one with no rows of its own (a Super Novice, a Gunslinger, a High Mage)
+    // was given the Swordman's skills and gear. The map id knows each job's first class,
+    // the expanded jobs their own (Gunslinger, Ninja, Taekwon, Summoner).
+    if (const uint64 mapid = pc_jobid2mapid(job_id); mapid != static_cast<uint64>(-1)) {
+        const int32 base = pc_mapid2jobid(mapid & MAPID_FIRSTMASK, SEX_MALE);
+        if (base >= 0)
+            return static_cast<uint16_t>(base);
+    }
     // Map advanced jobs to their base 1st class
     if (job_id == JOB_SWORDMAN || (job_id >= JOB_KNIGHT && job_id <= JOB_ROYAL_GUARD) ||
         (job_id >= JOB_BABY_KNIGHT && job_id <= JOB_BABY_ROYAL_GUARD) ||
@@ -8992,6 +9937,7 @@ bool population_engine_start(const PopulationEngineConfig& config, PopulationEng
 }
 
 void population_engine_stop() {
+	population_shell_returns_clear();
     // Cancel all timers first so no stale timer fires after running=false is set
     // or after a subsequent start() sets running=true again.
     // Timer operations are main-thread-only and must not be done under the mutex.
@@ -9073,6 +10019,9 @@ void population_engine_on_shell_damaged(map_session_data *sd, struct block_list 
 		return;
 	sd->pop.last_attacked_tick = gettick();
 	sd->pop.last_attacker_id   = (src != nullptr) ? static_cast<uint32_t>(src->id) : 0u;
+	// #373 diagnostics: the hit that kills a shell lands here with HP already 0, before pc_dead.
+	if (status_isdead(*sd))
+		sd->pop.diag_zero_hp_tick = sd->pop.last_attacked_tick;
 	// last_damage_received is set by the caller (pc_damage) before calling here.
 	// Capture the skill_id from the attacker's unit_data (if any) for SkillUsed condition.
 	// unit_data::skill_id holds the skill currently being/just executed by the attacker;
@@ -9088,7 +10037,10 @@ void population_engine_on_shell_damaged(map_session_data *sd, struct block_list 
 	// mob_skill_db closedattacked / longrangeattacked event-driven semantics.
 	// SelfTargeted / MeleeAttacked / RangeAttacked conditions are satisfied right
 	// now (last_attacked_tick is fresh), so don't wait for the next poll tick.
-	population_engine_shell_reactive_cast(sd);
+	// RAGNAROKMAC (shell control API): a held shell does not fight back; a mob
+	// train has to stay a train.
+	if (!population_engine_shell_is_held(sd))
+		population_engine_shell_reactive_cast(sd);
 }
 
 void population_engine_combat_shell_stop(map_session_data *sd)
@@ -9140,6 +10092,8 @@ void population_engine_on_party_chat(map_session_data *from_sd, const char *mess
 		return;
 	if (population_engine_is_population_pc(from_sd->id) || from_sd->status.party_id == 0)
 		return;
+	// RAGNAROKMAC (companion strategies): every member's line, for On: party_chat rules and "<name> trace".
+	population_strategy_on_party_chat(from_sd, message);
 	// Leadership is resolved at command time. A transferred party immediately
 	// transfers command authority without rewriting companion ownership.
 	if (!party_isleader(from_sd))
@@ -9266,6 +10220,7 @@ void population_engine_on_party_chat(map_session_data *from_sd, const char *mess
 			if (!pop_is_companion(bot) || bot->status.party_id != from_sd->status.party_id)
 				continue;
 			if (pc_isdead(bot)) continue;
+			population_companion_roam_recalled(bot); // RAGNAROKMAC (roam): it follows again
 			if (bot->m == from_sd->m && distance_bl(bot, from_sd) <= 3) continue;
 			int16_t tx = from_sd->x, ty = from_sd->y;
 			map_search_freecell(from_sd, from_sd->m, &tx, &ty, 2, 2, 0);
@@ -9288,6 +10243,9 @@ void population_engine_on_whisper_to_population_pc(map_session_data* from_sd, ma
 	if (population_engine_is_population_pc(from_sd->id))
 		return;
 	if (!population_engine_is_population_pc(bot_sd->id))
+		return;
+	// RAGNAROKMAC (shell control API): a held shell answers through its script.
+	if (population_shell_control_whisper(from_sd, bot_sd, message))
 		return;
 
 	// Party request: if the player whispers a party-related keyword the shell accepts or
@@ -9389,11 +10347,18 @@ void population_engine_on_global_chat_mention(map_session_data* from_sd, const c
 			continue;
 		if (!bot->status.name[0])
 			continue;
+		if (population_engine_shell_is_held(bot))
+			continue;
 		if (stristr(message, bot->status.name) == nullptr)
 			continue;
 		population_engine_deliver_chat_reply_locked(bot, nullptr);
 	}
 }
+
+// RAGNAROKMAC: shell control API for mods' NPC scripts (see the file).
+#include "population_engine/runtime/population_shell_control.cpp"
+#include "population_engine/runtime/population_shell_selling.cpp"
+#include "population_engine/runtime/population_companion_roam.cpp" // RAGNAROKMAC (roam)
 
 void do_final_population_engine() {
 	// Stop first so shells are released while all DB shared_ptrs are still valid.
@@ -9407,6 +10372,7 @@ void do_final_population_engine() {
 	population_spawn_db().clear();
 	population_names_db().clear();
 	population_skill_db().clear();
+	population_strategy_final(); // RAGNAROKMAC (companion strategies)
 }
 
 // ============================================================

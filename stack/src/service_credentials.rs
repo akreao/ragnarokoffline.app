@@ -12,6 +12,36 @@ use std::path::{Path, PathBuf};
 const ERROR: &str = "Managed service credentials are missing or damaged. Preserve the credential directory and database backup; restore them together before starting.";
 pub const CONTAINER_DIR: &str = "/run/ragnarok-private";
 
+/// The SQL login mods' scripts use (`query_sql`, `query_logsql`): SELECT only,
+/// on every table but `login`. See `crate::cmds::grant_mod_reader`.
+pub const MOD_READER: &str = "ragnarok_mods";
+
+/// The mod reader's password for `era`, made on first use. Kept apart from
+/// the managed service credentials: most installs never create those (only
+/// sharing does), and every install's mods should be read-only.
+pub fn mod_reader_password(state: &Path, era: &str) -> Result<String, String> {
+    private_fs::directory(state)?;
+    let dir = state.join("private");
+    private_fs::directory(&dir)?;
+    let dir = dir.join("mod-reader");
+    private_fs::directory(&dir)?;
+    let path = dir.join(format!("{era}.secret"));
+    if fs::symlink_metadata(&path).is_ok() {
+        return hex(Some(private_fs::read(&path, 128)?.trim()), 64);
+    }
+    let password = private_fs::random_hex(32)?;
+    private_fs::create(&path, password.as_bytes())?;
+    Ok(password)
+}
+
+/// rathena settings that make scripts' SQL (mods' query_sql and query_logsql)
+/// log in as the mod reader. The servers keep their own login.
+pub fn mod_reader_config(password: &str) -> String {
+    format!(
+        "map_query_server_id: {MOD_READER}\nmap_query_server_pw: {password}\nlog_query_db_id: {MOD_READER}\nlog_query_db_pw: {password}\n"
+    )
+}
+
 pub struct Credentials {
     pub directory: PathBuf,
     pub root: String,
@@ -209,6 +239,22 @@ mod tests {
         assert_eq!(credentials.inter_config().lines().count(), 6);
         fs::write(dir.join("root.cnf"), "damaged").unwrap();
         assert!(credentials.write_files().is_err());
+        fs::remove_dir_all(state).unwrap();
+    }
+
+    #[test]
+    fn the_mod_reader_password_is_per_era_and_kept() {
+        let state = std::env::temp_dir().join(format!("ro-mod-reader-{}", private_fs::random_hex(12).unwrap()));
+        let renewal = mod_reader_password(&state, "renewal").unwrap();
+        assert_eq!(renewal.len(), 64);
+        assert_eq!(mod_reader_password(&state, "renewal").unwrap(), renewal, "never replaced once made");
+        assert_ne!(mod_reader_password(&state, "prerenewal").unwrap(), renewal, "each era's database has its own");
+        let config = mod_reader_config(&renewal);
+        assert_eq!(config.lines().count(), 4);
+        assert!(config.contains(&format!("map_query_server_id: {MOD_READER}\nmap_query_server_pw: {renewal}\n")));
+        assert!(config.contains(&format!("log_query_db_id: {MOD_READER}\nlog_query_db_pw: {renewal}\n")));
+        fs::write(state.join("private/mod-reader/renewal.secret"), "damaged").unwrap();
+        assert!(mod_reader_password(&state, "renewal").is_err(), "a damaged file is an error, not a new password");
         fs::remove_dir_all(state).unwrap();
     }
 }

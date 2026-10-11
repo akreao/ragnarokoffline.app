@@ -62,6 +62,21 @@ the other two and holds the water level, the lighting and the list of objects.
 Without the minimap bitmap the client asks once, gets a 404, and shows an empty
 frame. Harmless, and the first thing anyone notices.
 
+## The sky
+
+The island floats, so most of the screen around it is background. The client
+draws a sky there only for maps on its own list, which no custom map is on, so
+`mod.json` gives `ro_isle` the blue sky and white clouds of Juno:
+
+```json
+"maps": {
+  "ro_isle": { "sky": [0.4, 0.6, 0.8], "clouds": [1.0, 1.0, 1.0] }
+}
+```
+
+Without it the island hangs in black. [Custom maps](../../../docs/mods/CUSTOM_MAPS.md#the-sky-the-weather-and-the-music)
+has the other settings: weather, and the map's own music.
+
 ## Making your own
 
 ```

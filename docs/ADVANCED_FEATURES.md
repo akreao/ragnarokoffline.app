@@ -176,12 +176,46 @@ just monsters. Results sharing a name are grouped: pick the map and coordinates
 on the right, then choose **Find**. The route is drawn on the ground using the
 navigation art from your own client, and clears itself when you arrive.
 
+Results are listed in English while the English translation is on. A kRO
+client's tables name everything in Korean; ROenglishRE's dictionary
+(`SystemEN/Navi_Data.lub`) supplies the English for each name, the same way
+kRO's own client looks it up. A name the dictionary does not have yet, usually
+something kRO added recently, stays in Korean. A table already in English, as in
+an iRO client, is left as it is.
+
 The chat command takes either a destination or a name:
 
 ```
 /navi lhz_in02 100/143
 /navi Kafra
 ```
+
+### Finding this server's NPCs
+
+The NPC search reads your client's own table, which lists kRO's NPCs at kRO's
+positions. This server runs rAthena's scripts, so a few of those are not here or
+stand elsewhere, and NPCs that mods add are never listed.
+
+Turn on **Settings → Mods → navigation-server-npcs** to search the NPCs the
+server actually loads instead: the stock ones for your era and the ones every
+enabled mod adds, at the server's coordinates, under the names shown over their
+heads. NPCs only kRO has drop out of the search. Monsters, maps and routes still
+come from your client.
+
+**Settings → Mods → navigation-server-monsters** does the same for monsters:
+search finds what the server spawns, on the maps it spawns them, with the
+level, element, race and size its monster database gives -- after every mod's
+changes, so a custom monster or a randomized one shows as it is in game. The
+frequency column counts every spawn line on the map.
+
+**Settings → Mods → navigation-server-warps** routes over the server's own
+warp portals, and the portals mods add, instead of kRO's: the routes then match
+pre-renewal towns, whose gates are not where kRO's renewal ones are, and reach
+maps a mod adds. The NPCs in your client's routes that move you when spoken to
+-- sailors, signposts -- are kept, since they cannot be read from the server's
+scripts the way a portal can.
+
+The three mods are independent; turn on any of them.
 
 ### When searches come back empty
 

@@ -1,0 +1,107 @@
+# skill-tuning: the always-on part of the skill table.
+#
+# The app puts this file into rAthena's db/import/skill_db.yml, which the server
+# reads AFTER its own db/pre-re or db/re skill table. An entry whose Id already
+# exists is an UPDATE, not a replacement: only the fields written here change,
+# and everything else about the skill (its type, flags, element, requirements,
+# the fields of other levels you leave out entirely) stays as rAthena ships it.
+#
+# Every field a skill entry can have is listed, with its meaning, at the top of
+# rAthena's own table: vendor/rathena/db/pre-re/skill_db.yml (or db/re/). The
+# ones worth knowing for tuning:
+#
+#   CastTime            variable cast time, ms. DEX shortens it.
+#   FixedCastTime       renewal only: the part of the cast DEX cannot shorten.
+#                       A pre-renewal server does not even read the field.
+#   AfterCastActDelay   "aftercast delay": no skills for this long, ms.
+#   AfterCastWalkDelay  no walking for this long after the skill, ms.
+#   Cooldown            this one skill cannot be used again for this long, ms.
+#   Duration1/2         how long the skill's effect or status lasts, ms.
+#   Range, SplashArea, Knockback, HitCount, Element
+#   Requires:           SpCost, HpCost, ZenyCost, Weapon, Ammo, ItemCost, ...
+#   Flags:, DamageFlags:, CastTimeFlags:, CastDelayFlags:
+#                       on/off switches, one per line; `<Flag>: false` turns one off.
+#
+# What this file can NOT do is change a skill's damage formula: there is no
+# "damage %" field, because that lives in the server's C++. For that, see
+# lua/skill_hooks.lua.
+#
+# Two ways to write a value:
+#
+#   AfterCastActDelay: 1000          one number: the same for EVERY level.
+#
+#   AfterCastActDelay:               a list: per level.
+#     - Level: 1
+#       Time: 1000
+#     - Level: 2
+#       Time: 1200
+#
+# WATCH OUT with the list form: levels you leave out are NOT kept at stock.
+# rAthena fills every level above the last one you list, either by carrying
+# on the trend of the levels you did list or by repeating the last one. List
+# every level of the skill, as the entries below do.
+#
+# Values here are the same in both eras. Where the two eras' stock numbers
+# differ and the change should be relative to them (Fire Bolt's cast time),
+# the entries live in renewal/ and pre-renewal/ instead; see the README.
+
+Header:
+  Type: SKILL_DB
+  Version: 4    # copy it from the header of rAthena's db/import-tmpl/skill_db.yml
+
+Body:
+  # -------------------------------------------------------------------------
+  # Blessing lasts twice as long.
+  #
+  # Duration1 is how long the status the skill gives lasts. Stock is
+  # 60 s at level 1, +20 s a level, to 240 s at level 10, in both eras.
+  # What Blessing DOES (+STR/INT/DEX, curing Curse and Stone) is in the
+  # server's status code, and a mod cannot change it -- only how long it lasts.
+  # -------------------------------------------------------------------------
+  - Id: 34
+    # The Id is what picks the skill. Name is optional on an existing skill,
+    # and it is NOT checked against the Id: whatever you write REPLACES the
+    # skill's name, so a typo renames Blessing and breaks every script and Lua
+    # hook that asks for AL_BLESSING. Copy it exactly, or leave it out.
+    Name: AL_BLESSING
+    Duration1:
+      - Level: 1
+        Time: 120000
+      - Level: 2
+        Time: 160000
+      - Level: 3
+        Time: 200000
+      - Level: 4
+        Time: 240000
+      - Level: 5
+        Time: 280000
+      - Level: 6
+        Time: 320000
+      - Level: 7
+        Time: 360000
+      - Level: 8
+        Time: 400000
+      - Level: 9
+        Time: 440000
+      - Level: 10
+        Time: 480000
+
+  # -------------------------------------------------------------------------
+  # Arrow Shower: a 5x5 area at every level, no knockback, cheaper.
+  #
+  # SplashArea is the radius around the target cell: 1 = 3x3, 2 = 5x5.
+  # Stock is 2 in pre-renewal, and 1 for levels 1-5 in renewal.
+  #
+  # The server decides what is hit; the client draws the skill's effect on
+  # its own and does not read this table, so the animation may not match the
+  # new area. That is true of every SplashArea or Range change.
+  # -------------------------------------------------------------------------
+  - Id: 47
+    Name: AC_SHOWER
+    SplashArea: 2
+    Knockback: 0          # stock 2 cells
+    Requires:
+      # Only SpCost changes. The skill's other requirements (a bow, an arrow
+      # used per cast) are NOT in this entry and stay as they were. The same
+      # goes for every block inside an entry: name what you change.
+      SpCost: 10          # stock 15

@@ -1,7 +1,7 @@
 //===== Ragnarok Offline: prontera-vendors =================================
 //= Hands the settings that need a newer app build to the engine: the
-//= population limit switch, the price level and the buy shops (their count
-//= rides on a market only newer builds have). Their own file because an
+//= population limit switch and the price level (the buy shops' count is set
+//= by prontera-vendors.txt, hourly with the street). Their own file because an
 //= app build without these script commands rejects the whole file it finds
 //= them in; here that costs only these settings, and the ones in
 //= prontera-vendors.txt keep working.
@@ -12,7 +12,5 @@ OnInit:
 	.@mod$ = "prontera-vendors";
 	population_vendor_limit "prontera-vendors/", callfunc("F_ModSetting", .@mod$, "respect_limit", 1);
 	population_vendor_price "prontera-vendors/", callfunc("F_ModSetting", .@mod$, "price_pct", 100);
-	.@buy = callfunc("F_ModSetting", .@mod$, "buy_shops", 1) ? callfunc("F_ModSetting", .@mod$, "buy_stalls", 30) : 0;
-	population_vendor_count "prontera-vendors/buy/", .@buy;
 	end;
 }

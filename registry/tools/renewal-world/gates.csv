@@ -1,0 +1,126 @@
+id,map,x,y,dir,sprite,name,kind,to_map,to_x,to_y,text,switch
+dali1,mid_camp,210,292,4,10007,Transport Device,talk,dali,141,82,Do you wish to enter the Dimensional Gap?,
+dali2,moc_fild22b,222,200,4,10007,Transport Device,talk,dali,119,56,Do you wish to enter the Dimensional Gap?,
+dali3,bif_fild01,318,159,4,10007,Transport Device,talk,dali,43,92,Do you wish to enter the Dimensional Gap?,
+dali4,dic_fild02,241,31,4,10007,Transport Device,talk,dali,41,134,Do you wish to enter the Dimensional Gap?,
+mist1,bif_fild01,161,355,0,844,Log Tunnel,talk,bif_fild02,160,230,A hollow log leads through the Hazy Forest. Crawl through to the other side?,
+mist2,bif_fild02,160,226,0,844,Log Tunnel,talk,bif_fild01,161,351,A hollow log leads back through the Hazy Forest. Crawl through to the other side?,
+mora1,bif_fild02,285,332,0,844,Small Hole,talk,mora,179,74,At the end of the path is an entrance to something that looks like a small hill. Go inside?,
+mora2,bif_fild02,95,310,0,844,Small Hole,talk,mora,22,157,At the end of the path is an entrance to something that looks like a small hill. Go inside?,
+mora3,bif_fild02,174,162,0,844,Small Hole,talk,mora,58,27,At the end of the path is an entrance to something that looks like a small hill. Go inside?,
+ecl1,ecl_fild01,97,322,0,WARPNPC,Eclage Entrance,touch,eclage,100,28,,
+dic1,dic_fild01,146,281,5,492,Capital City Guard,talk,dicastes01,199,41,This road leads to El Dicastes. Enter the capital?,
+dicd1,manuk,321,182,5,450,Entrance Manager,talk,dic_dun01,33,212,This tunnel leads down to the Scaraba Hole. Go down?,
+dicd2,dic_dun01,30,216,5,492,Vigilante,talk,manuk,326,180,This tunnel leads back up to Manuk. Go up?,
+dicd3,dic_dun01,286,104,5,450,Vigilante,talk,dic_dun02,101,142,The passage behind me leads deeper into the Scaraba Hole. Go on?,
+dicd4,dic_dun01,284,102,5,450,Dirty Vigilante,talk,dic_dun03,101,142,There is another way down here. Go on?,
+dew1,alberta,247,51,4,536,Dewata Sailor,talk,dewata,232,53,This ship sails to Dewata. Come aboard?,
+dew2,dewata,229,49,6,536,Alberta Sailor,talk,alberta,245,49,This ship sails to Alberta. Come aboard?,
+dewd1,dewata,235,56,4,534,Gatekeeper of Krakatau,talk,dew_dun01,289,160,The path to Mount Krakatau starts here. Go up the volcano?,
+dewd2,dew_dun01,292,164,4,541,Gatekeeper of Krakatau,talk,dewata,232,53,Go back down to Dewata?,
+mal1,alberta,246,73,3,100,Optamara Crew,talk,malaya,271,55,This ship sails to Port Malaya. Come aboard?,
+mal2,malaya,276,55,4,100,Optamara Crew,talk,alberta,245,73,This ship sails to Alberta. Come aboard?,
+mald1,malaya,48,76,4,844,Hospital Door,talk,ma_dun01,33,110,The door of the old hospital is ajar. Go inside?,
+mald2,ma_dun01,152,23,4,858,Suspicious Wooden Stick,talk,malaya,58,76,A draught comes through a gap here. Squeeze out to Port Malaya?,
+mdo1,alberta,241,90,4,554,Odgnalam,talk,malangdo,217,85,This boat goes to Malangdo Island. Come aboard?,
+mdo2,malangdo,219,86,4,545,Kong,talk,alberta,238,90,This boat goes to Alberta. Come aboard?,
+rock1,alberta,235,27,5,4_M_SEAMAN,Karam Pucci,talk,harboro1,70,215,This ship sails to Rockridge. Come aboard?,
+rock2,harboro1,60,215,5,4_M_SEAMAN,Karam Pucci,talk,alberta,232,27,This ship sails to Alberta. Come aboard?,
+rockd1,harboro1,332,144,6,PORTAL,Underground Passage,talk,harboro2,329,187,An underground passage leads down from here. Go down?,
+rockd2,harboro2,333,187,6,PORTAL,Underground Passage,talk,harboro1,336,144,Go back up to the harbour?,
+rockm1,rockrdg2,347,216,5,4_M_SEANMCCURDY,Shawn McCurdy,talk,rockmi2,14,86,The old mine is open. Go in?,
+rockm2,rockmi2,10,86,5,4_M_SEANMCCURDY,Shawn McCurdy,talk,rockrdg2,348,214,Head back out of the mine?,
+nif1,niflheim,149,124,0,WARPNPC,Niflheim Dungeon,touch,nif_dun01,145,85,,
+nif2,nif_dun01,146,36,0,WARPNPC,Niflheim Dungeon,touch,nif_dun02,149,23,,
+iz1,iz_dun04,130,234,5,413,Gatekeeper,talk,iz_dun05,141,187,The way further down is open. Go deeper?,
+iz2,iz_dun05,142,190,5,413,Guard,talk,iz_dun04,129,232,Go back up?,
+aby1,abyss_03,91,110,5,2_BULLETIN_BOARD,Sign,touch,abyss_04,169,161,,
+aby2,abyss_04,168,166,3,1_SHADOW_NPC,Abyss Exit,touch,abyss_03,87,107,,
+ein1,ein_dun02,16,250,0,WARPNPC,Mine Shaft,touch,ein_dun03,268,279,,
+mag1,mag_dun02,247,68,0,WARPNPC,Magma Passage,touch,mag_dun03,120,120,,
+ver1,verus03,52,254,0,WARPNPC,Verus Gate,touch,verus01,243,62,,
+ver2,verus03,169,259,0,WARPNPC,Verus Gate,touch,verus02,72,19,,
+lasa1,malangdo,213,108,4,4_M_MERCAT1,Con-Chliina Crewman,talk,lasagna,206,297,This boat goes to Lasagna. Come aboard?,quest_areas
+lasa2,lasagna,205,325,5,4_M_MERCAT1,Eggling,talk,malangdo,213,110,This boat goes to Malangdo Island. Come aboard?,quest_areas
+bios1,ein_fild03,288,270,0,WARPNPC,Special Border Area,touch,sp_os,188,63,,quest_areas
+rud1,ein_fild05,156,288,1,4_M_REBELLION2,Rebellion Crew,talk,sp_rudus,200,377,The way into Rudus is open. Go in?,quest_areas
+rud2,sp_rudus,197,282,0,4_ENERGY_BLUE,Firmly Closed Gate,talk,sp_rudus,197,267,The gate is open now. Go through?,quest_areas
+rud3,sp_rudus,197,272,0,4_ENERGY_BLUE,Firmly Closed Gate,talk,sp_rudus,197,288,The gate is open now. Go through?,quest_areas
+ami1,ein_fild08,158,96,3,4_M_ILYA,Lana,talk,amicitia1,242,244,Amicitia lies below. Go down?,quest_areas
+wlab1,lhz_dun03,239,78,0,WARPNPC,Laboratory Passage,touch,lhz_dun04,245,56,,quest_areas
+wlab2,lhz_dun04,244,61,0,WARPNPC,Laboratory Passage,touch,lhz_dun03,240,75,,quest_areas
+npyr1,moc_prydb1,103,54,3,547,Suspicious Cat,talk,moc_prydn1,93,96,Meow. Want to see the pyramid's nightmare?,quest_areas
+npyr2,moc_prydn1,94,98,3,547,Suspicious Cat,talk,moc_prydb1,100,57,Meow. Had enough of the nightmare?,quest_areas
+nct1,c_tower1,232,222,5,968,Belljamin Button,talk,c_tower2_,268,26,Time is warped on the floor above. Go to the warped 2nd floor?,quest_areas
+nct2,c_tower1,229,222,5,968,Belljamin Button,talk,c_tower3_,65,147,Time is warped on the floors above. Go to the warped 3rd floor?,quest_areas
+nct3,c_tower2_,274,26,3,962,Belljamin Button,talk,c_tower1,235,223,Go back to the clock tower as it is?,quest_areas
+nct4,c_tower3_,68,147,3,962,Belljamin Button,talk,c_tower1,235,223,Go back to the clock tower as it is?,quest_areas
+ngl1,glast_01,191,273,3,4_M_JOB_WIZARD,Magician Nillem,talk,gl_cas01_,200,26,I can open the way into the castle's nightmare. Go?,quest_areas
+ngl2,gl_cas01_,205,36,5,4_M_JOB_WIZARD,Magician Nillem,talk,glast_01,191,270,Back to Glast Heim?,quest_areas
+ngl3,glast_01,195,273,3,2_F_MAGICMASTER,Hugin's Follower,talk,gl_chyard_,148,144,The churchyard of the nightmare is open. Go?,quest_areas
+ngl4,glast_01,198,273,3,2_F_MAGICMASTER,Hugin's Follower,talk,gl_cas02_,104,31,The upper castle of the nightmare is open. Go?,quest_areas
+ngl5,gl_chyard_,148,149,4,123,Hugin's Follower,talk,glast_01,210,269,Back to Glast Heim?,quest_areas
+ngl6,gl_cas02_,104,34,4,123,Hugin's Follower,talk,glast_01,210,269,Back to Glast Heim?,quest_areas
+nlhz1,lighthalzen,321,218,4,4_M_RASWORD,Ohno Tohiro,talk,lhz_dun_n,100,202,The laboratory's nightmare is open. Go in?,quest_areas
+nlhz2,lighthalzen,320,204,3,4_F_04,A kid with black finger,talk,lhz_d_n2,60,44,I know a way into the deep laboratory. Want to go?,quest_areas
+nlhz3,lhz_dun_n,96,203,3,4_CRACK,Dungeon gateway,talk,lighthalzen,310,228,Go back to Lighthalzen?,quest_areas
+nlhz4,lhz_d_n2,34,45,3,1_SHADOW_NPC,Dungeon gateway,talk,lighthalzen,310,228,Go back to Lighthalzen?,quest_areas
+ipay1,pay_dun03,140,46,0,4_ENERGY_BLUE,Shimmering Portal,touch,pay_d03_i,140,44,,quest_areas
+ipay2,pay_d03_i,140,46,0,4_ENERGY_BLUE,Shimmering Portal,touch,pay_dun03,140,44,,quest_areas
+igef1,gef_dun01,132,223,5,4_M_MINISTER,Grimm,talk,gef_d01_i,114,216,The dungeon is not as it was. Go into the illusion?,quest_areas
+igef2,gef_d01_i,112,228,5,4_F_MONK,Marina,talk,gef_dun01,133,219,Back to the Geffen dungeon?,quest_areas
+iice1,ice_dun02,150,11,1,4_PURPLE_WARP,Frozen Memory,touch,ice_d03_i,149,24,,quest_areas
+iice2,ice_d03_i,149,19,1,4_PURPLE_WARP,Frozen Memory,touch,ice_dun02,150,17,,quest_areas
+itur1,alberta,211,28,5,4_M_YOUNGKNIGHT,Knight Aylvar,talk,tur_d03_i,132,187,Turtle Island's illusion is open. Go?,quest_areas
+itur2,tur_d03_i,132,194,3,4_ENERGY_RED,Portal,talk,alberta,219,31,Back to Alberta?,quest_areas
+icom1,beach_dun2,248,254,4,4_ENERGY_BLUE,Illusion of Luanda,talk,com_d02_i,249,243,A strange light glows in the cave. Step into it?,quest_areas
+iiz1,izlude,132,49,5,4W_M_01,Gein,talk,iz_d04_i,130,227,The undersea tunnel's illusion is open. Go?,quest_areas
+iiz2,iz_d04_i,127,228,4,1_M_01,Jerrymon,talk,izlude,128,54,Back to Izlude?,quest_areas
+iiz3,iz_d04_i,129,232,4,413,Gatekeeper,talk,iz_d05_i,141,186,The way further down is open. Go deeper?,quest_areas
+iiz4,iz_d05_i,141,189,4,413,Guard,talk,iz_d04_i,129,229,Go back up?,quest_areas
+iant1,anthell02,172,189,5,4_ENERGY_BLUE,Illusion of the Ant Hell,touch,ant_d02_i,172,185,,quest_areas
+iein1,ein_dun01,189,87,3,4_ENERGY_BLUE,An entrance somewhere,talk,ein_d02_i,168,197,There is a strange glow here. Step into it?,quest_areas
+iein2,ein_d02_i,161,189,3,4_ENERGY_BLUE,Exit,talk,ein_dun01,189,80,Back to the mine?,quest_areas
+iprt1,prt_maze01,99,27,0,4_ENERGY_BLUE,Illusion of the Labyrinth,touch,prt_mz03_i,99,26,,quest_areas
+btmp1,ecl_in01,38,98,1,PORTAL,Interdimensional Device,talk,moro_vol,91,102,The device hums. Step through to the other side?,quest_areas
+btmp2,moro_vol,91,105,1,PORTAL,Eclage Teleporter,talk,ecl_in01,38,96,Back to Eclage?,quest_areas
+btmp3,moro_vol,198,179,4,4_M_TAMARIN,Tamarin,talk,moro_cav,40,50,There is a cave down there. Go in?,quest_areas
+btmp4,moro_cav,40,53,4,4_M_TAMARIN,Tamarin,talk,moro_vol,198,176,Back up to the volcano?,quest_areas
+oz1,ra_fild10,175,179,3,4_ROPEPILE,Rope,talk,oz_dun01,284,167,A rope leads down into the dark. Climb down?,quest_areas
+oz2,oz_dun01,284,164,3,4_ROPEPILE,Rope,talk,ra_fild10,173,176,Climb back up?,quest_areas
+oz3,oz_dun01,28,190,3,4_ROPEPILE,Rope,talk,gw_fild01,275,337,A rope leads up and out. Climb up?,quest_areas
+oz4,gw_fild01,275,340,3,4_ROPEPILE,Rope,talk,oz_dun01,28,187,A rope leads down into the dark. Climb down?,quest_areas
+wolf1,gw_fild01,32,101,3,4_M_SITDOWN,Camper,talk,wolfvill,270,26,The village is just ahead. Go?,quest_areas
+wolf2,wolfvill,167,135,3,4_EP18_GW_MAN01,Asad,talk,rachel,115,125,I can take you to Rachel. Go?,quest_areas
+got1,xmas_fild01,158,246,2,GATE_SKYBLUE,Dimensional Barrier,touch,t_garden,116,47,,quest_areas
+got2,t_garden,111,36,2,GATE_SKYBLUE,Dimensional Barrier,touch,xmas_fild01,150,240,,quest_areas
+got3,t_garden,82,92,0,WARPNPC,Garden Passage,touch,for_dun01,159,35,,quest_areas
+got4,for_dun01,159,38,0,WARPNPC,Garden Passage,touch,t_garden,82,89,,quest_areas
+got5,t_garden,151,92,0,WARPNPC,Garden Passage,touch,for_dun02,33,55,,quest_areas
+got6,for_dun02,33,58,0,WARPNPC,Garden Passage,touch,t_garden,151,89,,quest_areas
+swat1,ein_fild04,284,332,3,4_M_ROOKIE,Rookie,talk,que_swat,155,50,The rebels' hideout is this way. Come along?,quest_areas
+swat2,que_swat,150,58,3,4_M_ROOKIE,Rookie,talk,ein_fild04,279,339,Back to the field?,quest_areas
+bunk1,verus01,123,181,3,4_F_BERRYTEA,Verity,talk,un_bunker,98,91,The bunker is open. Go down?,quest_areas
+bunk2,verus01,120,181,3,4_F_BERRYTEA,Verity,talk,un_myst,142,38,The mysterious place is open. Go?,quest_areas
+bunk3,un_myst,209,42,3,4_M_TAMARIN,Tamarin,talk,un_bunker,98,91,Back to the bunker?,quest_areas
+res1,eclage,156,56,3,CLEAR_NPC,Residence entrance,talk,ecl_in04,77,107,The residence is open. Go in?,quest_areas
+res2,ecl_in04,81,102,3,CLEAR_NPC,Residence exit,touch,eclage,156,53,,quest_areas
+cas1,prontera,150,352,4,8W_SOLDIER,Castle Guard,talk,prt_cas,216,146,The old castle is open to visitors. Go in?,quest_areas
+lib1,prt_pri00,58,128,4,4_M_JOB_HUNTER,Overwatcher Terketh,talk,prt_lib,9,28,The passage to the library is this way. Go?,quest_areas
+bios2,sp_os,260,363,0,WARPNPC,Corridor,touch,sp_cor,163,60,,quest_areas
+bios3,sp_cor,258,287,0,WARPNPC,Bios Island Passage,touch,ba_pw02,275,20,,quest_areas
+bios4,ba_pw02,7,149,0,WARPNPC,Bios Island Passage,touch,ba_pw01,13,115,,quest_areas
+bios5,ba_pw01,91,291,0,WARPNPC,Laboratory Entrance,touch,ba_in01,23,315,,quest_areas
+bios6,ba_in01,12,321,0,WARPNPC,Mansion Passage,touch,ba_maison,75,146,,quest_areas
+bios7,ba_maison,33,225,0,WARPNPC,Mansion Passage,touch,ba_in01,13,255,,quest_areas
+bios8,ba_maison,314,203,0,WARPNPC,Lost Garden,touch,ba_lost,162,37,,quest_areas
+bios9,ba_in01,211,183,0,WARPNPC,Library Entrance,touch,ba_lib,159,12,,quest_areas
+ami2,amicitia1,149,19,0,WARPNPC,Amicitia Passage,touch,amicitia2,146,274,,quest_areas
+lasa3,lasagna,202,325,5,4_M_MERCAT1,Con-Chliina Crewman,talk,conch_in,58,61,Want to come aboard the Con-Chliina?,quest_areas
+lasa4,lasagna,235,198,5,4_DR_M_01,Chief Peperoncino,talk,lasa_in01,60,92,Come in? I can show you around.,quest_areas
+lasa5,lasagna,56,186,0,WARPNPC,Lasagna Passage,touch,lasa_in01,162,61,,quest_areas
+cas2,prt_cas,188,258,0,WARPNPC,Castle Prison,touch,prt_pri00,54,134,,quest_areas
+pri1,prt_pri00,51,116,4,4_M_CRU,Ellond Lawrence,talk,prt_prison,160,290,The underground prison is below. Go down?,quest_areas
+lib2,prt_lib,9,24,0,WARPNPC,Library Passage,touch,prt_pri00,55,128,,quest_areas
+ws1,ba_2whs01,276,290,0,4_ENERGY_BLUE,Lock,talk,ba_2whs02,338,332,The lock is open. Go through?,quest_areas
+rud4,sp_rudus3,380,42,3,4_M_REBELLION3,Pion,talk,sp_rudus4,370,156,The deepest part of Rudus is this way. Go?,quest_areas

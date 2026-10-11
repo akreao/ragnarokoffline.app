@@ -1,7 +1,7 @@
 {
   "name": "ragnarokoffline",
   "productName": "Ragnarok Offline",
-  "version": "1.5.0",
+  "version": "1.5.8",
   "description": "Ragnarok Online, offline, in one app",
   "license": "GPL-3.0",
   "private": true,
@@ -30,6 +30,9 @@
       "src/**/*",
       "tools/**/*.html",
       "tools/**/*.js",
+      "tools/**/*.css",
+      "tools/**/*.md",
+      "tools/**/package.json",
       "!**/node_modules/**",
       "!electron/vc_redist.x64.exe",
       "!electron/installer.nsh",

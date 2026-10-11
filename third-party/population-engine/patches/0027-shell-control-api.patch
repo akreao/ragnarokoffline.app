@@ -1,0 +1,213 @@
+From 0000000000000000000000000000000000000027
+Subject: [PATCH] Shell control API: script commands for mods that stage scenes with shells
+
+population_is_shell, population_shells, population_hold, population_unhold,
+population_spawn, population_despawn, population_whisper_event,
+population_whisper and population_lost_event. They let a mod's NPC script find
+shells, take one away from the engine's AI for a while, make one and remove
+one; stock unit* commands do the rest. Only rAthena's custom-command files
+are touched; the engine side is
+files/src/map/population_engine/runtime/population_shell_control.cpp. Nothing
+changes until a script calls them.
+
+diff --git a/src/custom/script.inc b/src/custom/script.inc
+index 3bc5a2c0a..7cc565451 100644
+--- a/src/custom/script.inc
++++ b/src/custom/script.inc
+@@ -351,3 +351,179 @@ BUILDIN_FUNC(companion_hire)
+ 	script_pushint(st, made != 0 ? 1 : 0);
+ 	return SCRIPT_CMD_SUCCESS;
+ }
++
++#include "../map/population_engine/population_shell_control.hpp"
++
++/*==========================================
++ * Shell control, for mods that stage scenes with population shells (see
++ * third-party/population-engine/README.md, "Shell control for mods").
++ *
++ * A shell is a real character, so stock commands already move and voice it by
++ * unit id: unitwalk, unitwarp, unittalk, emotion <e>,<gid>, unitskilluseid,
++ * unitattack, sit/stand rid2name(<gid>). What these add is finding shells,
++ * taking one away from the engine's AI, making one and removing one.
++ *
++ * population_is_shell(<gid>)
++ *   0 not a shell, 1 ambient, 2 vendor (stall or buying store), 3 companion.
++ * population_shells("<map>", <x>, <y>, <range>, <array>{, <flags>})
++ *   Fills <array> with the unit ids of the shells within <range> cells of
++ *   (x, y), nearest first, and returns how many (-1 for an unknown map);
++ *   like getunits, it does not clear what the array held past that count.
++ *   <range> < 0 searches the whole map. Without flags: live, free, ambient
++ *   shells only. Flags add 1 vendors, 2 shells a script holds, 4 the dead.
++ * population_hold(<gid>{, <milliseconds>})
++ *   Takes the shell from the engine for that long (default 60000, 1000 to
++ *   1800000): no combat or fighting back, no wandering, ambient chat, canned
++ *   whisper replies or drift back to its map. Calling it again from the same
++ *   NPC extends the hold. 1 when held; 0 for a companion, a vendor, or a
++ *   shell another NPC holds.
++ * population_unhold(<gid>)
++ *   Gives it back. A shell left on another map than its own, or spawned by
++ *   population_spawn without the keep flag, logs out instead. A hold that
++ *   lapses, or whose NPC is unloaded, ends the same way by itself.
++ * population_spawn("<map>", <x>, <y>, <job>{, <base level>{, "<name>"{, <sex>{, <flags>}}}})
++ *   One shell of <job> (an id or a name such as "Wizard"), with the gear and
++ *   stats of that job's population profile, at (x, y) (0, 0 = anywhere),
++ *   already held by this NPC for 60 seconds. <base level> 0 and "" keep the
++ *   profile's roll (the level stays within the profile's band); <sex> is
++ *   SEX_FEMALE, SEX_MALE or -1. Flag 1: stay on as an ambient shell once
++ *   released instead of logging out. Returns the unit id, or 0. It counts
++ *   toward the population limit and not toward the map's quota.
++ * population_despawn(<gid>{, <style>})
++ *   Takes a shell out of the world on the next tick: style 0 as a logout,
++ *   1 with the teleport-out effect of a fly or butterfly wing. Only a shell
++ *   this NPC holds, or a free ambient one: never a vendor, a companion or a
++ *   shell another NPC holds. 1 when it goes, 0 otherwise.
++ * population_whisper_event(<gid>, "<npc>::<label>")
++ *   While this NPC holds the shell, a whisper to it runs the label with the
++ *   whisperer attached, @shell_gid and @shell_msg$ set. "" turns it off.
++ *   Without one, a held shell does not answer whispers at all.
++ * population_whisper(<gid>, "<message>")
++ *   The shell whispers <message> to the attached player.
++ * population_lost_event(<gid>, "<npc>::<label>")
++ *   While this NPC holds the shell, the label runs when it loses whoever it
++ *   follows (pcfollow), with that player attached, @shell_gid and @shell_lost
++ *   set: 1 teleported away on the map (fly wing), 2 left the map without a
++ *   portal (butterfly wing, Kafra), 3 left by a portal the shell did not reach
++ *   in time, 4 went somewhere it cannot walk to. Through a portal it simply
++ *   follows: it walks into the same portal a moment later. "" turns it off.
++ *------------------------------------------*/
++BUILDIN_FUNC(population_is_shell)
++{
++	script_pushint(st, population_engine_shell_kind(script_getnum(st, 2)));
++	return SCRIPT_CMD_SUCCESS;
++}
++
++BUILDIN_FUNC(population_shells)
++{
++	const int16 m = map_mapname2mapid(script_getstr(st, 2));
++	if (m < 0) {
++		ShowWarning("buildin_population_shells: Unknown map '%s'.\n", script_getstr(st, 2));
++		script_pushint(st, -1);
++		return SCRIPT_CMD_SUCCESS;
++	}
++	struct script_data *data = script_getdata(st, 6);
++	if (!data_isreference(data) || is_string_variable(reference_getname(data))) {
++		ShowError("buildin_population_shells: <array> must be an integer variable.\n");
++		script_reportdata(data);
++		st->state = END;
++		return SCRIPT_CMD_FAILURE;
++	}
++	const char *name = reference_getname(data);
++	map_session_data *sd = nullptr;
++	if (not_server_variable(*name) && !script_rid2sd(sd)) {
++		ShowError("buildin_population_shells: Cannot use a player variable '%s' if no player is attached.\n", name);
++		st->state = END;
++		return SCRIPT_CMD_FAILURE;
++	}
++	std::vector<int32_t> found;
++	population_engine_find_shells(m, static_cast<int16_t>(script_getnum(st, 3)), static_cast<int16_t>(script_getnum(st, 4)),
++		script_getnum(st, 5), script_hasdata(st, 7) ? script_getnum(st, 7) : 0, found);
++	const int32 id = reference_getid(data);
++	const uint32 idx = reference_getindex(data);
++	for (size_t i = 0; i < found.size() && idx + i < SCRIPT_MAX_ARRAYSIZE; ++i)
++		set_reg_num(st, sd, reference_uid(id, idx + i), name, found[i], reference_getref(data));
++	script_pushint(st, static_cast<int32>(found.size()));
++	return SCRIPT_CMD_SUCCESS;
++}
++
++BUILDIN_FUNC(population_hold)
++{
++	const int64 ms = script_hasdata(st, 3) ? script_getnum64(st, 3) : 0;
++	script_pushint(st, population_engine_shell_hold(script_getnum(st, 2), st->oid, ms) ? 1 : 0);
++	return SCRIPT_CMD_SUCCESS;
++}
++
++BUILDIN_FUNC(population_unhold)
++{
++	script_pushint(st, population_engine_shell_unhold(script_getnum(st, 2), st->oid) ? 1 : 0);
++	return SCRIPT_CMD_SUCCESS;
++}
++
++BUILDIN_FUNC(population_spawn)
++{
++	const int16 m = map_mapname2mapid(script_getstr(st, 2));
++	if (m < 0) {
++		ShowWarning("buildin_population_spawn: Unknown map '%s'.\n", script_getstr(st, 2));
++		script_pushint(st, 0);
++		return SCRIPT_CMD_SUCCESS;
++	}
++	uint16 job;
++	if (script_isstring(st, 5)) {
++		// An unknown name comes back as 0, which is a real job (Novice): a typo
++		// must not quietly spawn one.
++		job = population_engine_job_id_from_name(script_getstr(st, 5));
++		if (job == 0 && strcmpi(script_getstr(st, 5), "Novice") != 0) {
++			ShowWarning("buildin_population_spawn: Unknown job '%s'.\n", script_getstr(st, 5));
++			script_pushint(st, 0);
++			return SCRIPT_CMD_SUCCESS;
++		}
++	} else {
++		job = static_cast<uint16>(script_getnum(st, 5));
++	}
++	const int lv = script_hasdata(st, 6) ? script_getnum(st, 6) : 0;
++	const char *name = script_hasdata(st, 7) ? script_getstr(st, 7) : "";
++	const int sex = script_hasdata(st, 8) ? script_getnum(st, 8) : -1;
++	const int flags = script_hasdata(st, 9) ? script_getnum(st, 9) : 0;
++	script_pushint(st, population_engine_shell_spawn(st->oid, m, static_cast<int16_t>(script_getnum(st, 3)),
++		static_cast<int16_t>(script_getnum(st, 4)), job, lv, name, sex, flags));
++	return SCRIPT_CMD_SUCCESS;
++}
++
++BUILDIN_FUNC(population_despawn)
++{
++	const int style = script_hasdata(st, 3) ? script_getnum(st, 3) : POP_DESPAWN_LOGOUT;
++	script_pushint(st, population_engine_shell_despawn_for(script_getnum(st, 2), st->oid, style) ? 1 : 0);
++	return SCRIPT_CMD_SUCCESS;
++}
++
++BUILDIN_FUNC(population_whisper_event)
++{
++	script_pushint(st, population_engine_shell_set_whisper_event(script_getnum(st, 2), st->oid, script_getstr(st, 3)) ? 1 : 0);
++	return SCRIPT_CMD_SUCCESS;
++}
++
++BUILDIN_FUNC(population_lost_event)
++{
++	script_pushint(st, population_engine_shell_set_lost_event(script_getnum(st, 2), st->oid, script_getstr(st, 3)) ? 1 : 0);
++	return SCRIPT_CMD_SUCCESS;
++}
++
++BUILDIN_FUNC(population_whisper)
++{
++	map_session_data *sd;
++	if (!script_rid2sd(sd)) {
++		script_pushint(st, 0);
++		return SCRIPT_CMD_SUCCESS;
++	}
++	const int32 gid = script_getnum(st, 2);
++	map_session_data *shell = population_engine_is_population_pc(gid) ? map_id2sd(gid) : nullptr;
++	const char *msg = script_getstr(st, 3);
++	if (shell == nullptr || msg[0] == '\0') {
++		script_pushint(st, 0);
++		return SCRIPT_CMD_SUCCESS;
++	}
++	clif_wis_message(sd, shell->status.name, msg, strlen(msg) + 1, pc_get_group_level(shell));
++	script_pushint(st, 1);
++	return SCRIPT_CMD_SUCCESS;
++}
+diff --git a/src/custom/script_def.inc b/src/custom/script_def.inc
+index 0e698134b..bf7343099 100644
+--- a/src/custom/script_def.inc
++++ b/src/custom/script_def.inc
+@@ -27,3 +27,12 @@ BUILDIN_DEF(population_vendor_price, "si"),
+ BUILDIN_DEF(companion_hire_jobs, ""),
+ BUILDIN_DEF(companion_hire_fee, ""),
+ BUILDIN_DEF(companion_hire, "s"),
++BUILDIN_DEF(population_is_shell, "i"),
++BUILDIN_DEF(population_shells, "siiir?"),
++BUILDIN_DEF(population_hold, "i?"),
++BUILDIN_DEF(population_unhold, "i"),
++BUILDIN_DEF(population_spawn, "siiv????"),
++BUILDIN_DEF(population_despawn, "i?"),
++BUILDIN_DEF(population_whisper_event, "is"),
++BUILDIN_DEF(population_whisper, "is"),
++BUILDIN_DEF(population_lost_event, "is"),

@@ -226,6 +226,186 @@ for _mid in MVP_IDS:
         if _e and _e.get("Type") == "Card":
             MVP_CARDS.add(_e["Id"])
 
+# What a pre-renewal server can actually give a player. rAthena's pre-renewal
+# item database also holds what came with renewal and later (third-job gear,
+# runes and spell books, cash-shop and event items, slotted variants nothing
+# drops), with nothing in pre-renewal that hands them out; a stall selling
+# those would put renewal items into a pre-renewal world. So the pre-renewal
+# set lists only what has a source there. Renewal lists as it always did.
+SCRIPT_GIVES = re.compile(r"\b(getitem[23]?|getitembound[23]?|getnameditem|makeitem[23]?|callfunc|callsub)\b")
+SCRIPT_SPAWNS = re.compile(r"\b(areamonster|monster|summon)\b")
+
+
+def era_scripts():
+    """The NPC script files this era's server loads: npc/<era>/scripts_main.conf
+    and what it imports (so nothing from npc/custom or a switched-off event)."""
+    seen, out = set(), []
+
+    def conf(path):
+        if path in seen or not os.path.exists(path):
+            return
+        seen.add(path)
+        for line in open(path, encoding="utf-8", errors="replace"):
+            m = re.match(r"(npc|import)\s*:\s*(\S+)", line.split("//")[0].strip())
+            if not m:
+                continue
+            target = os.path.join(RA, m.group(2))
+            if m.group(1) == "import":
+                conf(target)
+            elif os.path.exists(target):
+                out.append(target)
+
+    conf(os.path.join(RA, "npc", ERA, "scripts_main.conf"))
+    return out
+
+
+def era_obtainable():
+    """Ids of the items this era's server hands out somewhere:
+    - a monster that is out there drops them: one with a spawn line, one a
+      script spawns, a dead branch's summons, their slaves and what they turn
+      into, and the castles' treasure chests;
+    - an NPC sells them (for zeny, items or points) or a script gives them:
+      quest rewards, exchanges, socket enchants;
+    - players make them (produce_db, or arrow crafting from something
+      obtainable), or they are a pet's egg, taming item, food or accessory;
+    - something obtainable holds them: a box's item group, or an item whose
+      own script gives them."""
+    got = set()
+    live = set()
+
+    def tokens(text):
+        return re.findall(r"[A-Za-z_0-9']+", text)
+
+    def give(tok, numbers=True):
+        if tok.isdigit():
+            if numbers and int(tok) in ITEMS_BY_ID:
+                got.add(int(tok))
+        elif len(tok) > 3:
+            e = item(tok)
+            if e:
+                got.add(e["Id"])
+
+    castles = False
+    for path in era_scripts():
+        castles = castles or os.sep + "guild" in path
+        for line in open(path, encoding="utf-8", errors="replace"):
+            if line.lstrip().startswith("//"):
+                continue
+            parts = line.rstrip("\n").split("\t")
+            if len(parts) >= 4 and parts[1].startswith(("monster", "boss_monster")):
+                mid = mob_ref(parts[3])
+                if mid in MOBS:
+                    live.add(mid)
+                continue
+            if len(parts) >= 4 and parts[1] in ("shop", "marketshop", "itemshop", "pointshop"):
+                for tok in parts[3].split(",")[1:]:
+                    give(tok.split(":")[0].strip())
+                continue
+            code = line.split("//")[0]
+            if os.sep + "mobs" + os.sep in path:
+                # A spawn script that rolls one of a run of monsters (the
+                # Bio Lab's MVPs): rand(1646,1651).
+                for lo, hi in re.findall(r"\brand\s*\(\s*(\d+)\s*,\s*(\d+)\s*\)", code):
+                    if int(lo) in MOBS and int(hi) in MOBS and 0 <= int(hi) - int(lo) < 50:
+                        live.update(i for i in range(int(lo), int(hi) + 1) if i in MOBS)
+            if SCRIPT_SPAWNS.search(code):
+                for tok in tokens(code):
+                    mid = int(tok) if tok.isdigit() else MOBS_BY_AEGIS.get(tok.upper())
+                    if mid in MOBS and (not tok.isdigit() or mid > 1000):
+                        live.add(mid)
+            if SCRIPT_GIVES.search(code) or "npcshop" in code:
+                for tok in tokens(code):
+                    give(tok)
+            elif "setarray" in code:
+                # A reward list: ids outside the monsters' range, or names.
+                # In a spawn file it is the monsters a script picks from.
+                for tok in tokens(code):
+                    give(tok, numbers=not (tok.isdigit() and 1000 < int(tok) < 4000))
+                    if os.sep + "mobs" + os.sep in path and tok.isdigit() and int(tok) in MOBS:
+                        live.add(int(tok))
+    if castles:
+        live.update(i for i, m in MOBS.items() if m["AegisName"].startswith("TREASURE_BOX"))
+    summons = yaml.load(open(os.path.join(RA, "db", ERA, "mob_summon.yml"), encoding="utf-8"), Loader=Loader).get("Body") or []
+    for g in summons:
+        for s in g.get("Summon") or []:
+            mid = MOBS_BY_AEGIS.get(str(s["Mob"]).upper())
+            if mid:
+                live.add(mid)
+    skills = [l.strip().split(",") for l in open(os.path.join(RA, "db", ERA, "mob_skill_db.txt"), encoding="utf-8", errors="replace")
+              if l[:1].isdigit()]
+    grew = True
+    while grew:
+        grew = False
+        for p in skills:
+            if len(p) > 16 and int(p[0]) in live and re.search(r"SUMMON|METAMORPHOSIS|TRANSFORMATION", p[1]):
+                for v in p[12:17]:
+                    if v.isdigit() and int(v) in MOBS and int(v) not in live:
+                        live.add(int(v))
+                        grew = True
+    for mid in live:
+        for d in (MOBS[mid].get("Drops") or []) + (MOBS[mid].get("MvpDrops") or []):
+            e = item(d["Item"])
+            if e:
+                got.add(e["Id"])
+    produce = os.path.join(RA, "db", ERA, "produce_db.txt")
+    if os.path.exists(produce):
+        for line in open(produce, encoding="utf-8", errors="replace"):
+            parts = line.split("//")[0].strip().split(",")
+            if len(parts) > 1 and parts[1].strip().isdigit() and int(parts[1]) in ITEMS_BY_ID:
+                got.add(int(parts[1]))
+    pets = yaml.load(open(os.path.join(RA, "db", ERA, "pet_db.yml"), encoding="utf-8"), Loader=Loader).get("Body") or []
+    for p in pets:
+        if MOBS_BY_AEGIS.get(str(p.get("Mob", "")).upper()) in live:
+            for k in ("EggItem", "TameItem", "EquipItem", "FoodItem"):
+                e = item(str(p.get(k) or ""))
+                if e:
+                    got.add(e["Id"])
+    # What an obtainable item leads to: the group its script opens (a box),
+    # what its script gives outright, and the arrows crafted from it.
+    opens, gives = {}, {}
+    for e in ITEMS_BY_ID.values():
+        script = str(e.get("Script") or "")
+        for g in re.findall(r"\bIG_([A-Za-z_0-9]+)", script):
+            opens.setdefault(g.upper(), set()).add(e["Id"])
+        for tok in re.findall(r"\bgetitem[23]?\s*\(?\s*\"?([A-Za-z_0-9']+)", script):
+            t = ITEMS_BY_ID.get(int(tok)) if tok.isdigit() else item(tok)
+            if t:
+                gives.setdefault(e["Id"], set()).add(t["Id"])
+    groups = yaml.load(open(os.path.join(RA, "db", ERA, "item_group_db.yml"), encoding="utf-8"), Loader=Loader).get("Body") or []
+    arrows = []
+    for path in (os.path.join(RA, "db", "create_arrow_db.yml"), os.path.join(RA, "db", ERA, "create_arrow_db.yml")):
+        if os.path.exists(path):
+            arrows += yaml.load(open(path, encoding="utf-8"), Loader=Loader).get("Body") or []
+    grew = True
+    while grew:
+        before = len(got)
+        for g in groups:
+            if opens.get(str(g["Group"]).upper(), set()) & got:
+                for sub in g.get("SubGroups") or []:
+                    for row in sub.get("List") or []:
+                        e = item(str(row["Item"]))
+                        if e:
+                            got.add(e["Id"])
+        for src in [i for i in gives if i in got]:
+            got.update(gives[src])
+        for a in arrows:
+            src = item(str(a.get("Source") or ""))
+            if src and src["Id"] in got:
+                for row in a.get("Make") or []:
+                    e = item(str(row["Item"]))
+                    if e:
+                        got.add(e["Id"])
+        grew = len(got) > before
+    return got
+
+
+OBTAINABLE = era_obtainable() if ERA == "pre-re" else None
+
+
+def obtainable(e):
+    return OBTAINABLE is None or e["Id"] in OBTAINABLE
+
+
 # ---------------------------------------------------------------------------
 # Prices
 # ---------------------------------------------------------------------------
@@ -696,7 +876,7 @@ THEMES += [
     dict(key="card_albums", job="HighMerchant", pick=[1, 2], weight=1,
          titles=["S> OCA MCA", "OCA / MCA", "card albums", "S>OCA", "try your luck: OCA"],
          items=["Old_Card_Album", "Magic_Card_Album"]),
-    dict(key="crimson_weapons", job="Whitesmith", pick=[3, 6], weight=1,
+    dict(key="crimson_weapons", job="Whitesmith", pick=[3, 6], weight=1, era="re",
          titles=["Crimson weapons", "S> crimson", "crimson katar/mace/dagger", "{name}'s Crimson Arsenal", "S> +7 crimson"],
          rule=lambda e: e.get("Type") == "Weapon" and e["Name"].startswith("Crimson ") and not e["AegisName"].endswith("_LT"),
          extra=[dict(item=w, refine=r) for w in ("Scarlet_Katar", "Scarlet_Mace", "Scarlet_Dagger", "Scarlet_Saber",
@@ -715,6 +895,9 @@ THEMES += [
          titles=["slims", "S> slim whites", "condensed pots", "{name}'s Slims", "slim potions cheap"],
          items=["Red_Slim_Potion", "Yellow_Slim_Potion", "White_Slim_Potion"]),
 ]
+# A theme marked era="re" is renewal's alone: pre-renewal has the Crimson
+# Bolt and none of the weapons its signs promise.
+THEMES = [t for t in THEMES if t.get("era", ERA) == ERA]
 
 # Class shops: gear that a class (family) can wear and few others can,
 # the kind of stall that reads "for Wizards" or "Knight gear".
@@ -1740,13 +1923,13 @@ def theme_candidates(theme):
         candidates = mvp_items()
     elif "place" in theme:
         # A place buyer's loot, already chosen and weighted: all of it.
-        return [e for e in theme["place"] if tradeable(e)]
+        return [e for e in theme["place"] if tradeable(e) and obtainable(e)]
     elif "levels" in theme:
         candidates = level_items(*theme["levels"],
                                  max_droppers=PLACE_MAX_DROPPERS if theme.get("buyfilter") else LOOT_MAX_DROPPERS)
         if theme.get("buyfilter"):
             candidates = [e for e in candidates if buyable(e)]
-    candidates = [e for e in candidates if tradeable(e)]
+    candidates = [e for e in candidates if tradeable(e) and obtainable(e)]
     cached = [e for e in candidates if str(e["Id"]) in CACHE]
     rest = sorted((e for e in candidates if str(e["Id"]) not in CACHE), key=lambda e: e["Id"])
     return cached + rest[:max(0, CANDIDATE_CAP - len(cached))]
@@ -1788,6 +1971,8 @@ def resolve(theme, refresh, rng):
                 continue
             if not tradeable(e):
                 continue
+            if not obtainable(e) or not all(item(c) and obtainable(item(c)) for c in spec.get("cards") or []):
+                continue  # nothing in this era hands it out
             p = spec.get("price")
             if p is None:
                 p = price(e, refresh)
@@ -1950,6 +2135,556 @@ def demand(e, lo, hi, busy_cut):
     return max(1, round(buyers * DEMAND_SCALE)), round(sellers * DEMAND_SCALE)
 
 
+# ---------------------------------------------------------------------------
+# Dynamic market: its data, as an NPC script (npc/prontera-vendors-market-data.txt)
+# ---------------------------------------------------------------------------
+#
+# The market itself is the mod's own NPC script (npc/prontera-vendors-market.txt).
+# This writes what it needs to know and cannot work out at runtime: how much of
+# each item changes hands on a normal day (how far one trade moves its price),
+# which items move together (a group shares a move, Share percent of it), and
+# the news events that push a group for some days. Items are the ones this
+# era has; an event with nothing left is left out. Like waypoint-system's
+# data, it is generated here and shipped, and nothing reads a file at runtime.
+
+MARKET_GROUPS = [
+    ("forge", 30, ["Elunium", "Oridecon", "Elunium_Stone", "Oridecon_Stone", "Emveretarcon"]),
+    ("crafting", 30, ["Steel", "Iron", "Iron_Ore", "Coal"]),
+    ("herbs", 30, sorted(HERBS)),
+    ("potions", 30, ["Red_Potion", "Orange_Potion", "Yellow_Potion", "White_Potion", "Blue_Potion"]),
+    ("slims", 30, ["Red_Slim_Potion", "Yellow_Slim_Potion", "White_Slim_Potion"]),
+    ("gemstones", 30, ["Blue_Gemstone", "Yellow_Gemstone", "Red_Gemstone"]),
+    ("elemental", 25, ["Flame_Heart", "Mistic_Frozen", "Rough_Wind", "Great_Nature",
+                       "Boody_Red", "Crystal_Blue", "Wind_Of_Verdure", "Yellow_Live"]),
+    ("boxes", 25, ["Old_Blue_Box", "Old_Violet_Box", "Old_Card_Album", "Magic_Card_Album",
+                   "Bloody_Dead_Branch", "Branch_Of_Dead_Tree"]),
+    ("ygg", 30, ["Yggdrasilberry", "Seed_Of_Yggdrasil", "Leaf_Of_Yggdrasil"]),
+    ("berries", 25, sorted(BERRIES)),
+    ("dragon", 30, ["Dragon_Scale", "Dragon_Canine", "Dragon_Train", "Burning_Heart"]),
+]
+
+
+def market_items(names):
+    """The aegis names of those this era has, tradeable, once each."""
+    out = []
+    for n in names:
+        e = item(n)
+        if e and tradeable(e) and e["AegisName"] not in out:
+            out.append(e["AegisName"])
+    return out
+
+
+def place_items(key, n=15):
+    """A dungeon's (AREAS_LOOT) or field's (FIELD_SPOTS) loot, the commonest first."""
+    for k, _, files in AREAS_LOOT:
+        if k == key:
+            counts = place_counts(files=files)
+            break
+    else:
+        for k, _, maps, keep in FIELD_SPOTS:
+            if k == key:
+                counts = place_counts(maps=maps)
+                break
+        else:
+            return []
+    loot = place_loot(counts)
+    return [ITEMS_BY_ID[i]["AegisName"] for i in sorted(loot, key=lambda i: (-loot[i], i))[:n]]
+
+
+def market_events():
+    """(key, text, days, [(change_min, change_max, [aegis...])]) for this era.
+    Each key has its end text in NEWS_ENDS (a migration's is made below)."""
+    rng = random.Random("market-news")
+    quest = [e["AegisName"] for e in sorted((ITEMS_BY_ID[i] for i in QUEST_ASKS if i in ITEMS_BY_ID),
+                                            key=lambda e: (-QUEST_ASKS[e["Id"]], e["Id"]))
+             if buyable(e) and e.get("Type") == "Etc"][:12]
+    cards = [ITEMS_BY_ID[i]["AegisName"] for i in sorted(COMMON_CARDS | RARE_CARDS, key=lambda i: (-popularity(ITEMS_BY_ID[i]), i))
+             if i in ITEMS_BY_ID and tradeable(ITEMS_BY_ID[i])][:40]
+    # Everyday goods: cheap consumables an NPC sells and the stalls carry, not
+    # WoE-only (Siege, TE) items or boxes that open into something else.
+    everyday = sorted(e["AegisName"] for e in ITEMS_BY_ID.values()
+                      if e.get("Type") in ("Healing", "Usable") and tradeable(e) and e["Id"] in MARKET_ITEMS
+                      and e["Id"] in NPC_SOLD
+                      and 0 < (price(e) or 0) < 5_000
+                      and not e["Name"].startswith(("Siege", "TE ")) and "Box" not in e["Name"]
+                      and "Quiver" not in e["Name"])
+    # Junk: cheap loot nearly every monster drops. Not ores, crafting or
+    # alchemy materials, nor what an NPC sells (gemstones, bottles), which many
+    # monsters drop too but nobody calls junk.
+    junk = [e["AegisName"] for e in sorted((e for e in ITEMS_BY_ID.values()
+                                            if e.get("Type") == "Etc" and buyable(e)
+                                            and e["AegisName"] not in UPGRADE | CRAFTING | ELEMENTAL | ALCHEMY | HERBS
+                                            and e["Id"] not in NPC_SOLD and "Ore" not in e["Name"].split()
+                                            and 0 < (price(e) or 0) <= 2_000),
+                                           key=lambda e: (-DROPPERS.get(e["Id"], 0), e["Id"]))][:12]
+    food = ["Apple", "Banana", "Grape", "Carrot", "Meat", "Honey", "Royal_Jelly", "Strawberry", "Orange", "Lemon",
+            "Red_Potion", "Orange_Potion", "Yellow_Potion", "White_Potion"]
+    pets = [spec if isinstance(spec, str) else spec["item"] for t in THEMES if t["key"] == "pets" for spec in t["items"]]
+    events = [
+        ("woe_season", "War of Emperium season: guilds stock up on potions and gems.", 5,
+         [(20, 40, ["White_Potion", "Blue_Potion", "Red_Slim_Potion", "Yellow_Slim_Potion", "White_Slim_Potion",
+                    "Blue_Gemstone", "Yellow_Gemstone", "Red_Gemstone", "Acid_Bottle", "Fire_Bottle"])]),
+        ("refining_fever", "The Prontera smith has a lucky week, everyone wants to refine.", 4,
+         [(20, 35, ["Elunium", "Oridecon", "Elunium_Stone", "Oridecon_Stone", "Steel"])]),
+        ("hat_craze", "A new hat is in fashion: quest materials sought.", 5, [(25, 50, quest)]),
+        ("card_craze", "Collectors are buying up cards.", 4, [(15, 30, cards)]),
+        ("alchemist_order", "The Alchemist Guild places a big order.", 4,
+         [(25, 45, sorted(HERBS) + ["Empty_Bottle", "Medicine_Bowl", "Starsand_Of_Witch", "Stem"])]),
+        ("gambling_night", "Gamblers flock to Prontera: boxes and albums in demand.", 3,
+         [(20, 40, ["Old_Blue_Box", "Old_Violet_Box", "Old_Card_Album", "Magic_Card_Album",
+                    "Bloody_Dead_Branch", "Branch_Of_Dead_Tree"])]),
+        ("pet_fair", "A pet fair in Prontera: taming items and pet food sought.", 3, [(30, 60, pets)]),
+        ("orc_rampage", "Adventurers flood the orc fields: orc loot everywhere.", 4,
+         [(-40, -25, place_items("orc_fields"))]),
+        ("spore_harvest", "A bumper spore season in Payon.", 4,
+         [(-35, -20, ["Strawberry", "Poison_Spore", "Mushroom_Spore", "Stem"])]),
+        ("glast_heim_purge", "A guild cleared Glast Heim, its loot is everywhere.", 4,
+         [(-40, -25, place_items("glast_heim"))]),
+        ("dragon_hunt", "Dragon hunters return from Magma and Abyss Lake.", 4,
+         [(-40, -25, ["Dragon_Scale", "Dragon_Canine", "Dragon_Train", "Burning_Heart"])]),
+        ("merchant_clearance", "A big merchant is closing shop: everyday goods cheap.", 3,
+         [(-25, -15, rng.sample(everyday, min(10, len(everyday))))]),
+        ("smith_overstock", "Forges are overstocked: ores at a discount.", 3,
+         [(-30, -15, ["Elunium", "Oridecon", "Elunium_Stone", "Oridecon_Stone", "Iron", "Coal"])]),
+        ("festival", "Festival! Food and potions sought, junk loot ignored.", 3,
+         [(20, 20, food), (-15, -15, junk)]),
+        ("monster_raid", "Monsters raid Prontera's gates: potions and wings in demand.", 3,
+         [(20, 40, ["Red_Potion", "Orange_Potion", "Yellow_Potion", "White_Potion", "Wing_Of_Fly",
+                    "Wing_Of_Butterfly", "Yggdrasilberry", "Green_Potion"])]),
+        ("ygg_blight", "A blight on the World Tree: Yggdrasil berries and seeds are scarce.", 5,
+         [(25, 45, ["Yggdrasilberry", "Seed_Of_Yggdrasil", "Leaf_Of_Yggdrasil"])]),
+        ("dye_craze", "A fashion contest in Prontera: everyone wants dyestuffs.", 4,
+         [(30, 50, sorted(e["AegisName"] for e in ITEMS_BY_ID.values()
+                          if e.get("Type") == "Etc" and is_dyestuff(e) and tradeable(e)))]),
+        ("arrow_shortage", "The Hunters' Guild runs dry: arrows sought.", 3,
+         [(20, 35, ["Arrow", "Silver_Arrow", "Fire_Arrow", "Steel_Arrow", "Crystal_Arrow", "Arrow_Of_Wind",
+                    "Stone_Arrow", "Immatrial_Arrow"])]),
+        ("elemental_research", "The Sages of Juno study the elements: stones and converters sought.", 4,
+         [(20, 40, ["Flame_Heart", "Mistic_Frozen", "Rough_Wind", "Great_Nature", "Elemental_Fire",
+                    "Elemental_Water", "Elemental_Earth", "Elemental_Wind"])]),
+        ("bounty_week", "Bounty week: the Prontera board pays for monster parts.", 4, [(20, 30, junk)]),
+        ("card_dump", "An old collector sells off his albums: cards are cheap.", 3, [(-30, -15, cards)]),
+        ("ore_strike", "Miners strike it rich in Mjolnir: ores at a discount.", 4,
+         [(-40, -25, ["Iron_Ore", "Iron", "Coal", "Steel", "Elunium_Stone", "Oridecon_Stone"])]),
+        ("herb_bloom", "Herbs bloom across the fields.", 4, [(-40, -25, sorted(HERBS))]),
+    ]
+    places = dict((k, re.sub(r" (Drops|Loot)$", "", t)) for k, t, _ in AREAS_LOOT)
+    for flood, scarce in [("byalan", "payon_cave"), ("glast_heim", "sphinx"), ("clock_tower", "turtle_island"),
+                          ("magma", "abyss_lake"), ("orc_dungeon", "geffenia"), ("pyramids", "toy_factory"),
+                          ("sunken_ship", "niflheim"), ("ant_hell", "comodo_caves")]:
+        key = f"migration_{flood}_{scarce}"
+        # Loot both places share would move both ways at once: leave it out.
+        out_, in_ = place_items(flood), place_items(scarce)
+        both = set(out_) & set(in_)
+        events.append((key,
+                       f"Monsters are on the move: {places[flood]} loot floods in, {places[scarce]} loot grows scarce.", 4,
+                       [(-30, -30, [n for n in out_ if n not in both]), (30, 30, [n for n in in_ if n not in both])]))
+        NEWS_ENDS[key] = f"The monsters have settled again: {places[flood]} and {places[scarce]} loot back to normal."
+    return events
+
+
+# What the market announces when a piece of news is over.
+NEWS_ENDS = {
+    "woe_season": "The War of Emperium season is over; potions and gems are back to normal.",
+    "refining_fever": "The refining fever has passed.",
+    "hat_craze": "The hat craze is over; quest materials are back to normal.",
+    "card_craze": "The collectors have their cards; card prices settle.",
+    "alchemist_order": "The Alchemist Guild's order is filled.",
+    "gambling_night": "The gamblers have left Prontera.",
+    "pet_fair": "The pet fair is over.",
+    "orc_rampage": "The orc fields are quiet again.",
+    "spore_harvest": "The spore season in Payon is over.",
+    "glast_heim_purge": "Glast Heim's loot has been sold off.",
+    "dragon_hunt": "The dragon hunters' haul has been sold.",
+    "merchant_clearance": "The clearance sale is over.",
+    "smith_overstock": "The forges have used up their stock.",
+    "festival": "The festival is over.",
+    "monster_raid": "The raid on Prontera has been repelled.",
+    "ygg_blight": "The World Tree has recovered.",
+    "dye_craze": "The fashion contest is over; dyestuffs are back to normal.",
+    "arrow_shortage": "The Hunters' Guild has arrows again.",
+    "elemental_research": "The Sages have finished their research.",
+    "bounty_week": "Bounty week is over.",
+    "card_dump": "The collector's albums are sold out.",
+    "ore_strike": "The Mjolnir ore glut has been bought up.",
+    "herb_bloom": "The herb bloom is over.",
+}
+
+
+
+# Every item the stalls and buyers deal in, filled in as the themes resolve.
+MARKET_ITEMS = set()
+
+
+def market_volume(e):
+    """How many change hands on a normal day: its customers and sellers a day
+    (the price list), times what each deals in (cheap loot by the hundred,
+    dear things one at a time)."""
+    lo, hi, _ = TABLE.get(e["Id"], (0, 0, ""))
+    p = (lo + hi) // 2 if lo else (price(e) or 0)
+    buyers, sellers = demand(e, lo, hi, 0)
+    deals = max(1.0, (buyers + max(sellers, 1)) / 2.0)
+    each = 100 if p < 1000 else 3 if p < 20000 else 1.5 if p < 200000 else 1
+    return max(1, round(deals * each))
+
+
+def write_market_script():
+    """npc/prontera-vendors-market-data.txt: the market's data, filled into
+    temporary server variables at start ($@pv_*), read by the market script."""
+    groups = [(key, share, market_items(names)) for key, share, names in MARKET_GROUPS]
+    groups = [(key, share, items) for key, share, items in groups if len(items) >= 2]
+    events = []
+    for key, text, days, effects in market_events():
+        fx = [(lo, hi, market_items(names)) for lo, hi, names in effects]
+        fx = [(lo, hi, items) for lo, hi, items in fx if items][:2]
+        if fx:
+            events.append((key, text, days, fx))
+    missing = [key for key, _, _, _ in events if key not in NEWS_ENDS]
+    assert not missing, f"news without an end text in NEWS_ENDS: {missing}"
+    ids = set(MARKET_ITEMS)
+    for _, _, items in groups:
+        ids.update(item(n)["Id"] for n in items)
+    for _, _, _, fx in events:
+        for _, _, items in fx:
+            ids.update(item(n)["Id"] for n in items)
+    out = ["//===== Ragnarok Offline: prontera-vendors =================================",
+           "//= The dynamic market's data, for npc/prontera-vendors-market.txt.",
+           "//= GENERATED by registry/tools/prontera-vendors/build_vendors.py",
+           "//= (MARKET_GROUPS, market_events, market_volume); a re-run overwrites it.",
+           "//===========================================================================",
+           "-\tscript\tProntVendorsMarketData\t-1,{",
+           "\tend;",
+           "OnInit:",
+           "\t// How many of each item change hands on a normal day.",
+           "\tdeletearray $@pv_vol;"]
+    vol = sorted((i, market_volume(ITEMS_BY_ID[i])) for i in ids if i in ITEMS_BY_ID)
+    for k in range(0, len(vol), 8):
+        out.append("\t" + " ".join(f"$@pv_vol[{i}] = {v};" for i, v in vol[k:k + 8]))
+    out += ["\t// Groups: their items in a row, where each starts, how many, and the share of a move.",
+            "\tdeletearray $@pv_gitem; deletearray $@pv_gstart; deletearray $@pv_glen; deletearray $@pv_gshare; deletearray $@pv_ig;"]
+    flat, seen = [], set()
+    for g, (key, share, items) in enumerate(groups):
+        mine = [item(n)["Id"] for n in items]
+        out.append(f"\t$@pv_gstart[{g}] = {len(flat)}; $@pv_glen[{g}] = {len(mine)}; $@pv_gshare[{g}] = {share}; // {key}")
+        for i in mine:
+            if i not in seen:  # an item's first group is its group
+                out.append(f"\t$@pv_ig[{i}] = {g + 1};")
+                seen.add(i)
+        flat += mine
+    for k in range(0, len(flat), 16):
+        out.append(f"\tsetarray $@pv_gitem[{k}], " + ", ".join(map(str, flat[k:k + 16])) + ";")
+    out.append(f"\t$@pv_gcount = {len(groups)};")
+    out += ["\t// News: key, board text, days; up to two effects each (percent range, items).",
+            "\tdeletearray $@pv_evkey$; deletearray $@pv_evtext$; deletearray $@pv_evend$; deletearray $@pv_evdays; deletearray $@pv_fxev;",
+            "\tdeletearray $@pv_fxmin; deletearray $@pv_fxmax; deletearray $@pv_fxstart; deletearray $@pv_fxlen; deletearray $@pv_fxitem;"]
+    flat, f = [], 0
+    for e, (key, text, days, fx) in enumerate(events):
+        out.append(f'\t$@pv_evkey$[{e}] = "{key}"; $@pv_evtext$[{e}] = {q(text)}; $@pv_evdays[{e}] = {days};')
+        out.append(f'\t$@pv_evend$[{e}] = {q(NEWS_ENDS[key])};')
+        for lo, hi, items in fx:
+            mine = [item(n)["Id"] for n in items]
+            out.append(f"\t$@pv_fxev[{f}] = {e}; $@pv_fxmin[{f}] = {lo}; $@pv_fxmax[{f}] = {hi}; "
+                       f"$@pv_fxstart[{f}] = {len(flat)}; $@pv_fxlen[{f}] = {len(mine)};")
+            flat += mine
+            f += 1
+    for k in range(0, len(flat), 16):
+        out.append(f"\tsetarray $@pv_fxitem[{k}], " + ", ".join(map(str, flat[k:k + 16])) + ";")
+    out += [f"\t$@pv_evcount = {len(events)};", f"\t$@pv_fxcount = {f};", "\tend;", "}"]
+    npc = os.path.join(os.path.dirname(OUT_DB), "npc")
+    os.makedirs(npc, exist_ok=True)
+    open(os.path.join(npc, "prontera-vendors-market-data.txt"), "w", encoding="utf-8", newline="\n").write("\n".join(out) + "\n")
+    print(f"  market: {len(vol)} item volumes, {len(groups)} groups, {len(events)} news events", file=sys.stderr)
+
+
+# ---------------------------------------------------------------------------
+# Supply: what the world's hunters find
+# ---------------------------------------------------------------------------
+#
+# npc/prontera-vendors-supply.txt simulates parties hunting the world's
+# fields and dungeons, an hour at a time, and keeps a supply of each item
+# that only monsters drop. The engine lists no more of one than the supply
+# holds ($@pop_item_supply). This writes what that script needs: each map's
+# yield per party-hour, the MvPs, and per item its decay class and cap.
+
+# Kills one party makes in an hour on a map with monsters to spare (one
+# every 12 s), and the seconds a monster takes to find and kill on top of its
+# respawn: a map's spawns cap its kills, however many parties hunt it.
+SUPPLY_PARTY_KILLS = 300
+SUPPLY_HUNT_SECONDS = 30
+# A map needs this many monsters worth hunting to draw a party.
+SUPPLY_MIN_MOBS = 8
+# How much likelier a party picks a known hunting ground (FIELD_SPOTS and the
+# dungeons with a loot stall or buyer).
+SUPPLY_KNOWN_SPOT = 3
+# Each item's stock never goes past this many times the most a stall line
+# lists, and at least SUPPLY_CAP_MIN: drops nobody lists don't pile up.
+SUPPLY_CAP_TIMES = 4
+SUPPLY_CAP_MIN = 5
+# Half-life class, in percent of the "How long loot stays" setting. What
+# players use up (ores, stones, herbs, potions...) leaves fastest; cards and
+# MvP loot are held longest, equipment longer than loot.
+SUPPLY_HL_USED = 50
+SUPPLY_HL_LOOT = 100
+SUPPLY_HL_EQUIP = 300
+SUPPLY_HL_RARE = 500
+SUPPLY_USED_TYPES = ("healing", "usable", "delayconsume", "cash")
+# rAthena's drop-rate classes (mob.cpp, the item_rate_* battle flags), in the
+# order the supply script reads them with getbattleflag.
+RATE_CLASSES = ["common", "common_boss", "common_mvp", "heal", "heal_boss", "heal_mvp",
+                "use", "use_boss", "use_mvp", "equip", "equip_boss", "equip_mvp",
+                "card", "card_boss", "card_mvp", "treasure", "mvp"]
+# Spawn files the hunters go to: the world's fields and dungeons, not towns,
+# castles, the academy or event spawns.
+SUPPLY_SPAWN_DIRS = ("fields/", "dungeons/")
+SUPPLY_SPAWN_FILES = ("tra_fild.txt", "verus.txt")
+# Filled in by main() as the sell themes resolve: item id -> the most any
+# plain line of a sell stall lists.
+SELL_PLAIN = {}
+
+
+def produced_items():
+    """What a player can make (forge, brew, cook...): produce_db's results."""
+    out = set()
+    path = os.path.join(RA, "db", ERA, "produce_db.txt")
+    if not os.path.exists(path):
+        return out
+    for line in open(path, encoding="utf-8", errors="replace"):
+        parts = line.split("//")[0].strip().split(",")
+        if len(parts) > 1 and parts[1].strip().isdigit():
+            out.add(int(parts[1]))
+    return out
+
+
+def mob_bosstype(m):
+    """rAthena's boss type: "mvp", "boss" (a mini-boss) or ""."""
+    if (m.get("Modes") or {}).get("Mvp") or m.get("MvpExp", 0) > 0:
+        return "mvp"
+    return "boss" if m.get("Class") == "Boss" else ""
+
+
+def rate_class(e, m, mvp_reward=False):
+    """The index in RATE_CLASSES of the drop-rate setting rAthena scales this
+    drop by (mob.cpp, the mob_db load)."""
+    if mvp_reward:
+        return RATE_CLASSES.index("mvp")
+    if "Treasure" in (m.get("RaceGroups") or {}):
+        return RATE_CLASSES.index("treasure")
+    t = (e.get("Type") or "Etc").lower()
+    kind = {"healing": "heal", "usable": "use", "cash": "use", "weapon": "equip", "armor": "equip",
+            "petarmor": "equip", "card": "card"}.get(t, "common")
+    bt = mob_bosstype(m)
+    return RATE_CLASSES.index(kind + ("_" + bt if bt else ""))
+
+
+def supply_spawns():
+    """(map, mob id, count, average respawn in seconds, boss_monster?) for
+    every spawn line in the hunters' fields and dungeons."""
+    out = []
+    base = os.path.join(RA, "npc", ERA, "mobs")
+    for root, _, files in os.walk(base):
+        for f in files:
+            rel = os.path.relpath(os.path.join(root, f), base).replace(os.sep, "/")
+            if not f.endswith(".txt") or not (rel.startswith(SUPPLY_SPAWN_DIRS) or rel in SUPPLY_SPAWN_FILES):
+                continue
+            for line in open(os.path.join(root, f), encoding="utf-8", errors="replace"):
+                if line.lstrip().startswith("//"):
+                    continue
+                parts = line.rstrip("\n").split("\t")
+                if len(parts) < 4 or not parts[1].startswith(("monster", "boss_monster")):
+                    continue
+                mid = mob_ref(parts[3])
+                if mid not in MOBS:
+                    continue
+                fields = [x.strip() for x in parts[3].split(",")]
+                n = int(fields[1]) if len(fields) > 1 and fields[1].isdigit() else 1
+                d1 = int(fields[2]) if len(fields) > 2 and fields[2].isdigit() else 0
+                d2 = int(fields[3]) if len(fields) > 3 and fields[3].isdigit() else 0
+                mp = parts[0].split(",")[0].strip()
+                if n > 0 and re.fullmatch(r"[A-Za-z0-9_]+", mp):
+                    out.append((mp, mid, n, (d1 + d2 / 2) / 1000, parts[1].startswith("boss_monster")))
+    return out
+
+
+# An NPC selling an item for up to this many times its market price is where
+# players get it, so hunting doesn't limit it. Dearer NPCs (a special shop
+# with Elunium at 200,000z) don't count.
+SUPPLY_NPC_TIMES = 1.5
+
+
+def supply_gated(spawn_rows):
+    """Items the supply limits: those a sell stall lists plain that only
+    monsters on the hunters' maps give (no NPC sells them near the market
+    price, nobody makes them). What the hunters can't find stays as it is,
+    or it would never show."""
+    found = set()
+    for _, mid, _, _, _ in spawn_rows:
+        m = MOBS[mid]
+        for d in (m.get("Drops") or []) + (m.get("MvpDrops") or []):
+            e = item(d["Item"])
+            if e:
+                found.add(e["Id"])
+    made = produced_items()
+
+    def npc_source(i):
+        if i not in NPC_PRICE:
+            return False
+        hi = TABLE.get(i, (0, 0, ""))[1]
+        return not hi or NPC_PRICE[i] <= SUPPLY_NPC_TIMES * hi
+
+    return {i for i in SELL_PLAIN if i in found and not npc_source(i) and i not in made}
+
+
+def write_supply_script():
+    """npc/prontera-vendors-supply-data.txt: the hunting simulation's data,
+    filled into temporary server variables at start ($@pvs_*)."""
+    rows = supply_spawns()
+    gated = supply_gated(rows)
+    known = {mp for _, _, maps, _ in FIELD_SPOTS for mp in maps}
+    known_files = {f for _, _, files in AREAS_LOOT + BUY_ONLY_DUNGEONS for f in files}
+    # Maps of the known dungeons: their spawn files name them.
+    for rel, mp, _, _ in SPAWN_LINES:
+        if rel.split("/")[-1] in known_files:
+            known.add(mp)
+
+    by_map, mvps = {}, {}
+    for mp, mid, n, respawn, boss in rows:
+        if mob_bosstype(MOBS[mid]) == "mvp":
+            mv = mvps.setdefault(mid, {"copies": 0, "respawn": respawn, "maps": set()})
+            mv["copies"] += n
+            mv["respawn"] = min(mv["respawn"], respawn)
+            mv["maps"].add(mp)
+            continue
+        by_map.setdefault(mp, []).append((mid, n, respawn))
+
+    maps = []
+    for mp in sorted(by_map):
+        lines = by_map[mp]
+        # Plants and eggs are hit now and then, not hunted.
+        def weight(mid, n):
+            m = MOBS[mid]
+            return n * (0.3 if m.get("Race") == "Plant" or m["Name"].endswith("Egg") else 1.0)
+        hunted = sum(weight(mid, n) for mid, n, _ in lines)
+        if hunted < SUPPLY_MIN_MOBS:
+            continue
+        lv = round(sum(MOBS[mid].get("Level", 1) * weight(mid, n) for mid, n, _ in lines) / hunted)
+        cap = 0
+        yields = {}
+        for mid, n, respawn in lines:
+            # Each line gets its share of a party's kills, no more than its
+            # monsters can respawn in an hour.
+            line_cap = n * 3600 / (respawn + SUPPLY_HUNT_SECONDS)
+            cap += line_cap
+            kills = min(SUPPLY_PARTY_KILLS * weight(mid, n) / hunted, line_cap)
+            m = MOBS[mid]
+            for d in m.get("Drops") or []:
+                e = item(d["Item"])
+                if not e or e["Id"] not in gated:
+                    continue
+                k = (e["Id"], rate_class(e, m))
+                yields[k] = yields.get(k, 0) + kills * d.get("Rate", 0) / 10000
+        yields = {k: round(v * 1_000_000) for k, v in yields.items() if round(v * 1_000_000) > 0}
+        maps.append((mp, lv, min(round(cap), 1_000_000), SUPPLY_KNOWN_SPOT if mp in known else 1, yields))
+
+    # Each item's yield per party-hour, over where parties go (by map weight):
+    # the long-run inflow, for a market started filled and for long downtime.
+    total_w = sum(w for _, _, _, w, _ in maps) or 1
+    avg = {}
+    for _, _, _, w, yields in maps:
+        for (iid, cls), v in yields.items():
+            a = avg.setdefault(iid, {})
+            a[cls] = a.get(cls, 0) + v * w / total_w
+
+    out = ["//===== Ragnarok Offline: prontera-vendors =================================",
+           "//= The hunted supply's data, for npc/prontera-vendors-supply.txt.",
+           "//= GENERATED by registry/tools/prontera-vendors/build_vendors.py",
+           "//= (write_supply_script); a re-run overwrites it.",
+           "//===========================================================================",
+           "-\tscript\tProntVendorsSupplyData\t-1,{",
+           "\tend;",
+           "OnInit:",
+           "\t$@pvs_ready = 0;",
+           f"\t$@pvs_party_kills = {SUPPLY_PARTY_KILLS};",
+           "\t// rAthena's drop-rate settings, in the order each yield's class counts them.",
+           "\tdeletearray $@pvs_rateflag$;",
+           "\tsetarray $@pvs_rateflag$[0], " + ", ".join(q("item_rate_" + c) for c in RATE_CLASSES) + ";",
+           "\t// The items the supply limits: id, half-life class (% of the setting),",
+           "\t// cap, and the long-run yield per party-hour (millionths, by rate class).",
+           "\tdeletearray $@pvs_gid; deletearray $@pvs_ghl; deletearray $@pvs_gcap; deletearray $@pvs_gk;",
+           "\tdeletearray $@pvs_aitem; deletearray $@pvs_acls; deletearray $@pvs_arate;"]
+    gids = sorted(gated)
+    for k in range(0, len(gids), 16):
+        out.append(f"\tsetarray $@pvs_gid[{k}], " + ", ".join(map(str, gids[k:k + 16])) + ";")
+    hl, caps = [], []
+    for i in gids:
+        e = ITEMS_BY_ID[i]
+        used = ((e.get("Type") or "").lower() in SUPPLY_USED_TYPES
+                or e["AegisName"] in UPGRADE | CRAFTING | ELEMENTAL | HERBS | ALCHEMY)
+        hl.append(SUPPLY_HL_RARE if e.get("Type") == "Card" or i in MVP_ONLY
+                  else SUPPLY_HL_EQUIP if is_equip(e)
+                  else SUPPLY_HL_USED if used else SUPPLY_HL_LOOT)
+        caps.append(max(SUPPLY_CAP_MIN, SUPPLY_CAP_TIMES * SELL_PLAIN[i]))
+    for k in range(0, len(gids), 16):
+        out.append(f"\tsetarray $@pvs_ghl[{k}], " + ", ".join(map(str, hl[k:k + 16])) + ";")
+    for k in range(0, len(gids), 16):
+        out.append(f"\tsetarray $@pvs_gcap[{k}], " + ", ".join(map(str, caps[k:k + 16])) + ";")
+    for k in range(0, len(gids), 8):
+        out.append("\t" + " ".join(f"$@pvs_gk[{i}] = {k + j + 1};" for j, i in enumerate(gids[k:k + 8])))
+    flat = [(i, cls, round(v)) for i in gids for cls, v in sorted(avg.get(i, {}).items()) if round(v) > 0]
+    for name, col in (("aitem", 0), ("acls", 1), ("arate", 2)):
+        for k in range(0, len(flat), 16):
+            out.append(f"\tsetarray $@pvs_{name}[{k}], " + ", ".join(str(r[col]) for r in flat[k:k + 16]) + ";")
+    out.append(f"\t$@pvs_gcount = {len(gids)}; $@pvs_acount = {len(flat)};")
+
+    out += ["\t// Maps: name, monster level, kills an hour its spawns allow, weight, and",
+            "\t// where its yields start and how many (item, rate class, millionths of",
+            "\t// one per party-hour at $@pvs_party_kills kills).",
+            "\tdeletearray $@pvs_map$; deletearray $@pvs_mlv; deletearray $@pvs_mcap; deletearray $@pvs_mw;",
+            "\tdeletearray $@pvs_mstart; deletearray $@pvs_mlen; deletearray $@pvs_yitem; deletearray $@pvs_ycls; deletearray $@pvs_yrate;"]
+    flat = []
+    for m_i, (mp, lv, cap, w, yields) in enumerate(maps):
+        out.append(f'\t$@pvs_map$[{m_i}] = "{mp}"; $@pvs_mlv[{m_i}] = {lv}; $@pvs_mcap[{m_i}] = {cap}; '
+                   f"$@pvs_mw[{m_i}] = {w}; $@pvs_mstart[{m_i}] = {len(flat)}; $@pvs_mlen[{m_i}] = {len(yields)};")
+        flat += [(i, cls, v) for (i, cls), v in sorted(yields.items())]
+    for name, col in (("yitem", 0), ("ycls", 1), ("yrate", 2)):
+        for k in range(0, len(flat), 16):
+            out.append(f"\tsetarray $@pvs_{name}[{k}], " + ", ".join(str(r[col]) for r in flat[k:k + 16]) + ";")
+    out.append(f"\t$@pvs_mcount = {len(maps)};")
+
+    out += ["\t// MvPs: monster, level, how many spawn, respawn (s), a map, and their drops",
+            "\t// the supply limits (item, rate class, chance in 10000).",
+            "\tdeletearray $@pvs_mvp; deletearray $@pvs_mvplv; deletearray $@pvs_mvpn; deletearray $@pvs_mvpre;",
+            "\tdeletearray $@pvs_mvpmap$; deletearray $@pvs_mvpstart; deletearray $@pvs_mvplen;",
+            "\tdeletearray $@pvs_vitem; deletearray $@pvs_vcls; deletearray $@pvs_vrate;"]
+    flat = []
+    for v_i, mid in enumerate(sorted(mvps)):
+        m, mv = MOBS[mid], mvps[mid]
+        drops = []
+        for d, reward in [(d, False) for d in m.get("Drops") or []] + [(d, True) for d in m.get("MvpDrops") or []]:
+            e = item(d["Item"])
+            if e and e["Id"] in gated and d.get("Rate", 0) > 0:
+                drops.append((e["Id"], rate_class(e, m, reward), d["Rate"]))
+        out.append(f"\t$@pvs_mvp[{v_i}] = {mid}; $@pvs_mvplv[{v_i}] = {m.get('Level', 1)}; "
+                   f"$@pvs_mvpn[{v_i}] = {mv['copies']}; $@pvs_mvpre[{v_i}] = {max(60, round(mv['respawn']))}; "
+                   f'$@pvs_mvpmap$[{v_i}] = "{sorted(mv["maps"])[0]}"; $@pvs_mvpstart[{v_i}] = {len(flat)}; '
+                   f"$@pvs_mvplen[{v_i}] = {len(drops)}; // {m['Name']}")
+        flat += drops
+    for name, col in (("vitem", 0), ("vcls", 1), ("vrate", 2)):
+        for k in range(0, len(flat), 16):
+            out.append(f"\tsetarray $@pvs_{name}[{k}], " + ", ".join(str(r[col]) for r in flat[k:k + 16]) + ";")
+    out += [f"\t$@pvs_mvpcount = {len(mvps)};",
+            "\t// Filled: the supply script can start (before the first stalls open).",
+            "\t$@pvs_ready = 1;",
+            '\tif (getnpcid(0, "ProntVendorsSupply"))',
+            '\t\tdonpcevent "ProntVendorsSupply::OnDataReady";',
+            "\tend;", "}"]
+    npc = os.path.join(os.path.dirname(OUT_DB), "npc")
+    os.makedirs(npc, exist_ok=True)
+    open(os.path.join(npc, "prontera-vendors-supply-data.txt"), "w", encoding="utf-8", newline="\n").write(
+        "\n".join(out) + "\n")
+    print(f"  supply: {len(gids)} items limited, {len(maps)} maps, {len(mvps)} MvPs", file=sys.stderr)
+    return maps, avg, gids
+
+
 def write_table():
     import csv
     priced = sorted(popularity(ITEMS_BY_ID[i]) for i, (lo, _, _) in TABLE.items() if lo)
@@ -2058,6 +2793,7 @@ def main():
                     "    Callouts: { EverySeconds: [90, 270], MapGapSeconds: 6 }",
                     "    Pool:"]
         for e, spec, p in lines:
+            MARKET_ITEMS.add(e["Id"])
             if buying:
                 BUY_WANTED.add(e["Id"])
                 lo_p = TABLE.get(e["Id"], (0, 0, ""))[0] or band(p)[0]
@@ -2068,6 +2804,8 @@ def main():
                 continue
             d = {"Item": e["AegisName"], "Amount": amount_for(e, p, rng)}
             plain = not (spec.get("refine") or spec.get("element") or spec.get("stars") or spec.get("cards"))
+            if plain:
+                SELL_PLAIN[e["Id"]] = max(SELL_PLAIN.get(e["Id"], 0), d["Amount"])
             if plain and TABLE.get(e["Id"], (0, 0, ""))[0] > 0:
                 d["Price"] = list(TABLE[e["Id"]][:2])
             else:
@@ -2101,6 +2839,8 @@ def main():
         ]))
         print(f"  {t['key']}: {len(lines)} items", file=sys.stderr)
     write_table()
+    write_market_script()
+    write_supply_script()
 
     # The market: every sidewalk spot rolls one of the themes whenever a stall
     # is put there, so the street changes as stalls rotate. Its Count is what

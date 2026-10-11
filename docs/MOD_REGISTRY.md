@@ -65,6 +65,36 @@ in [`scripts/mod-index.py`](../scripts/mod-index.py), not a file to sneak in:
 To update: raise `version` in `mod.json`, change the files, regenerate the index
 and open another pull request. The app compares versions and offers the update.
 
+### CHANGELOG.md: what each version changed
+
+Put a `CHANGELOG.md` at the top of your folder, with a section per version
+headed `## <version>` exactly as that version's `mod.json` says it:
+
+```markdown
+## 1.2.0
+- Vendors restock at night.
+
+### Pre-renewal only
+- No Renewal-only items in the stalls.
+
+## 1.1.0
+- ...
+```
+
+When a player's copy is older, Settings → Mods → Updates shows, under "What's
+new", the section of every version between theirs and the new one, newest
+first: a player on 1.0.0 updating to 1.2.0 sees 1.2.0 and 1.1.0. At most ten
+are listed, with a line saying how many earlier ones were left out. The order of
+the sections in the file does not matter, and a `##` heading that is not a
+version (`## Unreleased`) is skipped with what is under it.
+
+It is shown as text, never as HTML: `##` and `###` lines are headings, lines
+starting with `-` or `*` are bullets, and everything else is shown as written.
+The file is fetched on its own, from this folder, and checked against the index
+like every other file, only when there is an update to show it for. Without
+one, the update shows no notes. It is installed with the rest of the mod, so
+keep it for players reading the folder too.
+
 ## Your own repository, with releases
 
 For a mod that changes faster than a pull request here could keep up with. The
@@ -167,17 +197,25 @@ they installed from its own repository. A newer one shows as
 
 > Update available (v4.7.1 → v4.8.0) **Update…** · Release notes
 
+Under it, "What's new" shows your release notes: those of every published
+release between the player's version and the new one, newest first, each under
+its tag, so a player who skipped versions sees what each of them changed. The
+release list is asked for only when there is an update, in one more lookup; if
+that one fails, the latest release's notes show alone. A release with empty
+notes is left out. The notes are shown as text, as a
+[CHANGELOG.md](#changelogmd-what-each-version-changed) is.
+
 **Update…** downloads the release, checks it, and only then shows a dialog
-with the repository, the tag, the file and its SHA-256, what kind of code the
-release carries, and the start of your release notes. The new version replaces
+with the repository, the tag, the file and its SHA-256, and what kind of code
+the release carries. The new version replaces
 the old one in a single rename; if anything fails before that, the old version
 is untouched. The player's options for the mod and whether it is switched on
 live outside the mod's folder, so an update keeps them — provided your setting
 keys keep their names. Renaming a key is, to the app, removing one option and
 adding another.
 
-Write release notes for players: they see the first few hundred characters in
-that dialog, and the rest is one click away.
+Write release notes for players: they read them on the Updates tab, a few lines
+at first and the rest with **Show all**.
 
 Lookups go to `api.github.com` without signing in, which GitHub limits to 60 an
 hour per network. The app caches each answer for five minutes and only looks

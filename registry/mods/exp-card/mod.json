@@ -1,9 +1,10 @@
 {
   "name": "exp-card",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "author": "BlaXun",
-  "description": "Every monster kill has a chance to drop a tiered Exp Card, bound to the killer for the standard pickup window. Two families -- Base Exp Cards and Job Exp Cards -- each with ten levels; higher-level mobs drop higher-level cards. At 1x, a level 10 card grants roughly 5% of the exp a level-98 character needs for the next level, and each lower level is about half the one above it; card exp scales with the server's Base/Job EXP rates. Streamlines offline levelling without touching per-mob drop tables.",
+  "description": "Every monster kill has a chance to drop a tiered Exp Card, bound to the killer for the standard pickup window. Two families -- Base Exp Cards and Job Exp Cards -- each with ten levels; higher-level mobs drop higher-level cards. At 1x, a card grants about 5% of the next level at the lowest level that may use it (a level 10 card: 30,000 exp, from base level 91); card exp scales with the server's Base/Job EXP rates. Streamlines offline levelling without touching per-mob drop tables.",
   "requires": { "app": ">=1.3.9", "era": "any" },
+  "prerenewalFolder": "pre-re",
   "tags": [
     "experience",
     "leveling",
@@ -19,11 +20,11 @@
     {
       "key": "drop_chance",
       "type": "number",
-      "default": 225,
+      "default": 200,
       "min": 1,
       "max": 10000,
       "label": "Drop chance (0.01% units)",
-      "description": "Odds a card drops from any given monster kill, in 0.01% units. 225 = 2.25% (the default), 100 = 1%, 1000 = 10%. At ~150 kills per hour and a 50/50 base/job split, 2.25% works out to ~5-9% of a level per hour on whichever axis the player is pushing -- noticeable without trivialising the grind. Which card (base or job, level 1-10) is decided per drop -- see the mod's README."
+      "description": "Odds a card drops from any given monster kill, in 0.01% units. 200 = 2% (the default), 100 = 1%, 1000 = 10%. At ~150 kills per hour and a 50/50 base/job split, 2% is about 1.5 cards an hour on whichever axis the player is pushing, each worth 3-5% of a level where it drops: ~4.5-7.5% of a level per hour. Which card (base or job, level 1-10) is decided per drop -- see the mod's README."
     }
   ]
 }

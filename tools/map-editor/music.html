@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Music browser</title>
+<!--
+  Settings -> Tools -> Music browser (#414): every track in the client's BGM
+  folder and the mods' own, which maps play each one, and a play button. Picking
+  music for a mod used to mean reading mp3nametable.txt out of a GRF and
+  guessing from file numbers. The map editor's Map panel has the same list.
+-->
+<!--HOST-->
+<link rel="stylesheet" href="ui/style.css">
+<style>
+  body { overflow: auto; user-select: text; }
+  main { max-width: 900px; margin: 0 auto; padding: 16px; width: 100%; }
+  .list { max-height: none; }
+  .li small { max-width: 65%; }
+  .snippet { margin-top: 10px; }
+</style>
+</head>
+<body>
+<header><b>Music browser</b><span class="muted">&nbsp; every track in your client and your mods, and the maps that play it</span></header>
+<main id="music"></main>
+<script type="module" src="ui/music.js"></script>
+</body>
+</html>

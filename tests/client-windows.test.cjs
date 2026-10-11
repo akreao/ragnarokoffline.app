@@ -83,3 +83,29 @@ test('a server script speaking first reaches plugins as server:event', async () 
     assert.deepEqual(heard, [{ command: 'cardremover', text: 'open' }]);
     assert.ok(Object.isFrozen(heard[0]));
 });
+
+test('store.get reads what the mod keeps under client, as a server request', async () => {
+    const { createRuntime } = await runtimeModule;
+    const runtime = createRuntime();
+    const sent = [];
+    const answers = [
+        '1 {"board":{"Alice":30,"Bob":50},"season":"Autumn"}',
+        '1 "caf\\u00c3\\u00a9"',
+        '1 null',
+        "0 a client can only read paths under 'client'",
+    ];
+    runtime.configure({ serverRequest: (command, text, timeout) => { sent.push({ command, text, timeout }); return Promise.resolve(answers.shift()); } });
+    const { api } = runtime.scope('bounty-hunt');
+    const all = await api.store.get('global', 'client');
+    assert.deepEqual(all, { board: { Alice: 30, Bob: 50 }, season: 'Autumn' });
+    assert.ok(Object.isFrozen(all.board));
+    assert.equal(await api.store.get('char', 'client.name'), 'café', 'bytes outside ASCII come back as UTF-8');
+    assert.equal(await api.store.get('account', 'client.none'), null);
+    await assert.rejects(api.store.get('global', 'client.x'), /only read paths under 'client'/);
+    assert.deepEqual(sent.map(s => s.text), ['bounty-hunt global client', 'bounty-hunt char client.name', 'bounty-hunt account client.none', 'bounty-hunt global client.x']);
+    assert.ok(sent.every(s => s.command === 'modstore'), 'the mod name is the plugin\'s own');
+    assert.throws(() => api.store.get('global', 'secret'), TypeError);
+    assert.throws(() => api.store.get('global', 'clientele'), TypeError);
+    assert.throws(() => api.store.get('global', 'client..x'), TypeError);
+    assert.throws(() => api.store.get('everyone', 'client'), TypeError);
+});

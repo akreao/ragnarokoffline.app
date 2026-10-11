@@ -1,0 +1,53 @@
+From 0000000000000000000000000000000000000026
+Subject: [PATCH] population_engine_loot_*: shells pick up their own drops
+
+Shells never picked anything up, so every kill left its drops on the ground
+until they expired. population_engine_loot_enable lets an ambient shell walk
+over and take the drops of its own kills, through stock pc_takeitem, the way a
+player would. Each drop is decided once: a rare one (any card, or a base drop
+rate at or below loot_rare_rate per 10000) is taken with loot_rare_pickup_pct
+chance, anything else with loot_common_pickup_pct. A rare drop is fetched even
+mid-fight unless HP is under loot_hp_abort_pct; anything else waits until
+nothing attacks the shell, and a drop a fight held back is forgotten with
+loot_forget_pct chance. A drop not reached within loot_timeout_ms is given up.
+Off, the default, is the behaviour before. The logic lives in
+population_shell_loot.cpp.
+
+--- a/src/custom/battle_config_init.inc
++++ b/src/custom/battle_config_init.inc
+@@ -66,3 +66,11 @@
+ { "population_engine_companion_hire_item",&battle_config.population_engine_companion_hire_item,0,0,INT_MAX,},
+ { "population_engine_companion_hire_item_amount",&battle_config.population_engine_companion_hire_item_amount,0,0,30000,},
+ { "population_engine_skill_weapon_check",&battle_config.population_engine_skill_weapon_check,0,0,1,},
++{ "population_engine_loot_enable",&battle_config.population_engine_loot_enable,0,0,1,},
++{ "population_engine_loot_rare_rate",&battle_config.population_engine_loot_rare_rate,100,0,10000,},
++{ "population_engine_loot_rare_pickup_pct",&battle_config.population_engine_loot_rare_pickup_pct,95,0,100,},
++{ "population_engine_loot_common_pickup_pct",&battle_config.population_engine_loot_common_pickup_pct,70,0,100,},
++{ "population_engine_loot_forget_pct",&battle_config.population_engine_loot_forget_pct,10,0,100,},
++{ "population_engine_loot_timeout_ms",&battle_config.population_engine_loot_timeout_ms,15000,1000,600000,},
++{ "population_engine_loot_radius",&battle_config.population_engine_loot_radius,9,1,20,},
++{ "population_engine_loot_hp_abort_pct",&battle_config.population_engine_loot_hp_abort_pct,30,0,100,},
+--- a/src/custom/battle_config_struct.inc
++++ b/src/custom/battle_config_struct.inc
+@@ -132,3 +132,21 @@
+ /// Skills: 1 = population PCs must hold the weapon a skill requires, as players
+ /// must; 0 = any skill with any weapon (as before). Ammo and items stay relaxed.
+ int32 population_engine_skill_weapon_check;
++/// Looting: 1 = ambient shells pick up the drops of their own kills; 0 = they
++/// leave them on the ground (as before). Recruited companions are unaffected.
++int32 population_engine_loot_enable;
++/// A drop is rare when its base rate in the monster's table is at most this
++/// (per 10000, 100 = 1%). Cards are always rare; 0 = only cards.
++int32 population_engine_loot_rare_rate;
++/// Chance (%) a shell goes for a rare drop at all: high, but need not be certain.
++int32 population_engine_loot_rare_pickup_pct;
++/// Chance (%) a shell goes for an ordinary drop at all.
++int32 population_engine_loot_common_pickup_pct;
++/// Chance (%) a drop a fight held back is forgotten once the fight ends.
++int32 population_engine_loot_forget_pct;
++/// A drop not reached in this time is given up (rare drops get twice as long).
++int32 population_engine_loot_timeout_ms;
++/// How far around itself (cells) a shell looks for its drops.
++int32 population_engine_loot_radius;
++/// Below this HP% a shell stops going for even rare drops mid-fight.
++int32 population_engine_loot_hp_abort_pct;

@@ -172,8 +172,10 @@ function create({ BrowserWindow, session, ipcMain, preload, listMods, saveSettin
 		return { mod, mods };
 	}
 
-	ipcMain.handle('mod-settings:get', async event => {
-		const name = caller(event, 'modSettings.get');
+	// The three calls, by the mod they are for. The window's IPC below and a
+	// headless app's sandboxed frame (electron/headless/) both decide that
+	// from where the call came, and never from what the page sent.
+	async function get(name) {
 		const { mod, mods } = await installed(name);
 		return {
 			name,
@@ -182,37 +184,47 @@ function create({ BrowserWindow, session, ipcMain, preload, listMods, saveSettin
 			settings: mod.settings,
 			context: { ...context(), enabledMods: mods.filter(m => m.enabled).map(m => m.name) },
 		};
-	});
-	ipcMain.handle('mod-settings:set', async (event, given) => {
-		const name = caller(event, 'modSettings.set');
+	}
+	function set(name, given, from = 'its settings window') {
 		const job = writes.then(async () => {
 			const { mod } = await installed(name);
 			await saveSettings(name, mergedValues(mod.settings, given));
-			log(`mod ${name} changed its settings from its settings window`);
+			log(`mod ${name} changed its settings from ${from}`);
 			return { saved: true };
 		});
 		writes = job.catch(() => {});
 		return job;
-	});
+	}
 	// One restart at a time: a second call while one is running shares it
 	// rather than queueing another, so a page cannot loop the server.
-	ipcMain.handle('mod-settings:apply', async event => {
-		const name = caller(event, 'modSettings.apply');
+	async function applyFor(name, from = 'its settings window') {
 		if (!applying) {
-			log(`mod ${name} asked for Apply from its settings window`);
+			log(`mod ${name} asked for Apply from ${from}`);
 			applying = writes.then(() => apply()).finally(() => { applying = null; });
 		}
 		await applying;
 		return { applied: true };
-	});
+	}
+	// A mod's settings page, as a real file inside its real folder.
+	async function page(name) {
+		const { mod } = await installed(name);
+		if (!mod.settingsPage) throw new Error(`${name} has no settings page.`);
+		return settingsPageFile(mod.dir, mod.settingsPage);
+	}
+
+	ipcMain.handle('mod-settings:get', event => get(caller(event, 'modSettings.get')));
+	ipcMain.handle('mod-settings:set', (event, given) => set(caller(event, 'modSettings.set'), given));
+	ipcMain.handle('mod-settings:apply', event => applyFor(caller(event, 'modSettings.apply')));
 
 	return {
+		get,
+		set,
+		apply: applyFor,
+		page,
 		async open(name, parent) {
 			const existing = open.get(name);
 			if (existing && !existing.isDestroyed()) { existing.focus(); return `${name} settings are already open.`; }
-			const { mod } = await installed(name);
-			if (!mod.settingsPage) throw new Error(`${name} has no settings page.`);
-			const { root, file } = settingsPageFile(mod.dir, mod.settingsPage);
+			const { root, file } = await page(name);
 
 			const partition = `mod-settings:${name}`;
 			const ses = session.fromPartition(partition);

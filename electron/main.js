@@ -11,6 +11,17 @@
 // everywhere is worth ~60 MB of download.
 //
 const { app, BrowserWindow, ipcMain, dialog, Menu, shell, clipboard, screen, session, safeStorage, powerMonitor, protocol, net } = require('electron');
+
+// Headless: no windows, the server started on its own, and Settings in a
+// browser at an address printed once (electron/headless/, docs/HEADLESS.md).
+// For a machine with no screen, or one the host reaches over SSH.
+const HEADLESS = process.argv.includes('--headless') || process.env.RAGNAROK_OFFLINE_HEADLESS === '1';
+// Chromium needs a display server on Linux even with no window open. With
+// none to be had, use its headless platform; Xvfb (docs/HEADLESS.md) is the
+// fallback if this build of Electron lacks it.
+if (HEADLESS && process.platform === 'linux' && !process.env.DISPLAY && !process.env.WAYLAND_DISPLAY) {
+	app.commandLine.appendSwitch('ozone-platform', 'headless');
+}
 // Mods' own settings pages are served from a private scheme, which Chromium
 // only accepts if it is declared before the app is ready.
 // Every privileged scheme in one call (Electron keeps only the last): the mod
@@ -283,6 +294,19 @@ function unpackTranslationData(root) {
 			fs.rmSync(archive, { force: true });
 		} catch (e) {
 			appLog(`could not unpack the ${era} translation textures: ${e.message}`);
+		}
+	}
+	// The Compatibility layers' files, for every packet version and era; the
+	// supervisor picks which to stage (config/TRANSLATION_LAYERS).
+	const translation = path.join(root, 'vendor/ROenglishRE/Translation');
+	const layers = path.join(translation, 'compatibility.tar');
+	if (fs.existsSync(layers)) {
+		try {
+			fs.rmSync(path.join(translation, 'Compatibility'), { recursive: true, force: true });
+			extractTarLatin1(layers, translation);
+			fs.rmSync(layers, { force: true });
+		} catch (e) {
+			appLog(`could not unpack the translation's compatibility layers: ${e.message}`);
 		}
 	}
 }
@@ -558,7 +582,7 @@ function withEngineFlags(args) {
 }
 
 async function runStack(rawArgs) {
-    if (sharing && ['up', 'down', 'repair', 'backup', 'restore', 'secure-services'].includes(rawArgs[0])) await sharing.stop();
+    if (sharing && ['up', 'down', 'repair', 'backup', 'restore', 'secure-services', 'mod-data-reset'].includes(rawArgs[0])) await sharing.stop();
     return runStackProcess(rawArgs);
 }
 function runStackProcess(rawArgs) {
@@ -672,7 +696,7 @@ async function assetsStart() {
 	const server = findTool('robrowser-remoteclient');
 	if (!server) throw new Error('the asset server binary is missing from this build');
 	const client = getClientPaths();
-	const sources = ['data_grf', 'rdata_grf', 'official_grf', 'bgm_dir'].map(key => {
+	const sources = ['data_grf', 'rdata_grf', 'official_grf', 'bgm_dir', 'fallback_grf'].map(key => {
 		const filename = client[key] || '';
 		try {
 			const stat = fs.statSync(filename);
@@ -700,6 +724,8 @@ async function assetsStart() {
 			ENABLE_STATIC_SERVE: 'true', ENABLE_WSPROXY: 'true',
 			ROBROWSER_PATH: path.resolve(root, 'vendor/roBrowserLegacy/dist/Web'),
 			WS_ALLOWED_TARGETS: proxyTargets(client).sort().join(','),
+			// rAthena's web server keeps guild emblems; the client asks this origin for them.
+			WEB_SERVER_TARGET: `127.0.0.1:${gamePorts().web}`,
 			DATA_OVERRIDE_PATH: path.resolve(translationRoot(), 'data'),
 			ENABLE_COMPRESSION: process.env.ENABLE_COMPRESSION || 'true',
 			CACHE_MAX_FILES: process.env.CACHE_MAX_FILES || '5000',
@@ -758,6 +784,8 @@ async function assetsStop() { if (sharing) await sharing.stop(); return assetSer
 const DEFAULT_CLIENT = {
 	mode: 'host', join_host: '', lan: false,
 	data_grf: '', rdata_grf: '', official_grf: '', bgm_dir: '',
+	// Another client's GRF, read last: it only fills in what these lack.
+	fallback_grf: '',
 	// vm_ram_mib is deliberately absent: its default depends on the machine,
 	// so it is computed in getClientPaths() when the file does not name one.
 	// Anything written there -- by the slider in Settings -- wins permanently.
@@ -914,6 +942,7 @@ async function linkClientOwned(paths) {
 		['rdata_grf', paths.rdata_grf, 'rdata.grf', true],
 		['official_grf', paths.official_grf, 'official_data.grf', true],
 		['bgm_dir', paths.bgm_dir, 'the BGM folder', true],
+		['fallback_grf', paths.fallback_grf, 'the fallback GRF', true],
 	];
 	for (const [, p, label, optional] of ASSETS) {
 		if (!p) continue;
@@ -944,11 +973,14 @@ async function linkClientOwned(paths) {
 			throw new Error(`cannot read ${p}: ${e.message}\n\n${hint}`);
 		}
 	}
-	// Positional: an empty string keeps rdata's slot so official and bgm still
-	// land in theirs.
-	const args = ['link-assets', paths.data_grf, paths.rdata_grf || ''];
-	if (paths.official_grf || paths.bgm_dir) args.push(paths.official_grf || '');
-	if (paths.bgm_dir) args.push(paths.bgm_dir);
+	// Positional: an empty string keeps a slot so the ones after it still land
+	// in theirs. Trailing empty slots are dropped.
+	const args = ['link-assets', paths.data_grf, paths.rdata_grf || '',
+		paths.official_grf || '', paths.bgm_dir || '', paths.fallback_grf || ''];
+	while (args.length > 3 && !args[args.length - 1]) args.pop();
+	// Which client these GRFs are (kRO, iRO...), before link-assets: mods can
+	// be for one client, and their per-client folders are part of the overlay.
+	try { require('./client-detect').detectAndSave(stateDir(), paths, appLog); } catch (e) { appLog(`client: detection failed: ${e.message}`); }
 	return new Promise((resolve, reject) => {
 		execFile(
 			stackBin(),
@@ -975,6 +1007,8 @@ async function linkClientOwned(paths) {
 }
 
 let registryImages = null;
+// Mod-list CHANGELOG.md texts by digest, for the Updates tab.
+let registryChangelogs = null;
 
 const SETTINGS_DEFAULTS = {
 	open_registration: true,
@@ -985,6 +1019,14 @@ const SETTINGS_DEFAULTS = {
 	agent_window: true,
 	// How many agents may play at once, each its own account and window.
 	agent_count: 1,
+	// "Let an AI agent use the map editor": its MCP (/mcp/map) and command
+	// line on the same listener. On means opening the editor opens them (and
+	// every start after, once it has been); off closes them and keeps them
+	// closed, editor or not.
+	map_editor_agent: true,
+	// Mods the player starred in Settings -> Mods, by folder name: the Favorites
+	// tab lists them. Installed or not; nothing about the server reads it.
+	mod_favorites: [],
 	// How long a friends invitation stays valid, in days. Nothing to do with
 	// Cloudflare -- the tunnel runs as long as the app shares; this is only how
 	// long the invite token is accepted. A link posted in Discord should still
@@ -1021,6 +1063,10 @@ const SETTINGS_DEFAULTS = {
 	// consumed. Off leaves stock behavior; on writes `arrow_decrement: no`.
 	// Read at map-server boot, so Apply restarts the map server for it.
 	unlimited_arrows: false,
+	// Issue #533: Teleport Lv 1 learned or granted by a card (Creamy) asks
+	// Random / Cancel; on, it warps at once, as a Fly Wing does. Maps to
+	// rAthena's skip_teleport_lv1_menu (conf/battle/skill.conf), stock `no`.
+	skip_teleport_lv1_menu: false,
 	population_enable: false,
 	// A ceiling, not a target. Demand-driven spawning builds only the maps
 	// somebody is on, and a map holds 20-40 by the spawn tables, so this binds
@@ -1049,6 +1095,26 @@ const SETTINGS_DEFAULTS = {
 	// a companion whose gear does not fit a skill (a performer's default bow
 	// and its songs) skips it until it is given the right weapon.
 	population_skill_weapon_check: false,
+	// Whether a recruited companion lives on its own bag, as a player does:
+	// nothing refills it, skills cost their items and ammunition, and the bag
+	// is saved with it. Off keeps the historic free supply of potions, arrows
+	// and gemstones.
+	population_companion_inventory: false,
+	// Whether a player may set a companion to roam the map on its own, from the
+	// Companions window, instead of following. Off: every companion follows, and
+	// the window offers no Roam control.
+	population_companion_roam: false,
+	// Whether ambient shells pick up the drops of their own kills, the way a
+	// player would, and how (see population-conf.js shellLoot). Off keeps the
+	// historic behaviour: every drop stays on the ground until it expires.
+	population_loot_enable: false,
+	population_loot_rare_pct: 1,
+	population_loot_rare_pickup_pct: 95,
+	population_loot_common_pickup_pct: 70,
+	population_loot_forget_pct: 10,
+	population_loot_timeout_s: 15,
+	population_loot_radius: 9,
+	population_loot_hp_abort_pct: 30,
 	// How many shells one player may recruit into their party at once. The
 	// server enforces this per recruiter (not per map), and rAthena's MAX_PARTY
 	// of 12 leaves a slot for real players, which is why the UI tops out at 11.
@@ -1081,6 +1147,10 @@ const SETTINGS_DEFAULTS = {
 	// see electron/packetvers.js. null follows the app's default rather than
 	// pinning today's, so a later app that moves the default moves this too.
 	packetver: null,
+	// The time zone the game servers' clock reads (WoE, OnClock events, daily
+	// resets) -- see stack/src/timezone.rs. null follows this computer, which
+	// stackEnv() hands the supervisor; otherwise an IANA name, 'UTC' included.
+	server_timezone: null,
 };
 
 function getSettings() {
@@ -1091,6 +1161,8 @@ function getSettings() {
 // only names set_app_preference will write. Everything else in that file
 // changes how the server runs and has to go through Apply.
 const APP_PREFERENCES = new Set(['open_settings_first']);
+// Settings -> Mods -> Favorites: how many mods can be starred (settings-store checks the same).
+const MOD_FAVORITES_MAX = 500;
 
 // The AI agent's bearer token, for redaction. Read from its connection file
 // rather than from the agent: it outlives the session that made it, and it is
@@ -1112,8 +1184,12 @@ let toolsSingleton = null;
 function toolsInstance() {
 	if (!toolsSingleton) {
 		toolsSingleton = require('./tools').createTools({
-			BrowserWindow, session, net, shell, stackBin, stackEnv, stateDir, runtimeDir: projectRoot, log: appLog,
+			BrowserWindow, session, net, shell, dialog, stackBin, stackEnv, stateDir, runtimeDir: projectRoot, log: appLog,
 			assetPort: () => gamePorts().asset,
+			// The map editor's MCP and command line, on the AI agent's listener,
+			// unless the player turned that off.
+			addAgentRoute: (route, options) => agentPlay().addRoute(route, options),
+			mapEditorAgentAllowed: () => getSettings().map_editor_agent !== false,
 			// The Control panel (#230). Its writes wait in the same queue as
 			// every other server operation; one that stops the game (a delete)
 			// stops sharing on the way in and offers it back afterwards, as an
@@ -1139,6 +1215,29 @@ function toolsInstance() {
 				if (!game || game.isDestroyed()) throw new Error('The game window is not open. Press Play first.');
 				game.webContents.openDevTools({ mode: 'detach' });
 			},
+			// The map editor's Test in game (#414): what Apply in Settings does
+			// for one mod -- switch it on, restart the server through the same
+			// queue -- then put a character on the map the way the Control panel
+			// moves one, and reopen the game.
+			mapEditorTest: async ({ mod, map, x, y, char }) => {
+				if (getClientPaths().mode !== 'host') throw new Error('Test in game needs your own server: you are joining someone else\'s.');
+				appLog(`map editor: testing ${map} from mods/${mod}`);
+				await handlers.set_mod_enabled({ name: mod, enabled: true });
+				await queueServerOperation(async () => {
+					if (sharing) await sharing.stop();
+					return handlers.stack_up();
+				});
+				resumeSharing('after the map editor applied a mod');
+				let moved = null;
+				if (char) {
+					const { runCp } = require('./cp-bridge');
+					moved = await runCp({ stackBin, stackEnv }, { action: 'reset-position', char_id: String(char), target: { map, x, y } }, 60000)
+						.catch(e => ({ error: e.message }));
+				}
+				handlers.open_game();
+				if (moved && moved.error) return { message: `The map is on, but the character was not moved: ${moved.error}`, moved };
+				return { message: char ? `The map is on. Log in with that character and you arrive on ${map} at ${x}, ${y}.` : `The map is on. As a GM: @warp ${map} ${x} ${y}.`, moved };
+			},
 		});
 	}
 	return toolsSingleton;
@@ -1146,6 +1245,16 @@ function toolsInstance() {
 
 // The AI agent (#187): the local API, its files and its game window.
 let agentPlayInstance = null;
+
+// What Settings -> Play with an AI agent shows: the game agent's state and
+// the map editor's.
+function agentStatus(s) {
+	return {
+		...agentPlay().info(), enabled: !!s.agent_play, show: s.agent_window !== false, count: s.agent_count || 1,
+		mapEditorEnabled: s.map_editor_agent !== false,
+		mapEditor: s.map_editor_agent !== false ? toolsInstance().mapEditor.agentInfo() : null,
+	};
+}
 function agentPlay() {
 	if (!agentPlayInstance) {
 		agentPlayInstance = require('./agent-play').createAgentPlay({
@@ -1255,6 +1364,7 @@ function toBattleConf(s) {
 		// battle_config.arrow_decrement). Default 'yes' == the shipped
 		// battle.conf, so an untouched install writes nothing surprising.
 		`arrow_decrement: ${s.unlimited_arrows ? 'no' : 'yes'}\n` +
+		`skip_teleport_lv1_menu: ${s.skip_teleport_lv1_menu ? 'yes' : 'no'}\n` +
 		// One cap in the UI, several keys here, because rAthena caps third,
 		// baby, extended and summoner classes separately and a player who
 		// raises "the" limit means all of them -- setting only max_parameter
@@ -1325,6 +1435,13 @@ async function saveSettings(settings) {
 		await assetsStart();
 		appLog('settings applied: asset server restarted');
 	}
+	// The relink changed what the client is handed (the era's item tables and
+	// signboards), and the client keeps its own copy of every file it has
+	// fetched. Nothing else clears that until the next game launch, so with the
+	// window closed do it now. An open window is left alone, as in
+	// launch_game: clearing under a running client is a race, and the stamp
+	// still differs, so reopening the game clears it.
+	if (!(windows.game && !windows.game.isDestroyed())) await dropStaleClientCache();
 
 	return out;
 }
@@ -1763,14 +1880,21 @@ async function installModFrom(src) {
 	return `Installed ${name}.${on}${note} Apply to restart the server.`;
 }
 
+// What removing a mod does, in the settings window's question and the native one.
+const REMOVE_DETAIL = 'Its folder goes to the trash, and its on/off choice and options are forgotten. Characters and items are not touched.';
+
 /**
  * A folder, or a .zip or .rar file, from an open dialog. Only macOS offers
  * files and folders in one dialog; elsewhere the dialog shows one or the
- * other, so ask which first. Null when cancelled.
+ * other, so which one is asked first. The settings window asks it in its own
+ * style and passes the answer as `kind` ('folder' or 'archive'); without one
+ * the question is asked here. Null when cancelled.
  */
-async function pickFolderOrArchive(message, filterName) {
+async function pickFolderOrArchive(message, filterName, kind) {
 	let props = ['openFile', 'openDirectory'];
-	if (process.platform !== 'darwin') {
+	if (kind === 'folder' || kind === 'archive') {
+		props = [kind === 'folder' ? 'openDirectory' : 'openFile'];
+	} else if (process.platform !== 'darwin') {
 		const parent = BrowserWindow.getFocusedWindow();
 		const question = {
 			type: 'question',
@@ -1845,7 +1969,12 @@ function sourceOptions(extra = {}) {
 // run from the staging folder -- and only then does the player see what it is
 // and decide. The question is asked here rather than in the settings page: the
 // page renders text the internet wrote, and it is not the one that decides
-// whether somebody else's code goes into the server.
+// whether somebody else's code goes into the server. That is also why this
+// stays a native box while Remove and the folder-or-archive question moved
+// into the settings window: a page that could be made to click its own
+// button could not click this one. Release notes are not in it: the Updates
+// tab shows an update's, whole, beside the button that led here, and a first
+// install has its mod's page, with a link to the release.
 async function installFromSource(entry) {
 	const source = require('./mod-source');
 	const modsDir = path.join(stateDir(), 'mods');
@@ -1877,7 +2006,6 @@ async function installFromSource(entry) {
 			staged.contents.clientCode && 'code that runs in the game window (client/)',
 			staged.contents.commands && 'a change to which commands players can use (conf/)',
 		].filter(Boolean);
-		const notes = release.notes.trim();
 		const detail = [
 			`From github.com/${repo}, release ${release.tag}`,
 			`${asset.name}, ${Math.max(1, Math.round(bytes.length / 1024))} KB, sha256 ${sha256.slice(0, 16)}…`,
@@ -1887,7 +2015,6 @@ async function installFromSource(entry) {
 					? `this mod's author can change it without review, and this release ships ${ships.join(', ')}.`
 					: "this mod's author can change it without review."),
 			current || present ? 'Your settings for it and whether it is switched on are kept.' : '',
-			notes ? `\nRelease notes:\n${notes.length > 700 ? notes.slice(0, 700) + '…' : notes}` : '',
 			`\n${release.url}`,
 		].filter(line => line !== '').join('\n');
 		const parent = BrowserWindow.getFocusedWindow() || windows.settings;
@@ -2148,6 +2275,17 @@ const handlers = {
 		if (fresh) url.searchParams.set('t', String(Date.now()));
 		const listing = await registry.list({ url: url.toString() });
 		const listed = source.registryUpdates(fromList, listing, { appVersion: app.getVersion() });
+		// What each waiting update changed, from the CHANGELOG.md in the mod's
+		// folder: every version since the installed one. A mod without one,
+		// or a file that fails to arrive, just shows no notes.
+		registryChangelogs = registryChangelogs || new Map();
+		for (const result of listed.filter(r => r.update)) {
+			try {
+				const text = await registry.changelog(result.name, { url: url.toString(), mods: listing, cache: registryChangelogs });
+				const notes = source.notesSince(source.changelogSections(text), result.installed, result.latest);
+				if (notes) result.notes = notes;
+			} catch { /* no notes */ }
+		}
 		return [...listed, ...await source.checkUpdates(fromSource, listing, sourceOptions({ fresh: !!fresh }))];
 	},
 	// A release page, opened in the player's browser. Only ever a GitHub
@@ -2279,11 +2417,11 @@ const handlers = {
 	// can ship JavaScript that the game page executes. Installing one is running
 	// somebody's code, so this checks before it moves anything, and unpacks
 	// defensively.
-	install_mod: async () => {
+	install_mod: async ({ kind } = {}) => {
 		// A folder, a .zip or a .rar: installModFrom reads an archive by its
 		// content, so a RAR with a .zip name installs too. The dialog used to
 		// offer files only, so a mod folder could not be picked at all.
-		const src = await pickFolderOrArchive('Install a mod from…', 'Mod folder, .zip or .rar');
+		const src = await pickFolderOrArchive('Install a mod from…', 'Mod folder, .zip or .rar', kind);
 		if (!src) return 'Cancelled.';
 		const installed = await installModFrom(src);
 		modHostsChanged();
@@ -2293,8 +2431,8 @@ const handlers = {
 	// of one) or a cursor pack (cursors.spr + cursors.act), made into a mod.
 	// Pictures are data rather than code, but the archive is unpacked with
 	// the same checks as a mod's.
-	install_skin: async () => {
-		const src = await pickFolderOrArchive('Install a UI skin or cursor pack from…', 'Skin folder, .zip or .rar');
+	install_skin: async ({ kind } = {}) => {
+		const src = await pickFolderOrArchive('Install a UI skin or cursor pack from…', 'Skin folder, .zip or .rar', kind);
 		if (!src) return 'Cancelled.';
 		return installSkinFrom(src);
 	},
@@ -2306,23 +2444,37 @@ const handlers = {
 	// name starts from its own defaults. A mod that ships with the app is not
 	// in state/mods and has no Remove button; this refuses it anyway, because
 	// the page is not the one who decides what may be deleted.
-	remove_mod: async ({ name }) => {
+	// `asked`: the settings window has already asked, in its own style. Only
+	// the app's own pages can call this (callerIsOwnPage), the folder goes to
+	// the trash rather than away, and nothing of anybody's code is installed by
+	// it -- so, unlike an update from GitHub, the question need not be native.
+	// A caller that has not asked still gets the native box.
+	// Everything a mod keeps in the mod store (docs/MOD_STORE.md), every scope
+	// and every player. The supervisor stops the game around it and saves a
+	// backup first, as for any write to the database.
+	mod_data_reset: async ({ name } = {}) => {
+		if (typeof name !== 'string' || !/^[a-z0-9_-]{1,64}$/.test(name)) throw new Error('Not a mod name.');
+		return (await runStack(['mod-data-reset', name])).trim();
+	},
+	remove_mod: async ({ name, asked } = {}) => {
 		const { modFolder } = require('./mod-remove');
 		const rows = (await runStack(['mods'])).split('\n').filter(Boolean).map(l => l.split('\t'));
 		const row = rows.find(r => r[1] === name);
 		if (row && row[4] === 'bundled') throw new Error(`${name} comes with the app and cannot be removed. Switch it off instead.`);
 		const target = modFolder(path.join(stateDir(), 'mods'), name);
-		const parent = BrowserWindow.getFocusedWindow();
-		const question = {
-			type: 'warning',
-			buttons: ['Remove', 'Cancel'],
-			defaultId: 1,
-			cancelId: 1,
-			message: `Remove ${name}?`,
-			detail: 'Its folder goes to the trash, and its on/off choice and options are forgotten. Characters and items are not touched.',
-		};
-		const { response } = parent ? await dialog.showMessageBox(parent, question) : await dialog.showMessageBox(question);
-		if (response !== 0) return 'Cancelled.';
+		if (asked !== true) {
+			const parent = BrowserWindow.getFocusedWindow();
+			const question = {
+				type: 'warning',
+				buttons: ['Remove', 'Cancel'],
+				defaultId: 1,
+				cancelId: 1,
+				message: `Remove ${name}?`,
+				detail: REMOVE_DETAIL,
+			};
+			const { response } = parent ? await dialog.showMessageBox(parent, question) : await dialog.showMessageBox(question);
+			if (response !== 0) return 'Cancelled.';
+		}
 		try {
 			await shell.trashItem(target);
 		} catch (e) {
@@ -2441,8 +2593,16 @@ const handlers = {
 		// Paths only: a client folder name is not a secret, and knowing whether
 		// the GRFs were found is most of triage.
 		const c = getClientPaths();
+		const detected = require('./client-detect').describe(stateDir());
 		add('client', Object.entries(c)
-			.map(([k, v]) => `${k.padEnd(14)}${v === '' ? '(unset)' : v}`).join('\n'));
+			.map(([k, v]) => `${k.padEnd(14)}${v === '' ? '(unset)' : v}`)
+			// Which client the GRFs are: a mod written for kRO's data breaks iRO.
+			.concat(`${'detected'.padEnd(14)}${detected.text}`)
+			// A second client's files mixed in explain a lot of odd reports.
+			.concat(c.fallback_grf ? [`${'fallback is'.padEnd(14)}${detected.fallback || 'not detected yet'}`] : []).join('\n'));
+		// The archives in the order the asset server reads them: the first that
+		// has a file wins.
+		add('asset archives (DATA.INI)', readIfExists(path.join(stateDir(), 'asset-config/DATA.INI')).trim() || '(none yet)');
 		add('settings', JSON.stringify(getSettings(), null, 2));
 		add('Cloudflare sharing', JSON.stringify({
 			state: sharing?.state || 'stopped',
@@ -2572,8 +2732,13 @@ const handlers = {
 		// partition that could not be created, a hypervisor that is not
 		// available) sits in that file. A report arrived with an empty console
 		// log, a generic timeout, and this never collected.
+		// The .prev pair is the run before this one (nebula 0.2.7 and later):
+		// when the VM died on its own, the player has usually started it again
+		// before reporting, and that start replaced the logs that say why.
 		for (const [file, want] of [['nebulad.log', 200], ['vessel-console.log', 100],
 		                            ['vessel-console.worker-stderr.log', 100],
+		                            ['vessel-console.prev.log', 100],
+		                            ['vessel-console.worker-stderr.prev.log', 100],
 		                            ['launchd.err.log', 60]]) {
 			const p2 = path.join(nebulaLogs, file);
 			if (fs.existsSync(p2)) {
@@ -2891,6 +3056,16 @@ const handlers = {
 	// this data.grf. Kept out of get_client_paths, whose result the setup screen
 	// hands back to set_client_paths to be saved.
 	client_folders: ({ data_grf }) => require('./client-folders').clientFolders(data_grf),
+	// Which client the GRFs are (kRO, iRO...), for Settings. Detected again
+	// only when the GRFs changed since the last time.
+	client_detected: () => {
+		const detect = require('./client-detect');
+		const c = getClientPaths();
+		if (c.mode !== 'join' && c.data_grf) {
+			try { detect.detectAndSave(stateDir(), c, appLog); } catch (e) { appLog(`client: detection failed: ${e.message}`); }
+		}
+		return detect.describe(stateDir());
+	},
 	packetvers: () => require('./packetvers').list(projectRoot()),
 	set_client_paths: async ({ paths }) => {
 		const next = { ...getClientPaths(), ...paths };
@@ -2906,6 +3081,9 @@ const handlers = {
 		if (next.rdata_grf && !fs.existsSync(next.rdata_grf)) {
 			throw new Error('rdata.grf is not a file');
 		}
+		if (next.fallback_grf && !fs.existsSync(next.fallback_grf)) {
+			throw new Error('the fallback GRF is not a file');
+		}
 		if (Object.hasOwn(paths, 'lan')) {
 			next.hosting_scope = paths.lan ? 'lan' : 'local';
 			require('./settings-store').write(path.join(stateDir(), 'settings.json'),
@@ -2913,6 +3091,34 @@ const handlers = {
 		}
 		fs.writeFileSync(clientConfigPath(), JSON.stringify(next, null, 2));
 		return linkClient(next);
+	},
+	// Settings' advanced Fallback GRF: another client's archive, read after the
+	// player's own. Off unless chosen there; '' clears it. The asset server is
+	// brought back on the new list when it was running.
+	set_fallback_grf: async ({ path: file }) => {
+		const prev = getClientPaths();
+		if (prev.mode === 'join') throw new Error('a joining player plays with the host’s files');
+		if (!clientComplete(prev)) throw new Error('choose your client first');
+		const chosen = typeof file === 'string' ? file.trim() : '';
+		if (chosen && !fs.statSync(chosen, { throwIfNoEntry: false })?.isFile()) throw new Error('the fallback GRF is not a file');
+		if (chosen && path.resolve(chosen) === path.resolve(prev.data_grf)) throw new Error('that is your own data.grf');
+		// The asset server refuses to start on an archive it cannot open, so a
+		// file it would refuse is turned away here, not on the next launch.
+		if (chosen) require('./ui-skin').grfNames(chosen);
+		const next = { ...prev, fallback_grf: chosen };
+		const hadAssets = assetServer.running;
+		fs.writeFileSync(clientConfigPath(), JSON.stringify(next, null, 2));
+		try {
+			await linkClient(next);
+			if (hadAssets) await assetsStart();
+		} catch (error) {
+			// Put the previous list back, so a bad pick never leaves the game
+			// without its asset server.
+			fs.writeFileSync(clientConfigPath(), JSON.stringify(prev, null, 2));
+			try { await linkClient(prev); if (hadAssets) await assetsStart(); } catch (e) { appLog(`fallback GRF: restoring the previous assets failed: ${e.message}`); }
+			throw error;
+		}
+		return require('./client-detect').describe(stateDir());
 	},
 
 	// Host mode, LAN toggle, and the string a host gives out. Kept separate
@@ -2989,6 +3195,21 @@ const handlers = {
 		return next.vm_ram_mib;
 	},
 	save_settings: ({ settings }) => saveSettings(settings),
+	// Star or unstar a mod for Settings -> Mods -> Favorites. One name at a
+	// time, so two windows starring different mods don't overwrite each other.
+	mod_favorites_set: ({ name, favorite }) => {
+		name = String(name || '');
+		if (!/^[A-Za-z0-9_-]{1,64}$/.test(name)) throw new Error(`${name} is not a mod name`);
+		const list = (getSettings().mod_favorites || []).filter(n => n !== name);
+		if (favorite) {
+			// settings-store holds the list to the same 500, but its message is for a damaged file.
+			if (list.length >= MOD_FAVORITES_MAX) throw new Error(`You can star at most ${MOD_FAVORITES_MAX} mods. Unstar one first.`);
+			list.push(name);
+		}
+		const settings = require('./settings-store').write(path.join(stateDir(), 'settings.json'),
+			{ mod_favorites: list.sort() }, SETTINGS_DEFAULTS);
+		return settings.mod_favorites;
+	},
 	// The preferences the app acts on itself. Written straight to
 	// settings.json, and deliberately not server operations: nothing the
 	// supervisor reads is involved, and going the usual way would restart the
@@ -3012,13 +3233,18 @@ const handlers = {
 	open_tool: ({ id }) => toolsInstance().open(String(id)),
 	// Let an AI agent play (#187). Saved and applied at once, like the app
 	// preferences above: nothing about the server changes.
-	agent_status: () => { const s = getSettings(); return { ...agentPlay().info(), enabled: !!s.agent_play, show: s.agent_window !== false, count: s.agent_count || 1 }; },
+	agent_status: () => agentStatus(getSettings()),
 	agent_set: async ({ enabled, show, count }) => {
 		const settings = require('./settings-store').write(path.join(stateDir(), 'settings.json'),
 			{ agent_play: !!enabled, agent_window: show !== false, agent_count: Math.max(1, Math.min(4, Number(count) || 1)) }, SETTINGS_DEFAULTS);
 		if (settings.agent_play) await agentPlay().start({ show: settings.agent_window, agents: settings.agent_count });
 		else if (agentPlay().running()) await agentPlay().stop();
-		return { ...agentPlay().info(), enabled: settings.agent_play, show: settings.agent_window, count: settings.agent_count };
+		return agentStatus(settings);
+	},
+	map_editor_agent_set: async ({ enabled }) => {
+		const settings = require('./settings-store').write(path.join(stateDir(), 'settings.json'), { map_editor_agent: !!enabled }, SETTINGS_DEFAULTS);
+		await toolsInstance().mapEditor.setAgentAccess(settings.map_editor_agent !== false);
+		return agentStatus(settings);
 	},
 	agent_open_guide: async () => {
 		const guide = agentPlay().info().guide;
@@ -3029,7 +3255,7 @@ const handlers = {
 	agent_replace_token: async () => {
 		if (!getSettings().agent_play) throw new Error('Turn the AI agent on first.');
 		await agentPlay().replaceToken();
-		return { ...agentPlay().info(), enabled: true, show: getSettings().agent_window !== false, count: getSettings().agent_count || 1 };
+		return agentStatus(getSettings());
 	},
 
 	// Windows
@@ -3160,6 +3386,10 @@ function clientLog(level, text, line, src) {
 
 function appLog(line) {
 	line = joinSession.redact(line);
+	// Headless, the log is the only thing the host sees as it happens.
+	if (HEADLESS) {
+		try { process.stdout.write(`${line}\n`); } catch { /* no terminal attached */ }
+	}
 	try {
 		const dir = stateDir();
 		fs.mkdirSync(dir, { recursive: true });
@@ -3455,8 +3685,16 @@ function stackEnv() {
 			NEBULA_BIN: path.join(root, `bin/nebula${EXE}`),
 			RAGNAROKMAC_DOCKER: path.join(root, `bin/docker-slim${EXE}`),
 			RAGNAROKMAC_STATE: stateDir(),
+			// This computer's time zone, for server_timezone: null. Intl names
+			// it the same way on every platform, which the supervisor cannot.
+			RAGNAROK_HOST_TIMEZONE: hostTimeZone(),
 		},
 	};
+}
+
+function hostTimeZone() {
+	try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; }
+	catch { return 'UTC'; }
 }
 
 // Asynchronous, because this runs while the app is still alive and `stack.sh
@@ -3550,6 +3788,11 @@ if (!app.requestSingleInstanceLock()) {
 			}
 			return;
 		}
+		// Headless has no window to bring forward; say where Settings is.
+		if (HEADLESS) {
+			appLog('headless: already running; Settings is at the address printed when it started (state/headless-admin.url)');
+			return;
+		}
 		// Otherwise it is "show me the game", and the window already exists.
 		const win = windows.game || BrowserWindow.getAllWindows().find(w => !require('./mod-host/sandbox').isHostWindow(w));
 		if (win && !win.isDestroyed()) {
@@ -3558,6 +3801,156 @@ if (!app.requestSingleInstanceLock()) {
 		}
 	});
 }
+
+// ---------------------------------------------------------------------------
+// Headless
+// ---------------------------------------------------------------------------
+
+// What the admin page may call: what Settings calls, no more. The game
+// page's own calls (remember_login, mod_host_request and the rest) are not
+// for an admin page, and anything that opens a window has nowhere to open.
+const HEADLESS_PAGE_HANDLERS = new Set([
+	'agent_replace_token', 'agent_set', 'agent_status', 'map_editor_agent_set', 'assets_ready', 'assets_stop', 'check_mod_updates',
+	'client_folders', 'copy_diagnostics', 'data_location', 'db_backup', 'db_backup_full', 'db_inspect',
+	'db_inspect_full', 'db_restore', 'db_restore_full', 'game_status', 'get_client_paths', 'client_detected', 'get_mode',
+	'get_settings', 'get_vm_ram_mib', 'host_facts', 'host_ram_mib', 'hosting_check', 'install_mod',
+	'install_registry_mod', 'install_skin', 'list_mods', 'list_registry_mods', 'mod_data_reset', 'mod_host_list', 'mod_host_set',
+	'open_data_folder', 'open_mods_folder', 'packetvers', 'registry_image', 'registry_release', 'remove_mod',
+	'report_issue', 'save_settings', 'secure_services', 'set_app_preference', 'mod_favorites_set', 'set_client_paths',
+	'set_fallback_grf',
+	'set_mod_enabled', 'set_mod_settings', 'set_mode', 'set_vm_ram_mib', 'sharing_status', 'sharing_token_help',
+	'sign_in_status', 'stack_down', 'stack_repair', 'stack_status', 'stack_up', 'start_stack', 'tools_list',
+	'accounts', 'save_diagnostics', 'sharing_connect', 'sharing_start', 'sharing_forget', 'sharing_stop',
+	'sharing_replace', 'sharing_copy', 'sign_in_save', 'sign_in_forget',
+	// Setup's, served at /setup: where the client's files are.
+	'scan_client_dir',
+	'__dialog_open', '__dialog_save',
+]);
+
+// The same calls, answered for a host who is not at this machine: a folder
+// is named rather than opened, diagnostics land in a file rather than on a
+// clipboard nobody can paste from.
+const HEADLESS_OVERRIDES = {
+	open_data_folder: () => { fs.mkdirSync(dataRoot(), { recursive: true }); return dataRoot(); },
+	open_mods_folder: () => { const dir = path.join(stateDir(), 'mods'); fs.mkdirSync(dir, { recursive: true }); return dir; },
+	copy_diagnostics: async () => saveHeadlessDiagnostics(),
+	report_issue: async () => `${await saveHeadlessDiagnostics()} Attach it to a new issue at ${SOURCE_URL}/issues/new.`,
+	sharing_token_help: () => 'Create a token at https://dash.cloudflare.com/profile/api-tokens',
+	// A mod's own settings page, in a sandboxed frame of the admin page
+	// (electron/headless/admin-server.js). The ticket names the mod; the page's
+	// three calls come back here with it and go to the same code as the
+	// settings window's (mod-settings-window.js).
+	mod_page_open: async ({ name }) => {
+		const { root, file } = await modSettingsWindows().page(String(name));
+		appLog(`opened the settings page of mod ${name} (headless)`);
+		return headlessAdmin.openModPage(String(name), root, file);
+	},
+	mod_page_call: async ({ ticket, op, values }) => {
+		const name = headlessAdmin.modPageOwner(ticket);
+		if (!name) throw new Error('This settings page has been closed. Open it again from the Mods tab.');
+		const mods = modSettingsWindows();
+		if (op === 'get') return mods.get(name);
+		if (op === 'set') return mods.set(name, values, 'its settings page (headless)');
+		if (op === 'apply') return mods.apply(name, 'its settings page (headless)');
+		throw new Error(`modSettings has no ${op}.`);
+	},
+	mod_page_close: ({ ticket }) => { headlessAdmin.closeModPage(ticket); },
+};
+
+// The running admin server, for the calls above that issue its tickets.
+let headlessAdmin = null;
+
+async function saveHeadlessDiagnostics() {
+	const file = path.join(stateDir(), 'logs', `diagnostics-${new Date().toISOString().replace(/[:.]/g, '-')}.txt`);
+	fs.mkdirSync(path.dirname(file), { recursive: true });
+	fs.writeFileSync(file, await handlers.collect_diagnostics());
+	return `Diagnostics saved on the server: ${file}.`;
+}
+
+// A call from the admin page: through the same queue and the same handlers
+// as one from the Settings window.
+async function headlessInvoke(name, args) {
+	if (!HEADLESS_OVERRIDES[name] && (!HEADLESS_PAGE_HANDLERS.has(name) || !(name in handlers))) {
+		throw new Error(`${name} is not available in headless mode.`);
+	}
+	try {
+		if (HEADLESS_OVERRIDES[name]) return await HEADLESS_OVERRIDES[name](args || {});
+		if (SERVER_OPERATIONS.has(name)) return await runServerOperation(name, args);
+		return await handlers[name](args || {}, null);
+	} catch (e) {
+		appLog(`${name} failed: ${(e && e.message) || e}`);
+		throw e;
+	}
+}
+
+// --headless: start the admin page and the server, and print where both are.
+async function startHeadless() {
+	if (process.platform === 'darwin' && app.dock) app.dock.hide();
+	const { RemoteDialogs } = require('./headless/remote-dialogs');
+	const dialogs = new RemoteDialogs({ log: appLog }).install(dialog);
+
+	const arg = name => {
+		const i = process.argv.indexOf(name);
+		return i > -1 ? process.argv[i + 1] : undefined;
+	};
+	const host = arg('--admin-host') || process.env.RAGNAROK_OFFLINE_ADMIN_HOST || '127.0.0.1';
+	const port = Number(arg('--admin-port') || process.env.RAGNAROK_OFFLINE_ADMIN_PORT || 3339);
+	if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error(`--admin-port ${port} is not a port`);
+	const gameUrl = () => `http://${advertiseHost()}:${gamePorts().asset}/`;
+	const admin = await require('./headless/admin-server').start({
+		host, port, dialogs,
+		srcDir: path.join(__dirname, '..', 'src'),
+		invoke: headlessInvoke,
+		// Settings -> Tools, served at /tools/<id>/ by the same code as their windows.
+		tools: toolsInstance(),
+		info: () => ({ gameUrl: gameUrl(), version: app.getVersion() }),
+		log: appLog,
+	});
+	headlessAdmin = admin;
+	// The one place the address is, for a host who did not see it scroll past
+	// -- and on Windows, where a windowed app's output reaches no terminal.
+	const urlFile = path.join(stateDir(), 'headless-admin.url');
+	fs.mkdirSync(stateDir(), { recursive: true });
+	fs.writeFileSync(urlFile, `${admin.url}\n`, { mode: 0o600 });
+	const game = gameUrl();
+	const local = /^http:\/\/(127\.0\.0\.1|localhost)[:/]/.test(game);
+	process.stdout.write(`\nRagnarok Offline ${app.getVersion()}, headless.\n` +
+		`  Game:     ${game}\n` +
+		(local ? '            (this machine only; turn on LAN in Settings -> Multiplayer for others)\n' : '') +
+		`  Settings: ${admin.url}\n` +
+		'            (this address signs you in; it changes every start)\n' +
+		(host === '127.0.0.1' ? '            from another machine: ssh -L ' + admin.port + ':127.0.0.1:' + admin.port + ' <this host>\n' : '') +
+		`  Also in:  ${urlFile}\n\n`);
+	if (host !== '127.0.0.1' && host !== 'localhost') {
+		appLog(`headless: the admin page listens on ${host}:${admin.port}, plain HTTP; the token crosses the network as typed. An SSH tunnel to 127.0.0.1 is safer.`);
+	}
+
+	// The supervisor's progress, as the boot window would show it.
+	const phaseFile = path.join(stateDir(), 'phase');
+	let lastPhase = '';
+	fs.watchFile(phaseFile, { interval: 1000 }, () => {
+		try {
+			const phase = fs.readFileSync(phaseFile, 'utf8').trim();
+			if (phase && phase !== lastPhase) appLog(`server: ${(lastPhase = phase)}`);
+		} catch { /* not written yet */ }
+	});
+
+	const c = getClientPaths();
+	if (c.mode === 'join') {
+		appLog('headless: this install is set to join a friend\'s server, so there is nothing to host. Switch to hosting in Settings.');
+		return;
+	}
+	if (!clientComplete(c)) {
+		appLog('headless: no client data (data.grf) is set yet. In Settings, General, choose Change asset locations, then Start.');
+		return;
+	}
+	await runServerOperation('start_stack', {});
+	appLog(`headless: ready. Players open ${gameUrl()}`);
+}
+
+// Ctrl-C, or a service manager's SIGTERM, needs nothing here: Electron turns
+// both into a normal quit, so before-quit stops the stack before the exit, as
+// quitting from the menu does (checked on macOS with each signal).
 
 app.whenReady().then(() => {
 	crashMonitor.start();
@@ -3590,7 +3983,21 @@ app.whenReady().then(() => {
 	try {
 		const s = getSettings();
 		if (s.agent_play) agentPlay().start({ show: s.agent_window !== false, agents: s.agent_count || 1 }).catch(e => appLog(`agent play: ${e.message}`));
+		// The map editor's routes, back from the last run when the editor has
+		// been opened before (its connection file is there); with the setting
+		// off, this clears a file an earlier run left instead.
+		if (fs.existsSync(path.join(stateDir(), 'map-editor', 'connection.json'))) {
+			toolsInstance().mapEditor.setAgentAccess(s.map_editor_agent !== false).catch(e => appLog(`map editor: ${e.message}`));
+		}
 	} catch (e) { appLog(`agent play: ${e.message}`); }
+
+	if (HEADLESS) {
+		startHeadless().catch(e => {
+			appLog(`headless: could not start: ${e.message}`);
+			app.exit(1);
+		});
+		return;
+	}
 
 	// Joining loads the host's page directly, so nothing on the way there
 	// would notice the host being down -- Electron would just render its own
@@ -3688,6 +4095,7 @@ app.on('before-quit', e => {
 	if (tearingDown) return; // second pass: let it go
 	e.preventDefault();
 	tearingDown = true;
+	if (HEADLESS) appLog('headless: stopping the server before exiting…');
 	for (const win of BrowserWindow.getAllWindows()) {
 		if (!win.isDestroyed()) win.setTitle(`${productName()} — shutting down…`);
 	}
@@ -3703,7 +4111,9 @@ app.on('before-quit', e => {
 	});
 });
 
-app.on('window-all-closed', () => app.quit());
+// Headless has no windows to close; an AI agent's window that comes and
+// goes must not take the server with it.
+app.on('window-all-closed', () => { if (!HEADLESS) app.quit(); });
 
 // A signal terminates the process without a before-quit, so `kill`, a logout or
 // Ctrl-C would otherwise leave the whole stack running.

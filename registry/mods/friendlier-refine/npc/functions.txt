@@ -1,0 +1,26 @@
+//===== Ragnarok Offline mod: friendlier-refine ==============
+//= What a failed refine does at the refiners that refine by script
+//= (Suhnbi, and Holink in renewal) rather than through the refine
+//= window. Decided from the mod's settings, the way the mod's refine
+//= table decides it for the window:
+//=   Failed refines can break items on    0  the item breaks, as stock
+//=   Failed refines can break items off   2  the item keeps its level
+//=     and from the highest ticked "Revert from +N" up:
+//=                                        1  the item drops one level
+//= A script cannot read DowngradeAmount, so it is always one level.
+//=
+//= callfunc("F_FriendlierRefineOnFail", <refine level before the attempt>)
+//============================================================
+
+function	script	F_FriendlierRefineOnFail	{
+	if (callfunc("F_ModSetting", "friendlier-refine", "allow_break", 0))
+		return 0;
+	.@revert_from = 0;
+	setarray .@from[0], 5, 7, 9, 11;
+	for (.@i = 0; .@i < getarraysize(.@from); .@i++)
+		if (callfunc("F_ModSetting", "friendlier-refine", "revert_from_" + (.@from[.@i] < 10 ? "0" : "") + .@from[.@i], 0))
+			.@revert_from = .@from[.@i];
+	if (.@revert_from && getarg(0) + 1 >= .@revert_from)
+		return 1;
+	return 2;
+}

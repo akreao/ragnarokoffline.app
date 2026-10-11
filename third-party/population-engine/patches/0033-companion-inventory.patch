@@ -1,0 +1,66 @@
+From 0000000000000000000000000000000000000033
+Subject: [PATCH] Settings: companions can live on their own bag
+
+Every population PC's bag is a free supply: skill_get_requirement returns
+early for them, before the ammo and item requirements. Settings -> Population
+-> Companion inventory turns on population_engine_companion_inventory, and a
+recruited companion then owns its bag (population_shell_inventory): it falls
+through to the full requirement, so rAthena checks and takes its catalysts and
+ammunition as it does a player's. What the early return also relaxed and has
+nothing to do with the bag (max-HP triggers, required statuses and equipped
+items, the weapon unless Weapon rules is on) stays relaxed, in
+population_shell_inventory_relax_requirement. Ambient shells are unchanged.
+Off, the default, is the behaviour before.
+
+--- a/src/custom/battle_config_init.inc
++++ b/src/custom/battle_config_init.inc
+@@ -66,6 +66,7 @@
+ { "population_engine_companion_hire_item",&battle_config.population_engine_companion_hire_item,0,0,INT_MAX,},
+ { "population_engine_companion_hire_item_amount",&battle_config.population_engine_companion_hire_item_amount,0,0,30000,},
+ { "population_engine_skill_weapon_check",&battle_config.population_engine_skill_weapon_check,0,0,1,},
++{ "population_engine_companion_inventory",&battle_config.population_engine_companion_inventory,0,0,1,},
+ { "population_engine_loot_enable",&battle_config.population_engine_loot_enable,0,0,1,},
+ { "population_engine_loot_rare_rate",&battle_config.population_engine_loot_rare_rate,100,0,10000,},
+ { "population_engine_loot_rare_pickup_pct",&battle_config.population_engine_loot_rare_pickup_pct,95,0,100,},
+--- a/src/custom/battle_config_struct.inc
++++ b/src/custom/battle_config_struct.inc
+@@ -132,6 +132,10 @@ int32 population_engine_companion_hire_item_amount;
+ /// Skills: 1 = population PCs must hold the weapon a skill requires, as players
+ /// must; 0 = any skill with any weapon (as before). Ammo and items stay relaxed.
+ int32 population_engine_skill_weapon_check;
++/// Items: 1 = a recruited companion lives on its own bag, as a player does: nothing refills it,
++/// skills cost their items and ammunition, and the bag is saved with it; 0 = a free supply, as
++/// for every other population PC (as before).
++int32 population_engine_companion_inventory;
+ /// Looting: 1 = ambient shells pick up the drops of their own kills; 0 = they
+ /// leave them on the ground (as before). Recruited companions are unaffected.
+ int32 population_engine_loot_enable;
+--- a/src/map/skill.cpp
++++ b/src/map/skill.cpp
+@@ -44,6 +44,7 @@
+ #include "pc_groups.hpp"
+ #include "pet.hpp"
+ #include "population_engine.hpp"
++#include "population_engine/runtime/population_shell_inventory.hpp"
+ #include "script.hpp"
+ #include "status.hpp"
+ #include "unit.hpp"
+@@ -9859,7 +9860,8 @@ struct s_skill_condition skill_get_requirement(map_session_data* sd, uint16 skil
+ 
+ 	// Runtime population PCs have no client; relax weapon/ammo/item requirements (see pc_isequip for equip).
+ 	// The weapon is held to the player's rules when Settings asks (population_engine_skill_weapon_check).
+-	if (population_engine_is_population_pc(sd->id)) {
++	// A recruited companion pays items and ammunition from its own bag (population_shell_inventory).
++	if (population_engine_is_population_pc(sd->id) && !population_shell_has_own_inventory(sd)) {
+ 		if (battle_config.population_engine_skill_weapon_check)
+ 			req.weapon = skill->require.weapon;
+ 		return req;
+@@ -10139,6 +10141,8 @@ struct s_skill_condition skill_get_requirement(map_session_data* sd, uint16 skil
+ 			req.ap_rate = 0;
+ 	}
+ 
++	population_shell_inventory_relax_requirement(sd, req);
++
+ 	return req;
+ }
+ 

@@ -24,6 +24,8 @@
 //   ro-tool://control-panel/item-names.json?ids=..  names and icons of items
 //   ro-tool://control-panel/asset/data/sprite/...   a player sprite or
 //                                            palette, from the asset server
+//   ro-tool://map-editor/asset/..., api/...  the map editor's bridge, see
+//                                            map-editor.js
 //
 // The tables come with the mods' db/import laid over them, so a mod's
 // monsters and items show up too. Each window has its own session and no
@@ -204,6 +206,25 @@ const TOOLS = [
 		needsServer: true,
 	},
 	{
+		id: 'map-editor',
+		name: 'Map editor',
+		description: 'Make a map, or change one of the client\'s, and turn it into a mod: the ground, its textures, walkability, water and light, the models on it, its NPCs, warps and monsters, its sky, weather and music. Test in game in one click. AI agents can use it too (ragnarok-map, MCP).',
+		page: 'map-editor.html',
+		author: 'Ragnarok Offline',
+		needsServer: true,
+		width: 1440, height: 900,
+	},
+	{
+		id: 'music-browser',
+		name: 'Music browser',
+		description: 'Every music track in your client and your mods, which maps play each one, and a play button: for picking a map\'s music.',
+		page: 'music.html',
+		// The map editor's page and bridge.
+		dir: 'map-editor',
+		author: 'Ragnarok Offline',
+		needsServer: true,
+	},
+	{
 		id: 'control-panel',
 		name: 'Control panel',
 		description: 'Every account and character on your server: how they look, their level, zeny, equipment and where they are. Move a stuck character to its save point, delete a character the way the game does, or make an account.',
@@ -220,7 +241,7 @@ const schemePrivileges = { scheme: SCHEME, privileges: { standard: true, secure:
 
 /**
  * @param {object} deps
- *   BrowserWindow, session, net, shell, stackBin(), stackEnv(), stateDir(), runtimeDir(), log(text), icon
+ *   BrowserWindow, session, net, shell, dialog, stackBin(), stackEnv(), stateDir(), runtimeDir(), log(text), icon
  *   and, for the log viewer: nebulaLogsDir(), redact(text), openGameDevTools()
  */
 // The asset origin the tool pages name (ASSET_ORIGIN in tools/*/*.html). A
@@ -237,6 +258,21 @@ function createTools(deps) {
 	const pngCache = new Map();
 	let handlersReady = false;
 	const dbBridge = require('./db-bridge').createDbBridge(deps);
+	// The map editor (#414): its bridge, Test in game, and the agents' control server.
+	const mapEditor = require('./map-editor').createMapEditor({
+		stateDir: deps.stateDir, runtimeDir: deps.runtimeDir, assetPort: () => (deps.assetPort ? deps.assetPort() : 3338),
+		net: deps.net, shell: deps.shell, log: deps.log, stackBin: deps.stackBin, stackEnv: deps.stackEnv,
+		execPath: process.execPath,
+		test: request => {
+			if (!deps.mapEditorTest) throw new Error('Test in game is not available in this copy of the app.');
+			return deps.mapEditorTest(request);
+		},
+		openWindow: (query, { show } = {}) => open('map-editor', { query, show }),
+		addRoute: (route, options) => {
+			if (!deps.addAgentRoute) throw new Error('This copy of the app has no local API for agents.');
+			return deps.addAgentRoute(route, options);
+		},
+	});
 	const cpBridge = require('./cp-bridge').createCpBridge(deps);
 	// Parsed once per window: the item tables are megabytes.
 	let itemNames = null;
@@ -356,73 +392,92 @@ function createTools(deps) {
 		return new Response(body, { status, headers: { 'content-type': type, 'cache-control': 'no-store' } });
 	}
 
+	// One request to a tool: its page and files, and what they ask of the
+	// server. The ro-tool:// scheme below and a headless app's admin page
+	// (electron/headless/admin-server.js, /tools/<id>/...) both answer with this.
+	async function route(id, name, url, request) {
+		const tool = TOOLS.find(t => t.id === id);
+		if (!tool) return respond('no such tool', 'text/plain', 404);
+		try {
+			if (tool.id === 'log-viewer') {
+				const answer = await logViewerRoute(name, url, request);
+				if (answer) return answer;
+			}
+			if (tool.id === 'db-browser' && name.startsWith('api/')) return await dbBridge(request, name.slice(4));
+			if (tool.id === 'map-editor' || tool.dir === 'map-editor') {
+				const answer = await mapEditor.route(name, url, request);
+				if (answer) return answer;
+			}
+			if (tool.id === 'control-panel') {
+				const answer = await controlPanelRoute(name, url, request);
+				if (answer) return answer;
+			}
+			if (name === 'mob_db.yml' || /^item_db_(equip|etc|usable)\.yml$/.test(name)) {
+				return respond(await exportTable(name.replace(/\.yml$/, '')), TYPES['.yml']);
+			}
+			if (name === 'itemInfo.lua') return respond(itemInfo(), TYPES['.lua']);
+			if (name === 'monster-sprites.json') return respond(JSON.stringify(monsterTable()), TYPES['.json']);
+			const sprite = /^sprite\/([^/]+)\.(spr|act)$/.exec(name);
+			if (sprite) {
+				// data/sprite/몬스터/ ("monster"): the asset server resolves the
+				// Korean folder and the GRFs' lowercase names.
+				const url = `http://${assetHost()}/data/sprite/${encodeURIComponent('몬스터')}/${encodeURIComponent(sprite[1].toLowerCase())}.${sprite[2]}`;
+				const res = await deps.net.fetch(url, { bypassCustomProtocolHandlers: true });
+				if (!res.ok) return respond(`no sprite ${sprite[1]}`, 'text/plain', 404);
+				return respond(Buffer.from(await res.arrayBuffer()), 'application/octet-stream');
+			}
+			// The tool's own files, and nothing outside its folder.
+			const dir = path.join(ROOT, tool.dir || tool.id);
+			const file = path.resolve(dir, name || tool.page);
+			if (!file.startsWith(dir + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()) return respond('not found', 'text/plain', 404);
+			return respond(fs.readFileSync(file), TYPES[path.extname(file)] || 'application/octet-stream');
+		} catch (e) {
+			deps.log(`tools: ${tool.id} ${name}: ${e.message}`);
+			return respond(e.message, 'text/plain', 503);
+		}
+	}
+
+	// What a tool page asks of the asset server, by path: the monster
+	// browser's icon map (built here), the game's .bmp pictures with their
+	// magenta made transparent, and anything else as it is.
+	async function asset(pathAndQuery) {
+		const url = new URL(pathAndQuery, `http://${assetHost()}`);
+		if (url.pathname === '/item-icons.js') {
+			try { return respond(await itemIcons(), TYPES['.js']); } catch (e) {
+				deps.log(`tools: item icons: ${e.message}`);
+				return respond('/* ' + e.message.replace(/\*\//g, '') + ' */', TYPES['.js'], 503);
+			}
+		}
+		// The game's .bmp pictures, with their magenta turned transparent.
+		if (/\.bmp$/i.test(url.pathname)) {
+			const key = url.pathname;
+			if (!pngCache.has(key)) {
+				const res = await deps.net.fetch(url.toString(), { bypassCustomProtocolHandlers: true });
+				if (!res.ok) return res;
+				const original = Buffer.from(await res.arrayBuffer());
+				const png = require('./bmp').bmpToPng(original);
+				if (pngCache.size > 5000) pngCache.clear();
+				pngCache.set(key, png ? { body: png, type: 'image/png' } : { body: original, type: 'image/bmp' });
+			}
+			const hit = pngCache.get(key);
+			return new Response(hit.body, { headers: { 'content-type': hit.type, 'cache-control': 'max-age=3600' } });
+		}
+		return deps.net.fetch(url.toString(), { bypassCustomProtocolHandlers: true });
+	}
+
 	function setupSession() {
 		if (handlersReady) return;
 		const ses = deps.session.fromPartition(PARTITION);
-		ses.protocol.handle(SCHEME, async request => {
+		ses.protocol.handle(SCHEME, request => {
 			const url = new URL(request.url);
-			const tool = TOOLS.find(t => t.id === url.hostname);
-			if (!tool) return respond('no such tool', 'text/plain', 404);
-			const name = decodeURIComponent(url.pathname.replace(/^\/+/, ''));
-			try {
-				if (tool.id === 'log-viewer') {
-					const answer = await logViewerRoute(name, url, request);
-					if (answer) return answer;
-				}
-				if (tool.id === 'db-browser' && name.startsWith('api/')) return await dbBridge(request, name.slice(4));
-				if (tool.id === 'control-panel') {
-					const answer = await controlPanelRoute(name, url, request);
-					if (answer) return answer;
-				}
-				if (name === 'mob_db.yml' || /^item_db_(equip|etc|usable)\.yml$/.test(name)) {
-					return respond(await exportTable(name.replace(/\.yml$/, '')), TYPES['.yml']);
-				}
-				if (name === 'itemInfo.lua') return respond(itemInfo(), TYPES['.lua']);
-				if (name === 'monster-sprites.json') return respond(JSON.stringify(monsterTable()), TYPES['.json']);
-				const sprite = /^sprite\/([^/]+)\.(spr|act)$/.exec(name);
-				if (sprite) {
-					// data/sprite/몬스터/ ("monster"): the asset server resolves the
-					// Korean folder and the GRFs' lowercase names.
-					const url = `http://${assetHost()}/data/sprite/${encodeURIComponent('몬스터')}/${encodeURIComponent(sprite[1].toLowerCase())}.${sprite[2]}`;
-					const res = await deps.net.fetch(url, { bypassCustomProtocolHandlers: true });
-					if (!res.ok) return respond(`no sprite ${sprite[1]}`, 'text/plain', 404);
-					return respond(Buffer.from(await res.arrayBuffer()), 'application/octet-stream');
-				}
-				// The tool's own files, and nothing outside its folder.
-				const dir = path.join(ROOT, tool.id);
-				const file = path.resolve(dir, name || tool.page);
-				if (!file.startsWith(dir + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()) return respond('not found', 'text/plain', 404);
-				return respond(fs.readFileSync(file), TYPES[path.extname(file)] || 'application/octet-stream');
-			} catch (e) {
-				deps.log(`tools: ${tool.id} ${name}: ${e.message}`);
-				return respond(e.message, 'text/plain', 503);
-			}
+			return route(url.hostname, decodeURIComponent(url.pathname.replace(/^\/+/, '')), url, request);
 		});
 		// The monster browser loads its icon map from the asset server, where
 		// the old extraction script used to leave it. Answer that one URL here
 		// and let everything else through.
 		ses.protocol.handle('http', async request => {
 			const url = new URL(request.url);
-			if (isAsset(url) && url.pathname === '/item-icons.js') {
-				try { return respond(await itemIcons(), TYPES['.js']); } catch (e) {
-					deps.log(`tools: item icons: ${e.message}`);
-					return respond('/* ' + e.message.replace(/\*\//g, '') + ' */', TYPES['.js'], 503);
-				}
-			}
-			// The game's .bmp pictures, with their magenta turned transparent.
-			if (isAsset(url) && /\.bmp$/i.test(url.pathname)) {
-				const key = url.pathname;
-				if (!pngCache.has(key)) {
-					const res = await deps.net.fetch(toAsset(request.url), { bypassCustomProtocolHandlers: true });
-					if (!res.ok) return res;
-					const original = Buffer.from(await res.arrayBuffer());
-					const png = require('./bmp').bmpToPng(original);
-					if (pngCache.size > 5000) pngCache.clear();
-					pngCache.set(key, png ? { body: png, type: 'image/png' } : { body: original, type: 'image/bmp' });
-				}
-				const hit = pngCache.get(key);
-				return new Response(hit.body, { headers: { 'content-type': hit.type, 'cache-control': 'max-age=3600' } });
-			}
+			if (isAsset(url) && (url.pathname === '/item-icons.js' || /\.bmp$/i.test(url.pathname))) return asset(url.pathname + url.search);
 			// The pages only read from the asset server, so a moved one is a GET.
 			if (isAsset(url) && url.host !== assetHost()) return deps.net.fetch(toAsset(request.url), { bypassCustomProtocolHandlers: true });
 			return deps.net.fetch(request, { bypassCustomProtocolHandlers: true });
@@ -430,19 +485,31 @@ function createTools(deps) {
 		handlersReady = true;
 	}
 
-	async function open(id) {
+	// `query` and `show` are the map editor's: a map to open, and whether an
+	// agent's editor window is shown.
+	async function open(id, { query = '', show = true } = {}) {
 		const tool = TOOLS.find(t => t.id === id);
 		if (!tool) throw new Error(`No tool called ${id}`);
 		const existing = windows.get(id);
-		if (existing && !existing.isDestroyed()) { existing.focus(); return; }
+		if (existing && !existing.isDestroyed()) {
+			if (show) { existing.show(); existing.focus(); }
+			if (id === 'map-editor' && query) {
+				const q = new URLSearchParams(query);
+				if (q.get('map')) await (await mapEditor.getBridge()).remote.run('map.open', { mod: q.get('mod') || undefined, map: q.get('map') }).catch(e => deps.log(`tools: map editor: ${e.message}`));
+			}
+			return;
+		}
 		setupSession();
 		const ses = deps.session.fromPartition(PARTITION);
 		// The pages cache what they parsed and restore it before looking for
-		// anything newer. Start them clean, so a mod added since shows up.
-		await ses.clearStorageData({ storages: ['indexdb'] }).catch(() => {});
+		// anything newer. Start them clean, so a mod added since shows up. Not
+		// the map editor's: its store is the unsaved map it can recover.
+		if (id !== 'map-editor') await ses.clearStorageData({ storages: ['indexdb'] }).catch(() => {});
 		if (id === 'control-panel') itemNames = null;
+		// The map editor's routes for agents open with it, unless the player turned them off.
+		if (id === 'map-editor' && (!deps.mapEditorAgentAllowed || deps.mapEditorAgentAllowed())) mapEditor.ensureControl().catch(e => deps.log(`tools: map editor: ${e.message}`));
 		const win = new deps.BrowserWindow({
-			width: 1280, height: 860,
+			width: tool.width || 1280, height: tool.height || 860, show,
 			title: `${tool.name} — Ragnarok Offline`,
 			icon: deps.icon,
 			webPreferences: { partition: PARTITION, contextIsolation: true, nodeIntegration: false, sandbox: true },
@@ -454,6 +521,24 @@ function createTools(deps) {
 			if (id === 'log-viewer' && logStreams) logStreams.stopAll();
 		});
 		win.on('page-title-updated', e => e.preventDefault());
+		// A page that asks before it is left (the map editor, with changes not
+		// saved to a mod) gets no question from Electron: the close is just
+		// cancelled, and the window's close button does nothing. Ask here. The
+		// window stays until the answer; Close destroys it, which skips the
+		// page's handler.
+		win.webContents.on('will-prevent-unload', () => {
+			if (!deps.dialog) return;
+			deps.dialog.showMessageBox(win, {
+				type: 'question',
+				buttons: ['Close', 'Keep editing'],
+				defaultId: 1,
+				cancelId: 1,
+				message: `Close ${tool.name}?`,
+				detail: id === 'map-editor'
+					? 'This map has changes that are not saved to a mod. The editor keeps a copy, and offers to restore it the next time you open it.'
+					: 'This page has changes it has not saved.',
+			}).then(({ response }) => { if (response === 0 && !win.isDestroyed()) win.destroy(); }, () => {});
+		});
 		win.webContents.setWindowOpenHandler(({ url }) => {
 			// Links out (rAthena docs, GitHub) open in the browser, not here.
 			if (/^https?:\/\//.test(url)) deps.shell.openExternal(url);
@@ -462,12 +547,15 @@ function createTools(deps) {
 		win.webContents.on('will-navigate', event => {
 			if (!event.url.startsWith(`${SCHEME}://${id}/`)) event.preventDefault();
 		});
-		await win.loadURL(`${SCHEME}://${id}/${tool.page}`);
+		await win.loadURL(`${SCHEME}://${id}/${tool.page}${query ? `?${query}` : ''}`);
 	}
 
 	return {
+		route,
+		asset,
 		list: () => TOOLS.map(({ id, name, description, author, needsServer }) => ({ id, name, description, author, needsServer: !!needsServer })),
 		open,
+		mapEditor,
 	};
 }
 

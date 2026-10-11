@@ -1,6 +1,8 @@
 # autoloot
 
-An **Autoloot** window in game. Open it with **Alt+O**.
+An **Autoloot** window in game. Open it from the option menu (**Esc** →
+**Autoloot**, next to the other settings) or with **Alt+O**. The menu button
+needs app 1.5.0 or later; Alt+O works on every app the mod supports.
 
 - **By rarity**: loot every drop whose chance is at or below a percent you
   choose. 5% picks up everything rarer than a 1-in-20 drop; 100% picks up

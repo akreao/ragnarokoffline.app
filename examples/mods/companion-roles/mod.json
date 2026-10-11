@@ -1,0 +1,7 @@
+{
+  "name": "companion-roles",
+  "version": "1.1.0",
+  "author": "Ragnarok Offline",
+  "description": "Recruited companions play their part at any boss: Priests heal, wall and revive, casters keep their distance, melee keeps SP back and runs the boss round the healer.",
+  "requires": { "app": ">=1.5.0", "era": "any" }
+}

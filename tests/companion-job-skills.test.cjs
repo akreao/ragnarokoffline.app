@@ -32,7 +32,7 @@ const cb = fs.readFileSync(COMBAT, 'utf8').replace(/\r\n/g, '\n');
 const st = fs.readFileSync(STATE, 'utf8').replace(/\r\n/g, '\n');
 
 test('a job change requests a skill reseed instead of only clearing cooldowns', () => {
-	const i = eng.indexOf('static void pop_companion_try_job_advance');
+	const i = eng.indexOf('static bool pop_companion_apply_job_change');
 	assert.ok(i > 0, 'job-advance function not found');
 	const body = eng.slice(i, i + 4500);
 	assert.match(body, /sd->pop\.skills_need_reseed = true;/,

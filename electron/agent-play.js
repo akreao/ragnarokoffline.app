@@ -12,6 +12,10 @@
 // Each is a slot: agent 1 is the account `aiagent` at /mcp, agent n is
 // `aiagent<n>` at /mcp/<n>. They share one token and one listener.
 //
+// The listener is the app's one local API for agents, so it is also opened
+// for the map editor's routes (`addRoute`), with or without the setting on;
+// the setting decides only whether the game's routes answer.
+//
 // The windows have no preload and each its own session, so the page in one
 // cannot reach the app, and its client cache and settings are its own. They
 // are muted: the player hears their own game.
@@ -52,6 +56,7 @@ function createAgentPlay(deps) {
 	const dir = () => path.join(deps.stateDir(), 'agent');
 	const connectionFile = () => path.join(dir(), 'connection.json');
 	let api = null, port = null, token = null;
+	let enabled = false, listening = null;
 	let visible = true, count = 1;
 	// n -> { win, driver, credentials, opening }
 	const slots = new Map();
@@ -85,6 +90,42 @@ function createAgentPlay(deps) {
 		}, null, 2) + '\n');
 	}
 
+	// The listener, opened once, for the game's routes or another feature's.
+	// `preferred` is a port the caller used last time (the map editor's file
+	// remembers it when the agent's is gone).
+	function listen(preferred = null) {
+		if (listening) return listening;
+		listening = (async () => {
+			const previous = readConnection();
+			// The same token and port as last time, so an agent set up once keeps
+			// working across restarts; replaceToken() is how to revoke it.
+			token = previous?.token && /^[0-9a-f]{64}$/.test(previous.token) ? previous.token : crypto.randomBytes(32).toString('hex');
+			const make = () => createAgentApi({ run, token, agents: () => count, enabled: () => enabled, log: deps.log });
+			let candidate = make();
+			// A port set for this copy (RAGNAROK_OFFLINE_AGENT_PORT) comes first;
+			// otherwise last time's, then the usual one, then any free one.
+			const configured = deps.port ? deps.port() : DEFAULT_PORT;
+			const last = previous?.port ?? preferred;
+			const ports = configured !== DEFAULT_PORT ? [configured, last, 0] : [last, DEFAULT_PORT, 0];
+			for (const p of ports.filter(p => p !== undefined && p !== null)) {
+				try { port = await candidate.listen(p); break; } catch { candidate.server.close(); candidate = make(); }
+			}
+			if (!port) throw new Error('Could not open a local port for AI agents.');
+			api = candidate;
+			deps.log(`agent API listening on 127.0.0.1:${port}`);
+			return api;
+		})();
+		listening.catch(() => { listening = null; });
+		return listening;
+	}
+
+	async function closeIfUnused() {
+		if (!api || enabled || api.hasRoutes()) return;
+		const closing = api;
+		api = null; listening = null; port = null;
+		await closing.close().catch(() => {});
+	}
+
 	async function start({ show = true, agents = 1 } = {}) {
 		visible = show;
 		const wanted = Math.max(1, Math.min(MAX_AGENTS, Number(agents) || 1));
@@ -92,36 +133,24 @@ function createAgentPlay(deps) {
 		for (const [n, s] of slots) if (n > wanted) { if (open(s)) s.win.destroy(); slots.delete(n); }
 		count = wanted;
 		for (const s of slots.values()) if (open(s)) { if (visible) s.win.show(); else s.win.hide(); }
-		if (api) { writeConnection(); return info(); }
+		if (enabled) { writeConnection(); return info(); }
 		fs.mkdirSync(dir(), { recursive: true });
-		const previous = readConnection();
-		// The same token and port as last time, so an agent set up once keeps
-		// working across restarts; replaceToken() is how to revoke it.
-		token = previous?.token && /^[0-9a-f]{64}$/.test(previous.token) ? previous.token : crypto.randomBytes(32).toString('hex');
-		const make = () => createAgentApi({ run, token, agents: () => count, log: deps.log });
-		api = make();
-		port = null;
-		// A port set for this copy (RAGNAROK_OFFLINE_AGENT_PORT) comes first;
-		// otherwise last time's, then the usual one, then any free one.
-		const configured = deps.port ? deps.port() : DEFAULT_PORT;
-		const candidates = configured !== DEFAULT_PORT ? [configured, previous?.port, 0] : [previous?.port, DEFAULT_PORT, 0];
-		for (const candidate of candidates.filter(p => p !== undefined && p !== null)) {
-			try { port = await api.listen(candidate); break; } catch { api.server.close(); api = make(); }
-		}
-		if (!port) { api = null; throw new Error('Could not open a local port for the agent.'); }
+		await listen();
+		enabled = true;
 		writeConnection();
 		try { fs.copyFileSync(path.join(__dirname, 'AGENT.md'), path.join(dir(), 'AGENT.md')); } catch (e) { deps.log(`agent: could not write AGENT.md: ${e.message}`); }
-		deps.log(`agent play on: ${count} agent(s), listening on 127.0.0.1:${port}`);
+		deps.log(`agent play on: ${count} agent(s), on 127.0.0.1:${port}`);
 		return info();
 	}
 
 	async function stop({ disableAccount = true } = {}) {
 		for (const s of slots.values()) if (open(s)) s.win.destroy();
 		slots.clear();
-		if (api) { await api.close().catch(() => {}); api = null; }
-		// The file is how the CLI knows the agent is on; the token stays valid
-		// only while it is there.
+		enabled = false;
+		// The file is how the CLI knows the agent is on. The game's routes
+		// refuse from here on; the listener stays only for other routes.
 		fs.rmSync(connectionFile(), { force: true });
+		await closeIfUnused();
 		if (disableAccount && deps.hosting()) {
 			await deps.runAccount({ action: 'agent-disable', era: deps.era() }).catch(e => deps.log(`agent: could not disable the accounts: ${e.message}`));
 		}
@@ -129,11 +158,20 @@ function createAgentPlay(deps) {
 	}
 
 	async function replaceToken() {
-		const show = visible, agents = count;
-		await stop({ disableAccount: false });
-		fs.mkdirSync(dir(), { recursive: true });
-		writePrivate(connectionFile(), JSON.stringify({ port }, null, 2));
-		return start({ show, agents });
+		token = crypto.randomBytes(32).toString('hex');
+		if (api) api.setToken(token);
+		if (enabled) writeConnection();
+		return info();
+	}
+
+	/**
+	 * Another feature's route on the listener (see agent-api.js addRoute).
+	 * Opens the listener if it is not open; resolves to { port, remove }.
+	 */
+	async function addRoute(route, { preferredPort = null } = {}) {
+		const server = await listen(preferredPort);
+		const removeRoute = server.addRoute(route);
+		return { port, remove: async () => { removeRoute(); await closeIfUnused(); } };
 	}
 
 	function info() {
@@ -144,7 +182,7 @@ function createAgentPlay(deps) {
 			claudeCommand: `claude mcp add --transport http ${a.agent === 1 ? 'ragnarok-offline' : `ragnarok-offline-${a.agent}`} ${a.mcp} --header "Authorization: Bearer ${c.token}"`,
 		}));
 		return {
-			on: Boolean(api),
+			on: enabled,
 			port: c.port, mcp: c.mcp, command: c.command, guide: c.guide, folder: dir(), connection: connectionFile(),
 			token: c.token, agents, count,
 			windowOpen: agents.some(a => a.playing),
@@ -240,7 +278,7 @@ function createAgentPlay(deps) {
 		for (const s of slots.values()) if (open(s)) { if (show) s.win.show(); else s.win.hide(); }
 	}
 
-	return { start, stop, info, replaceToken, setVisible, running: () => Boolean(api) };
+	return { start, stop, info, replaceToken, setVisible, addRoute, running: () => enabled };
 }
 
 module.exports = { createAgentPlay, accountName, MAX_AGENTS };

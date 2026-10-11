@@ -1,0 +1,55 @@
+{
+  "name": "friendlier-refine",
+  "version": "1.0.0",
+  "author": "BlaXun",
+  "description": "Refining without the dread. A failed refine no longer destroys your equipment (a setting brings breaking back), and choose from which refine level a failure takes the item down one level instead. Works with the refine window every town blacksmith opens and with the Advanced Refiners Suhnbi (Payon) and Holink (Malangdo, renewal), in renewal and pre-renewal. The success chance of every refine, and how many levels a failure takes off, are rAthena's own values and can be changed by editing renewal/db/refine.yml or pre-renewal/db/refine.yml in the mod's folder (Windows %APPDATA%\\Ragnarok Offline\\state\\mods\\friendlier-refine, macOS ~/Library/Application Support/Ragnarok Offline/state/mods/friendlier-refine, Linux ~/.local/share/Ragnarok Offline/state/mods/friendlier-refine). Rate is the chance of success out of 10000 (6000 is 60%); DowngradeAmount is the levels a failure takes off. While a \"Revert from\" option is ticked, its own file under db/when/ sets the levels lost instead. The server reads these files only when it starts, so restart it after an edit (Apply in Settings, or quit and start the game again). An update of this mod replaces them, so keep a copy of your changes. Refines inside quests are left as they are: Vestri (Mjolnir seal) and the Novice Academy's refining machine use your edited success rates but still break the item on failure, and the Kagerou/Oboro job quest's tool keeps its own chances and always drops one level. The README has the details.",
+  "requires": {
+    "app": ">=1.4.3",
+    "era": "any"
+  },
+  "renewalFolder": "renewal",
+  "prerenewalFolder": "pre-renewal",
+  "tags": [
+    "refine",
+    "equipment",
+    "quality-of-life"
+  ],
+  "homepage": "https://github.com/Flux159/ragnarokoffline.app/tree/main/registry/mods/friendlier-refine",
+  "settings": [
+    {
+      "key": "allow_break",
+      "type": "boolean",
+      "default": false,
+      "label": "Failed refines can break items",
+      "description": "Off: a failed refine never destroys the item or its cards; it keeps its level, unless a \"Revert from\" option says otherwise or, in renewal, rAthena takes levels off (3 for Normal ore past +10). On: rAthena's own breaking chances, as without the mod. Levels lost are DowngradeAmount in the mod's renewal/db/refine.yml."
+    },
+    {
+      "key": "revert_from_05",
+      "type": "boolean",
+      "default": false,
+      "label": "Revert from +5",
+      "description": "A failed refine at +5 or higher drops the item one level; below +5 it keeps its level. The highest ticked one wins. With breaking on, items that can break still do. To drop more levels, set every \"DowngradeAmount: 1\" in the mod's renewal/ (or pre-renewal/) db/when/revert_from_05/refine.yml to the number, then restart the server."
+    },
+    {
+      "key": "revert_from_07",
+      "type": "boolean",
+      "default": false,
+      "label": "Revert from +7",
+      "description": "A failed refine at +7 or higher drops the item one level; below +7 it keeps its level. The highest ticked one wins. With breaking on, items that can break still do. To drop more levels, set every \"DowngradeAmount: 1\" in the mod's renewal/ (or pre-renewal/) db/when/revert_from_07/refine.yml to the number, then restart the server."
+    },
+    {
+      "key": "revert_from_09",
+      "type": "boolean",
+      "default": false,
+      "label": "Revert from +9",
+      "description": "A failed refine at +9 or higher drops the item one level; below +9 it keeps its level. The highest ticked one wins. With breaking on, items that can break still do. To drop more levels, set every \"DowngradeAmount: 1\" in the mod's renewal/ (or pre-renewal/) db/when/revert_from_09/refine.yml to the number, then restart the server."
+    },
+    {
+      "key": "revert_from_11",
+      "type": "boolean",
+      "default": false,
+      "label": "Revert from +11 (renewal)",
+      "description": "Renewal only. A failed refine at +11 or higher drops the item one level; below +11 it keeps its level. The highest ticked one wins. With breaking on, items that can break still do. To drop more levels, set every \"DowngradeAmount: 1\" in the mod's renewal/db/when/revert_from_11/refine.yml to the number, then restart the server."
+    }
+  ]
+}

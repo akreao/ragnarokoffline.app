@@ -16,7 +16,14 @@
 use crate::archive::Sha256;
 
 const PREFIX: &str = "$pbkdf2-sha256$";
-const ITERATIONS: u32 = 200_000;
+/// The login server's count. Tests hash with far fewer, or a few hundred
+/// thousand HMACs per account statement are most of `cargo test`;
+/// matches_the_login_servers_hash_byte_for_byte still checks this one.
+const SERVER_ITERATIONS: u32 = 200_000;
+#[cfg(not(test))]
+pub(crate) const ITERATIONS: u32 = SERVER_ITERATIONS;
+#[cfg(test)]
+pub(crate) const ITERATIONS: u32 = 1_000;
 const SALT_BYTES: usize = 16;
 
 /// `pass_flags` bits (password.hpp's e_password_flag).
@@ -210,11 +217,15 @@ mod tests {
     // password::hash itself, random salt and all.
     const FORK_RANDOM: &str = "$pbkdf2-sha256$200000$k9u6h2ed1/pKsguV0Fh5mg$cP1ZpKT8RHglwlDTgrT2RBYlFJWovYvMWmI363nzU+k";
 
+    // One hash at the server's count per test, so they run side by side: an
+    // unoptimised 200,000-iteration PBKDF2 takes about a second each.
     #[test]
     fn matches_the_login_servers_hash_byte_for_byte() {
-        assert_eq!(format(&FORK_SALT, ITERATIONS, "hunter2-secret"), FORK_HASH);
-        assert!(verify("hunter2-secret", FORK_HASH));
-        assert!(!verify("hunter2-secreT", FORK_HASH));
+        assert_eq!(format(&FORK_SALT, SERVER_ITERATIONS, "hunter2-secret"), FORK_HASH);
+    }
+
+    #[test]
+    fn accepts_a_hash_the_login_server_wrote() {
         assert!(verify("hunter2-secret", FORK_RANDOM));
     }
 
@@ -226,7 +237,7 @@ mod tests {
         let parts: Vec<&str> = one.split('$').collect();
         // "", "pbkdf2-sha256", iterations, salt, hash
         assert_eq!(parts.len(), 5);
-        assert_eq!(parts[2], "200000");
+        assert_eq!(parts[2], ITERATIONS.to_string());
         assert_eq!(b64decode(parts[3]).unwrap().len(), 16);
         assert_eq!(parts[3].len(), 22);
         assert_eq!(parts[4].len(), 43);

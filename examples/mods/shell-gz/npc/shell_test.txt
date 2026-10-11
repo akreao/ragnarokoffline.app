@@ -1,0 +1,126 @@
+// A GM's test bench for the shell control commands. Whisper to npc:shelltest,
+// with the arguments separated by # (rAthena splits a whisper to an NPC there):
+//
+//   near                    list the shells within 14 cells: unit id, kind, name
+//   spawn#Priest{#50#Name}  make a shell beside you and take it (job, level, name)
+//   grab                    take the nearest free ambient shell
+//   come                    the taken shell walks to you          (unitwalk)
+//   follow / stop           it follows you, through portals too   (pcfollow)
+//   attack{#name}           it attacks the monster nearest to it,  (unitattack)
+//                           or the nearest named like that
+//   warp{#map#x#y}          it warps beside you, or to that spot  (unitwarp)
+//   say#text                it says something                     (unittalk)
+//   free                    give it back to the engine            (population_unhold)
+//   bye{#fly}               it logs out, or fly-wings away        (population_despawn)
+//
+// The bench holds one shell at a time: taking another (spawn or grab) releases
+// the one before, so a spawned shell logs out and a grabbed one goes back to
+// the AI. While taken, whispering the shell itself runs OnShellWhisper below,
+// which answers through population_whisper, and a follow that loses you runs
+// OnShellLost, which whispers why. Each take lasts ten minutes.
+
+-	script	shelltest	-1,{
+OnWhisperGlobal:
+	if (getgmlevel() < 60)
+		end;
+	.@cmd$ = @whispervar0$;
+	getmapxy(.@map$, .@x, .@y);
+	if (.@cmd$ == "near") {
+		.@n = population_shells(.@map$, .@x, .@y, 14, .@gid, 1|2|4);
+		dispbottom "shelltest: " + .@n + " shell(s) within 14 cells, vendors, held and dead included. Kind: 1 ambient, 2 vendor, 3 companion.";
+		for (.@i = 0; .@i < .@n && .@i < 15; .@i++)
+			dispbottom "  " + .@gid[.@i] + "  kind " + population_is_shell(.@gid[.@i]) + "  " + rid2name(.@gid[.@i]);
+		end;
+	}
+	if (.@cmd$ == "spawn") {
+		.@lv = atoi(@whispervar2$);
+		.@gid = population_spawn(.@map$, .@x + 2, .@y, @whispervar1$, .@lv, @whispervar3$);
+		if (!.@gid) {
+			dispbottom "shelltest: spawn refused (unknown job, no profile for it, name taken, or population full).";
+			end;
+		}
+		callsub S_Take, .@gid;
+		end;
+	}
+	if (.@cmd$ == "grab") {
+		if (population_shells(.@map$, .@x, .@y, 14, .@gid) <= 0) {
+			dispbottom "shelltest: no free ambient shell within 14 cells.";
+			end;
+		}
+		callsub S_Take, .@gid[0];
+		end;
+	}
+	if (.last == 0 || !population_is_shell(.last)) {
+		dispbottom "shelltest: take a shell first (spawn or grab).";
+		end;
+	}
+	if (.@cmd$ == "come")
+		unitwalk .last, .@x + 1, .@y;
+	else if (.@cmd$ == "follow")
+		pcfollow .last, getcharid(3);
+	else if (.@cmd$ == "stop")
+		pcstopfollow .last;
+	else if (.@cmd$ == "attack") {
+		// The nearest monster to the shell, or the nearest whose name contains
+		// the argument: rings of growing size around the shell, first hit wins.
+		getmapxy(.@sm$, .@sx, .@sy, BL_PC, rid2name(.last));
+		.@want$ = @whispervar1$;
+		for (.@r = 1; .@r <= 14 && !.@target; .@r++) {
+			.@c = getareaunits(BL_MOB, .@sm$, .@sx - .@r, .@sy - .@r, .@sx + .@r, .@sy + .@r, .@mob);
+			for (.@i = 0; .@i < .@c; .@i++) {
+				if (.@want$ == "" || compare(rid2name(.@mob[.@i]), .@want$)) {
+					.@target = .@mob[.@i];
+					break;
+				}
+			}
+		}
+		if (!.@target) {
+			dispbottom "shelltest: no monster" + (.@want$ == "" ? "" : " named like '" + .@want$ + "'") + " within 14 cells of the shell.";
+			end;
+		}
+		// unitattack returns whether the shell took the target as its own.
+		.@ok = unitattack(.last, .@target, 1);
+		dispbottom "shelltest: attack " + rid2name(.@target) + " (" + .@target + "), " + (.@r - 1) + " cell(s) from the shell: order " + (.@ok ? "accepted" : "refused") + ".";
+	} else if (.@cmd$ == "warp") {
+		if (@whispervar1$ == "")
+			unitwarp .last, .@map$, .@x + 1, .@y;
+		else
+			unitwarp .last, @whispervar1$, atoi(@whispervar2$), atoi(@whispervar3$);
+	} else if (.@cmd$ == "say")
+		unittalk .last, rid2name(.last) + " : " + @whispervar1$;
+	else if (.@cmd$ == "free") {
+		dispbottom "shelltest: unhold " + population_unhold(.last) + ".";
+		.last = 0;
+	} else if (.@cmd$ == "bye") {
+		dispbottom "shelltest: despawn " + population_despawn(.last, @whispervar1$ == "fly") + ".";
+		.last = 0;
+	} else
+		dispbottom "shelltest: unknown command '" + .@cmd$ + "'.";
+	end;
+
+S_Take:
+	.@gid = getarg(0);
+	if (!population_hold(.@gid, 600000)) {
+		dispbottom "shelltest: could not take " + .@gid + ".";
+		return;
+	}
+	// One at a time: hand the previous one back (0 when it is already gone).
+	if (.last != 0 && .last != .@gid && population_unhold(.last))
+		dispbottom "shelltest: released the previous shell.";
+	population_whisper_event .@gid, strnpcinfo(3) + "::OnShellWhisper";
+	population_lost_event .@gid, strnpcinfo(3) + "::OnShellLost";
+	.last = .@gid;
+	dispbottom "shelltest: took " + rid2name(.@gid) + " (" + .@gid + ") for ten minutes.";
+	return;
+
+OnShellWhisper:
+	population_whisper @shell_gid, "You said: " + @shell_msg$;
+	end;
+
+// It was following you and lost you; through a portal it just follows.
+OnShellLost:
+	setarray .@why$, "", "where'd you go? (teleported)", "lost you (left the map)",
+		"couldn't make it to the portal", "can't get to where you are";
+	population_whisper @shell_gid, .@why$[@shell_lost];
+	end;
+}

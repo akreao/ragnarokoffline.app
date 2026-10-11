@@ -113,6 +113,10 @@ def build():
         requires = manifest.get("requires", {})
         requires = requires if isinstance(requires, dict) else {}
         needs = [name for name in requires.get("mods", []) if isinstance(name, str)]
+        # One client or a list ("kRO", ["kRO", "jRO"]); listed so Find Mods can say who it's for.
+        client = requires.get("client", [])
+        clients = [client] if isinstance(client, str) else [c for c in client if isinstance(c, str)] if isinstance(client, list) else []
+        clients = [] if any(c.lower() == "any" for c in clients) else clients
 
         entry = {
             "name": directory.name,
@@ -123,7 +127,7 @@ def build():
             "tags": sorted(dict.fromkeys(tags)),
             "icon": picture(manifest["icon"], "icon") if manifest.get("icon") else "",
             "screenshots": [picture(shot, "screenshots") for shot in screenshots],
-            "requires": {"mods": needs, "era": requires.get("era", ""), "app": requires.get("app", "")},
+            "requires": {"mods": needs, "era": requires.get("era", ""), "app": requires.get("app", ""), **({"client": clients} if clients else {})},
         }
         if source:
             entry["source"] = source

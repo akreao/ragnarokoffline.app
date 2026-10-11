@@ -1,0 +1,8 @@
+{
+  "name": "quick-move",
+  "author": "rhewid",
+  "description": "Quality-of-life item moving: reliable fast double click in NPC shops, plus Ctrl+click to move items between Inventory, Storage, Cart, Equipment, Vending, Trade and Rodex.",
+  "tags": ["client", "inventory", "quality-of-life", "shop", "storage"],
+  "homepage": "https://github.com/rhewid/quick-move",
+  "source": { "github": "rhewid/quick-move", "asset": "quick-move-*.zip" }
+}
