@@ -33,6 +33,20 @@ const safeHeaders = {
   'cloudflare-cdn-cache-control': 'no-store', 'x-content-type-options': 'nosniff',
   'referrer-policy': 'no-referrer', 'x-frame-options': 'DENY',
 };
+// A game file's own cache policy, made private. The Rust server sends GRF
+// assets `public, max-age=86400, immutable` with a content ETag, the built
+// client `public, max-age=0` with a weak one, and the generated page and
+// config `no-store`. Keeping the first two lets a friend's browser reuse what
+// it already downloaded, or revalidate it with a 304, instead of fetching the
+// whole client again on every visit. `private` and the CDN headers in
+// safeHeaders keep Cloudflare from storing any of it, and each revalidation
+// still passes the invitation check above.
+function assetCachePolicy(upstream) {
+  const directives = String(upstream || '').toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
+  if (!directives.length || directives.includes('no-store') || directives.includes('private')) return safeHeaders['cache-control'];
+  const kept = directives.filter(d => /^(max-age=\d+|immutable|no-cache|must-revalidate)$/.test(d));
+  return kept.length ? ['private', ...kept].join(', ') : safeHeaders['cache-control'];
+}
 function publicPath(raw) {
   if (typeof raw !== 'string' || raw.length > 4096 || !raw.startsWith('/') || raw.startsWith('//')) return false;
   const decoded = raw.split('?')[0].replace(/%([a-f0-9]{2})/ig, (_, n) => String.fromCharCode(parseInt(n, 16))).toLowerCase();
@@ -122,6 +136,9 @@ class FriendGateway {
     this.socketPaths = new Set(gameTargets(ports).map(target => '/ws/' + target));
     this.loginPath = '/ws/127.0.0.1:' + ports.login;
     this.host = url.host; this.sessions = new Map(); this.sockets = new Set(); this.requests = new Set();
+    // Entering the game asks for hundreds of files at once. Reusing loopback
+    // connections spares the Rust server a TCP handshake for each of them.
+    this.agent = new http.Agent({ keepAlive: true, maxSockets: 64 });
     // A supplied invitation survives restarts, so a link already sent to
     // friends keeps working after a crash or a repair. Only a token of the
     // right shape is accepted; anything else is replaced rather than trusted.
@@ -222,14 +239,21 @@ class FriendGateway {
     if (this.closed || this.session(req) !== entry) return this.reply(res, 401, { error: 'A current invitation is required' });
     const headers = { host: '127.0.0.1:' + this.upstreamPort };
     for (const name of ['accept', 'accept-encoding', 'content-type']) if (req.headers[name]) headers[name] = req.headers[name];
+    const cacheable = req.method !== 'POST';
+    if (cacheable) for (const name of ['if-none-match', 'if-modified-since']) if (req.headers[name]) headers[name] = req.headers[name];
     if (bytes) headers['content-length'] = bytes.length;
     const search = req.method === 'POST' && ['/', '/search'].includes(req.url);
     if (search) headers['accept-encoding'] = 'identity';
-    const proxy = http.request({ host: '127.0.0.1', port: this.upstreamPort, path: req.url, method: req.method, headers, agent: false, timeout: 30000 }, response => {
+    const proxy = http.request({ host: '127.0.0.1', port: this.upstreamPort, path: req.url, method: req.method, headers, agent: this.agent, timeout: 30000 }, response => {
       // Never forward cookies, redirects, CORS headers or public cache policy.
       const output = { ...safeHeaders };
       for (const name of ['content-type', 'content-encoding', 'content-length']) if (response.headers[name]) output[name] = response.headers[name];
-      if (response.statusCode >= 300 && response.statusCode < 400) { response.destroy(); return this.reply(res, 502, { error: 'Unexpected game redirect' }); }
+      if (cacheable) {
+        output['cache-control'] = assetCachePolicy(response.headers['cache-control']);
+        for (const name of ['etag', 'last-modified', 'vary']) if (response.headers[name]) output[name] = response.headers[name];
+      }
+      const notModified = cacheable && response.statusCode === 304;
+      if (response.statusCode >= 300 && response.statusCode < 400 && !notModified) { response.destroy(); return this.reply(res, 502, { error: 'Unexpected game redirect' }); }
       if (search) {
         let result = '', count = 0;
         response.on('data', chunk => { count += chunk.length; if (count > 1024 * 1024) response.destroy(); else result += chunk; });
@@ -459,6 +483,7 @@ class FriendGateway {
     this.closed = true; clearInterval(this.timer); this.revoke();
     for (const request of this.requests) request.destroy();
     for (const socket of this.sockets) socket.destroy();
+    this.agent.destroy();
     if (this.server) await new Promise(resolve => this.server.close(resolve));
   }
 }

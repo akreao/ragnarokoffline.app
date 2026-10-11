@@ -46,11 +46,41 @@ test('exchange cookies are secure, private, bounded; proxy strips credentials/ca
   assert.equal(auth.status, 200); assert.match(auth.headers['set-cookie'][0], /Secure; HttpOnly; SameSite=Strict/);
   const cookie = auth.headers['set-cookie'][0].split(';')[0];
   const response = await f.request('/data/a.spr', { headers: { cookie, authorization: 'Bearer private-sentinel', 'x-forwarded-host': 'forged' } });
-  assert.equal(response.status, 200); assert.equal(response.text, 'asset'); assert.match(response.headers['cache-control'], /no-store/);
+  assert.equal(response.status, 200); assert.equal(response.text, 'asset'); assert.equal(response.headers['cache-control'], 'private, max-age=99999');
+  assert.equal(response.headers['cdn-cache-control'], 'no-store'); assert.equal(response.headers['cloudflare-cdn-cache-control'], 'no-store');
   assert.equal(f.observed[0].headers.cookie, undefined); assert.equal(f.observed[0].headers.authorization, undefined);
   for (const url of ['/logs/a', '/%6cogs/a', '/%252e%252e/key', '/data/../.private', '/resources/a', '/data.grf', '/api/cache-stats', '/api/missing-files']) assert.equal((await f.request(url, { headers: { cookie } })).status, 404, url);
   assert.equal((await f.request('/data/a.spr', { headers: { cookie, host: 'wrong.example.com' } })).status, 421);
   assert.equal((await f.request('/batch', { method: 'POST', headers: { cookie, origin: f.gateway.origin, 'content-type': 'application/json' }, body: JSON.stringify({ files: ['data.grf'] }) })).status, 400);
+});
+test('game files keep their validators and a private copy of their cache policy, and 304s pass through', async t => {
+  const connections = [];
+  const upstream = http.createServer((req, res) => {
+    if (req.url === '/Config.local.js') { res.setHeader('cache-control', 'no-store'); return res.end('config'); }
+    if (req.url === '/Online.js') { res.setHeader('cache-control', 'public, max-age=0'); res.setHeader('etag', 'W/"1-2"'); }
+    else { res.setHeader('cache-control', 'public, max-age=86400, immutable, s-maxage=9'); res.setHeader('etag', '"abc"'); res.setHeader('vary', 'Accept-Encoding'); }
+    res.setHeader('set-cookie', 'leak=1');
+    if (req.headers['if-none-match'] === res.getHeader('etag')) { res.statusCode = 304; return res.end(); }
+    res.end('asset');
+  });
+  upstream.on('connection', socket => connections.push(socket));
+  upstream.listen(0, '127.0.0.1'); await once(upstream, 'listening');
+  const f = await fixture(t, { upstreamPort: upstream.address().port });
+  t.after(async () => { upstream.closeAllConnections(); await new Promise(resolve => upstream.close(resolve)); });
+  const cookie = await f.login();
+  const first = await f.request('/data/a.spr', { headers: { cookie } });
+  assert.equal(first.status, 200); assert.equal(first.headers['cache-control'], 'private, max-age=86400, immutable');
+  assert.equal(first.headers.etag, '"abc"'); assert.equal(first.headers.vary, 'Accept-Encoding'); assert.equal(first.headers['set-cookie'], undefined);
+  assert.equal(first.headers['cdn-cache-control'], 'no-store');
+  const again = await f.request('/data/a.spr', { headers: { cookie, 'if-none-match': '"abc"' } });
+  assert.equal(again.status, 304); assert.equal(again.text, ''); assert.equal(again.headers.etag, '"abc"');
+  const client = await f.request('/Online.js', { headers: { cookie, 'if-none-match': 'W/"1-2"' } });
+  assert.equal(client.status, 304); assert.equal(client.headers['cache-control'], 'private, max-age=0');
+  const config = await f.request('/Config.local.js', { headers: { cookie } });
+  assert.equal(config.status, 200); assert.equal(config.headers['cache-control'], 'private, no-store'); assert.equal(config.headers.etag, undefined);
+  assert.equal(connections.length, 1, 'upstream connections are kept alive and reused');
+  f.gateway.revoke();
+  assert.equal((await f.request('/data/a.spr', { headers: { cookie, 'if-none-match': '"abc"' } })).status, 401, 'revalidation still needs a current invitation');
 });
 test('only same-origin invited players may create one account; revocation closes active game sockets', async t => {
   const f = await fixture(t), cookie = await f.login();

@@ -197,8 +197,13 @@ An invitation is exchanged from a URL fragment through a same-origin POST for a
 Secure, HttpOnly, SameSite cookie. The fragment is removed before game navigation.
 Expiry/revocation also closes live game sockets. HTTP bodies, sessions, account
 attempts, socket counts and WebSocket frames/messages are bounded; proxy pipes
-preserve backpressure. Authenticated content is private/no-store at the HTTP/CDN
-layer. The client's existing local file cache still applies.
+preserve backpressure. Authenticated content is never stored by the CDN
+(`cdn-cache-control: no-store`). Game files keep the asset server's cache
+policy, made `private`, with their ETag, so a returning friend's browser reuses
+or revalidates what it already has; the generated page and config stay
+`no-store`, and every request that reaches the gateway, a revalidation
+included, needs a current invitation. The client's own local file cache still
+applies.
 
 Friends mode replaces automatic failed-password bans of the shared proxy IP
 with five login attempts per minute per browser and per account. Other friends
