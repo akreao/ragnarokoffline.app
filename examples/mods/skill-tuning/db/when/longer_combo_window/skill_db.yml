@@ -1,0 +1,44 @@
+# skill-tuning: a longer Monk combo window.
+#
+# This file is only used while the "longer_combo_window" setting is ticked.
+# Everything under db/when/<setting key>/ works that way, and it is ADDED to
+# the mod's own db/skill_db.yml rather than replacing it.
+#
+# How rAthena decides the combo window
+# ------------------------------------
+# After Triple Attack, Chain Combo or Combo Finish, the next combo skill can
+# be pressed for as long as the Monk is in that skill's after-cast delay
+# (never less than one attack motion). For these skills the delay is a fixed
+# formula in the server (skill_delayfix in src/map/skill.cpp):
+#
+#     window = AfterCastActDelay - (4 x AGI + 2 x DEX)
+#
+# with AfterCastActDelay treated as 1000 ms when the skill has none, as all
+# three do in stock rAthena. A mod can move the 1000; it cannot touch the
+# 4 x AGI + 2 x DEX part.
+#
+# So 1300 below means 300 ms more at any AGI and DEX. Watch out:
+#   - The window IS the delay. 300 ms more time to press the next skill is also
+#     300 ms longer before the Monk can do anything else (a normal attack, a
+#     non-combo skill). Shortening it shortens both.
+#   - Bragi and "reduces after-cast delay" gear also shorten it, as in stock.
+#   - Champion's Tiger Fist (CH_TIGERFIST) and Chain Crush (CH_CHAINCRUSH) use
+#     the same formula. Add them here the same way to lengthen those links.
+#   - The extra 300 ms during which a Monk who just used a combo skill cannot
+#     attack or walk is a different number: the server setting
+#     combo_delay_rate. Mods cannot set it.
+
+Header:
+  Type: SKILL_DB
+  Version: 4
+
+Body:
+  - Id: 263
+    Name: MO_TRIPLEATTACK   # its delay is the window for Chain Combo
+    AfterCastActDelay: 1300
+  - Id: 272
+    Name: MO_CHAINCOMBO     # ...for Combo Finish
+    AfterCastActDelay: 1300
+  - Id: 273
+    Name: MO_COMBOFINISH    # ...for Tiger Fist, Chain Crush or Asura Strike
+    AfterCastActDelay: 1300

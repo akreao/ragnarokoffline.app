@@ -1,0 +1,39 @@
+# Renewal EXP level penalty override (read as db/import/level_penalty.yml).
+#
+# Stock db/re/level_penalty.yml multiplies EXP by the level difference
+# (monster level - player level). Only the entries below are changed; the
+# 105-140% bonus for monsters 3-15 levels above you stays as stock.
+#
+# Every penalised step is listed: a difference that is left out inherits the
+# nearest defined step, so overriding only -6 would leave -11 and below at stock.
+#
+#   Difference  stock  here
+#   >= +16       40%   100%
+#   -6..-10      95%   100%
+#   -11..-15     90%   100%
+#   -16..-20     85%   100%
+#   -21..-25     60%   100%
+#   -26..-30     35%   100%
+#   <= -31       10%   100%
+
+Header:
+  Type: PENALTY_DB
+  Version: 1
+
+Body:
+  - Type: Exp
+    LevelDifferences:
+      - Difference: 16
+        Rate: 100
+      - Difference: -6
+        Rate: 100
+      - Difference: -11
+        Rate: 100
+      - Difference: -16
+        Rate: 100
+      - Difference: -21
+        Rate: 100
+      - Difference: -26
+        Rate: 100
+      - Difference: -31
+        Rate: 100

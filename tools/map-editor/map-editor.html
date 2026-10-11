@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Map editor</title>
+<!--
+  The map editor (#414): make a map, or change one, and turn it into a mod.
+  The ground, its textures, walls, walkability, water and light; the models,
+  lights, sounds and effects on it; the NPCs, warps and monsters (written as
+  rAthena script); the sky, weather and music. Then Test in game.
+
+  The page is the same in the app's window (ro-tool://map-editor/) and in a
+  browser from `ragnarok-map serve`; it asks its host for files through
+  server/bridge.js either way. An agent drives it through the same commands
+  the tools here use (lib/commands.js): see AGENTS.md beside this file.
+-->
+<!--HOST-->
+<link rel="stylesheet" href="ui/style.css">
+</head>
+<body>
+<header id="top">
+  <div class="brand">
+    <button class="btn" id="btn-open" title="New map, or open one (Ctrl+O)">Open…</button>
+    <div class="title"><b id="map-title">No map open</b> <span class="muted" id="map-sub"></span></div>
+  </div>
+  <div class="spacer"></div>
+  <button class="btn icon" id="btn-undo" title="Undo (Ctrl+Z)" disabled>↶</button>
+  <button class="btn icon" id="btn-redo" title="Redo (Ctrl+Shift+Z)" disabled>↷</button>
+  <span class="pill" id="save-state" hidden></span>
+  <button class="btn" id="btn-check" title="Check the map for problems" disabled>Check</button>
+  <button class="btn" id="btn-save" title="Save the map into its mod (Ctrl+S)" disabled>Save</button>
+  <button class="btn primary" id="btn-test" title="Save, switch the mod on, restart the server and go there" disabled>Test in game ▶</button>
+</header>
+
+<div class="layout">
+  <nav id="tools" aria-label="Tools">
+    <button data-tool="select" title="Select and move (1)"><span>⬚</span><small>Select</small></button>
+    <button data-tool="sculpt" title="Sculpt the ground (2)"><span>⛰</span><small>Sculpt</small></button>
+    <button data-tool="paint" title="Paint ground textures (3)"><span>▦</span><small>Paint</small></button>
+    <button data-tool="walk" title="Walkability (4)"><span>◩</span><small>Walk</small></button>
+    <button data-tool="objects" title="Models, lights, sounds, effects (5)"><span>⌂</span><small>Objects</small></button>
+    <button data-tool="gameplay" title="NPCs, warps, monsters (6)"><span>☺</span><small>Gameplay</small></button>
+    <button data-tool="map" title="Water, light, sky, weather, music, size (7)"><span>☼</span><small>Map</small></button>
+    <button data-tool="check" title="Problems (8)"><span>✓</span><small>Check</small></button>
+  </nav>
+
+  <main id="stage">
+    <canvas id="view" tabindex="0"></canvas>
+    <canvas id="labels"></canvas>
+    <div id="layers">
+      <label><input type="checkbox" data-layer="models" checked> Models</label>
+      <label><input type="checkbox" data-layer="water" checked> Water</label>
+      <label><input type="checkbox" data-layer="lightmap" checked> Lightmaps</label>
+      <label><input type="checkbox" data-layer="gat"> Walkability</label>
+      <label><input type="checkbox" data-layer="grid"> Grid</label>
+      <label><input type="checkbox" data-layer="markers" checked> Markers</label>
+      <span class="sep"></span>
+      <button class="btn small" id="btn-top" title="Look straight down (T)">Top</button>
+      <button class="btn small" id="btn-reset-view" title="Whole map (Home)">Fit</button>
+      <button class="btn small" id="btn-shot" title="Save a screenshot">📷</button>
+    </div>
+    <div id="status"><span id="st-cell">—</span><span id="st-height"></span><span id="st-type"></span><span id="st-hint" class="muted"></span><span class="spacer"></span><span id="st-remote" class="muted"></span></div>
+    <div id="empty" class="empty">
+      <div class="card">
+        <h2>Map editor</h2>
+        <p class="muted">Make a new map, or open one — your own, or any map in your client — and turn it into a mod.</p>
+        <div class="row"><button class="btn primary" id="empty-new">New map</button><button class="btn" id="empty-open">Open a map</button></div>
+      </div>
+    </div>
+    <div id="toast" hidden></div>
+  </main>
+
+  <aside id="panel"></aside>
+</div>
+
+<dialog id="dialog"><form method="dialog" id="dialog-form"></form></dialog>
+
+<script type="module" src="ui/app.js"></script>
+</body>
+</html>

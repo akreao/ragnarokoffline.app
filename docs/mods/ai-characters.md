@@ -161,7 +161,10 @@ population_pvp.yml
 ```
 
 A mod's copy of any of those lands in a directory nothing opens, and the server
-reports a clean load either way. If you need one of them, say so — the fix is
+reports a clean load either way.
+
+`population_strategy.yml`, how recruited companions fight, was built with the
+import from the start: see [companion strategies](companion-strategies/README.md). If you need one of them, say so — the fix is
 the same three lines that fixed this one.
 
 ## Why it used to be impossible

@@ -1,0 +1,685 @@
+//===== Ragnarok Offline: prontera-vendors =================================
+//= The hunted supply. Parties hunt the world's fields and dungeons, an hour
+//= at a time, and what only monsters drop goes into a supply the sell
+//= stalls list from:
+//=
+//= - Hunters come in groups, as on a real server: solo players (60 %, 100
+//=   kills an hour), duos and trios (25 %, 225) and full parties (15 %,
+//=   400). The setting counts full parties' worth of hunting (300 kills an
+//=   hour each), so 20 means about 34 groups. Each hunts a map near its level
+//=   for 1-4 hours, then moves on: solo players anywhere, parties mostly at
+//=   the known spots. A map nobody has hunted in a while draws them more and
+//=   more, so none is left out. How many are out follows the time of day and
+//=   the weekend.
+//= - Kills follow the map's spawns: a monster can't be killed faster than it
+//=   respawns. Drops follow its drop table and the server's drop rates
+//=   (item_rate_*). MvPs die a few times a day at most, by their respawn,
+//=   their level and the "MvP kills" setting.
+//= - Stock leaves the market with a half-life (other players bought it):
+//=   loot at the setting, what players use up (ores, stones, herbs,
+//=   potions) half as long, equipment 3x, cards and MvP loot 5x.
+//= - Scarcity sets prices: an item that settles at 2 or more copies costs up
+//=   to 25 % more as it runs out and up to 15 % less at twice its settled
+//=   stock ($@pvs_pct, which the dynamic market multiplies into its own;
+//=   with the market off this sets $@pop_item_pct itself).
+//= - Buying from a stall takes from the supply; selling into a buying store
+//=   adds to it (picklog, as the dynamic market reads it).
+//= - The time the server was off is hunted too: its last 48 hours an hour
+//=   at a time, anything before that at once by the long-run average.
+//= - Fewer sellers while stock is low: every hour the sell stalls are set
+//=   (population_vendor_count) to 30 % of "Sell stalls" with nothing in
+//=   stock, rising to all of them once the market has settled (75 %).
+//=
+//= What it publishes is $@pop_item_supply[<item id>] = supply + 1 for each
+//= item it limits; the population engine lists no more than that on this
+//= mod's stalls between them (plain items only). The ledger lives in the mod
+//= store. Its data (maps, yields, MvPs) is prontera-vendors-supply-data.txt.
+//=
+//= Its own file: an app build without the mod store rejects this file, and
+//= only this file. Off unless "Hunted supply" is on in the mod's settings.
+//===========================================================================
+-	script	ProntVendorsSupply	-1,{
+	end;
+
+OnInit:
+	.mod$ = "prontera-vendors";
+	.parties = callfunc("F_ModSetting", .mod$, "supply_parties", 20);
+	.on = callfunc("F_ModSetting", .mod$, "hunted_supply", 0) && .parties > 0;
+	.hl_hours = callfunc("F_ModSetting", .mod$, "supply_halflife_days", 5) * 24;
+	.filled = callfunc("F_ModSetting", .mod$, "supply_start_filled", 0);
+	.mvp_cap = callfunc("F_ModSetting", .mod$, "supply_mvp_per_day", 1);
+	if (.hl_hours < 1) .hl_hours = 1;
+	if (.parties < 0) .parties = 0;
+	.ready = 0;
+	.busy = 0;
+	bindatcmd "supply", strnpcinfo(3) + "::OnAtSupply", 99, 99;
+	// How many parties are out, by the hour (a day averages 100) and the
+	// day of the week (Saturday and Sunday busier; a week averages 100).
+	setarray .hourpct[0], 64, 52, 41, 35, 35, 41, 52, 70, 81, 87, 93, 99, 104, 104, 110, 116, 128, 139, 157, 174, 186, 180, 151, 104;
+	setarray .daypct[0], 115, 94, 94, 94, 94, 94, 115;
+	// Groups: kills an hour by size (1 solo, 2 duo or trio, 3 full party),
+	// and how many groups make a party's worth (300 / their average 176).
+	setarray .gkills[1], 100, 225, 400;
+	setarray .gname$[1], "a solo level ", "a level ", "a full level ";
+	setarray .gwhat$[1], " hunter", " duo/trio", " party";
+	.gper = 170; // groups per 100 parties' worth
+	.maxg = 600;
+	if (.on) {
+		initnpctimer;
+		// Start while the scripts load, before the first shells open their
+		// stalls: now if the data script has run, else when it says so.
+		if ($@pvs_ready)
+			callsub S_Start;
+	}
+	.inited = 1;
+	end;
+
+// From the data script once $@pvs_* are filled.
+OnDataReady:
+	if (.inited && .on && !.ready)
+		callsub S_Start;
+	end;
+
+// If neither start happened (no data script), a few seconds in; and the
+// stall count again, over the full count prontera-vendors.txt sets on load.
+OnTimer6000:
+	if (!.ready)
+		callsub S_Start;
+	freeloop(1);
+	callsub S_Stalls, 1;
+	callsub S_Prices;
+	freeloop(0);
+	end;
+
+OnTimer60000:
+	callsub S_Minute;
+	initnpctimer;
+	end;
+
+// ---------------------------------------------------------------------------
+// Start: the data indexed, the ledger read back (or started), the downtime
+// hunted, and the supply published.
+S_Start:
+	if (.busy)
+		return;
+	.busy = 1;
+	freeloop(1);
+	.now = gettimetick(2);
+	// The server's hour offset from UTC, for the hour of a simulated time.
+	.tzh = (gettime(DT_HOUR) - (.now / 3600) % 24 + 24) % 24;
+	// What each rate class's drops are multiplied by, in percent.
+	for (.@c = 0; .@c < getarraysize($@pvs_rateflag$); .@c++)
+		.mult[.@c] = getbattleflag($@pvs_rateflag$[.@c]);
+	// Each item: decay a hour (parts per million), where its long-run yields
+	// are, and what it settles at with the parties out (its steady state).
+	.@a = 0;
+	for (.@k = 0; .@k < $@pvs_gcount; .@k++) {
+		.@id = $@pvs_gid[.@k];
+		.@h = .hl_hours * $@pvs_ghl[.@k] / 100;
+		if (.@h < 1) .@h = 1;
+		.hlh[.@k] = .@h;
+		.pdec[.@k] = 693147 / .@h;
+		.@in = 0;
+		while (.@a < $@pvs_acount && $@pvs_aitem[.@a] == .@id) {
+			.@in += $@pvs_arate[.@a] * .mult[$@pvs_acls[.@a]] / 100;
+			.@a++;
+		}
+		// in (millionths a party-hour) x parties x half-life x 1/ln 2, kept
+		// in millionths so a card that settles at half a copy isn't lost
+		.@st = .@in * .parties * .@h / 10000 * 14427;
+		.steadym[.@k] = .@st > $@pvs_gcap[.@k] * 1000000 ? $@pvs_gcap[.@k] * 1000000 : .@st;
+	}
+	.lv_lo = 999; .lv_hi = 1;
+	for (.@m = 0; .@m < $@pvs_mcount; .@m++) {
+		if ($@pvs_mlv[.@m] < .lv_lo) .lv_lo = $@pvs_mlv[.@m];
+		if ($@pvs_mlv[.@m] > .lv_hi) .lv_hi = $@pvs_mlv[.@m];
+	}
+	if (!modstore_exists("clock")) {
+		// No ledger: the mod's data was reset (Settings > Mods > Reset data)
+		// or the supply is new here. The dynamic market starts over with it,
+		// so that one button resets the whole market.
+		callsub S_ResetMarket;
+		callsub S_New;
+	} else {
+		callsub S_Load;
+	}
+	.ready = 1;
+	callsub S_PublishAll;
+	callsub S_Stalls, 1;
+	callsub S_Prices;
+	freeloop(0);
+	.busy = 0;
+	// The time the server was off.
+	callsub S_CatchUp;
+	return;
+
+// S_New: a ledger from scratch, empty (the default) or at the steady state
+// ("start filled", @supply reset filled).
+S_New:
+	modstore_delete "s";
+	modstore_delete "m";
+	modstore_delete "p";
+	modstore_delete "v";
+	for (.@k = 0; .@k < $@pvs_gcount; .@k++) {
+		.sup[.@k] = .filled ? callsub(S_Round, .steadym[.@k]) : 0;
+		if (.sup[.@k] > 0)
+			modstore_set "s." + $@pvs_gid[.@k], .sup[.@k];
+	}
+	deletearray .mlast;
+	deletearray .plv;
+	deletearray .pleft;
+	deletearray .psize;
+	for (.@i = 0; .@i < .maxg; .@i++)
+		.pmap[.@i] = -1;
+	deletearray .vnext;
+	deletearray .vday;
+	deletearray .vn;
+	.clock = .now / 3600 * 3600;
+	modstore_set "clock", .clock;
+	query_logsql("SELECT COALESCE(MAX(id), 0) FROM picklog", .@max);
+	.log = .@max;
+	modstore_set "log", .log;
+	return;
+
+// S_ResetMarket: the dynamic market's prices and news back to the price
+// list, as @market reset does (prontera-vendors-market.txt keeps them in its
+// own $pv_* variables; it publishes the change on its next pass).
+S_ResetMarket:
+	for (.@i = 0; .@i < $pv_mk_n; .@i++) {
+		$@pv_slot[$pv_mk_id[.@i]] = 0;
+		$pv_mk_id[.@i] = 0;
+		$pv_mk_v[.@i] = 0;
+		$pv_mk_t[.@i] = 0;
+	}
+	$pv_mk_n = 0;
+	for (.@k = 0; .@k < $pv_nw_n; .@k++)
+		$pv_nw_end[.@k] = 0;
+	$pv_nw_n = 0;
+	return;
+
+// S_Load: the ledger, parties, map visits and MvP timers from the store.
+S_Load:
+	for (.@k = 0; .@k < $@pvs_gcount; .@k++)
+		.sup[.@k] = modstore_get("s." + $@pvs_gid[.@k], 0);
+	for (.@m = 0; .@m < $@pvs_mcount; .@m++) {
+		.mlast[.@m] = modstore_get("m." + $@pvs_map$[.@m], 0);
+		setd ".@mi_" + $@pvs_map$[.@m], .@m + 1;
+	}
+	for (.@i = 0; .@i < .maxg; .@i++) {
+		.pmap[.@i] = -1;
+		if (!modstore_exists("p." + .@i))
+			continue;
+		.@name$ = modstore_get("p." + .@i + ".m");
+		.pmap[.@i] = getd(".@mi_" + .@name$) - 1;
+		.plv[.@i] = modstore_get("p." + .@i + ".lv", 1);
+		.psize[.@i] = modstore_get("p." + .@i + ".size", 3); // saved before sizes: a party
+		.pleft[.@i] = .pmap[.@i] < 0 ? 0 : modstore_get("p." + .@i + ".left", 0);
+	}
+	for (.@v = 0; .@v < $@pvs_mvpcount; .@v++) {
+		.@key$ = "v." + $@pvs_mvp[.@v];
+		.vnext[.@v] = modstore_get(.@key$ + ".next", 0);
+		.vday[.@v] = modstore_get(.@key$ + ".day", 0);
+		.vn[.@v] = modstore_get(.@key$ + ".n", 0);
+	}
+	.clock = modstore_get("clock", .now / 3600 * 3600);
+	.log = modstore_get("log", 0);
+	return;
+
+// S_CatchUp: every whole hour since the clock. A gap over 48 hours settles
+// its older part at once (each item moves toward its steady state as far as
+// that many hours of decay take it); the last 48 are hunted an hour at a
+// time, a few hours a beat, so the server doesn't stall at start.
+S_CatchUp:
+	if (.busy || !.ready)
+		return;
+	.busy = 1;
+	freeloop(1);
+	.@now = gettimetick(2);
+	.@gap = (.@now - .clock) / 3600;
+	if (.@gap > 48) {
+		.@old = .@gap - 48;
+		for (.@k = 0; .@k < $@pvs_gcount; .@k++) {
+			.@d = callsub(S_Fade, 1000000, .@old, .hlh[.@k]);
+			.@n = callsub(S_Round, .sup[.@k] * .@d + .steadym[.@k] * (1000000 - .@d) / 1000000);
+			if (.@n != .sup[.@k]) {
+				.sup[.@k] = .@n;
+				.chg[.@k] = 1;
+			}
+		}
+		.clock += .@old * 3600;
+		callsub S_Save;
+	}
+	.@done = 0;
+	while (.clock + 3600 <= .@now) {
+		callsub S_Hour, .clock;
+		.clock += 3600;
+		modstore_set "clock", .clock;
+		if (++.@done % 4 == 0) {
+			callsub S_Save;
+			sleep 200;
+		}
+	}
+	callsub S_Save;
+	callsub S_Stalls, 0;
+	callsub S_Prices;
+	if (.@done > 1)
+		debugmes "prontera-vendors: hunted supply caught up " + .@done + " hour(s).";
+	freeloop(0);
+	.busy = 0;
+	return;
+
+// S_Fade <value>, <hours>, <half-life hours>: what is left after that long
+// (whole halvings exact, the rest within a few percent).
+S_Fade:
+	.@v = getarg(0);
+	.@h = getarg(1) * 1000 / getarg(2); // in thousandths of a half-life
+	if (.@h >= 40000)
+		return 0;
+	for (.@j = 0; .@j < .@h / 1000; .@j++)
+		.@v /= 2;
+	return .@v * (1000000 - (.@h % 1000) * 693) / 1000000;
+
+// S_Round <millionths>: whole items, the fraction by chance.
+S_Round:
+	.@x = getarg(0);
+	return .@x / 1000000 + (rand(1000000) < .@x % 1000000 ? 1 : 0);
+
+// ---------------------------------------------------------------------------
+// Once a minute: trades from picklog, and the hour if one has passed.
+S_Minute:
+	if (!.ready)
+		callsub S_Start;
+	if (.busy)
+		return;
+	.busy = 1;
+	freeloop(1);
+	// Plain items only, as the engine counts them; a fake player's side of a
+	// trade (no row in `char`) is left out.
+	.@n = query_logsql("SELECT p.id, p.type, p.nameid, p.amount, (c.char_id IS NOT NULL) FROM picklog p LEFT JOIN `char` c ON c.char_id = p.char_id WHERE p.id > " + .log + " AND p.type IN ('V','B') AND p.refine = 0 AND p.card0 = 0 ORDER BY p.id LIMIT 500", .@id, .@type$, .@nameid, .@amount, .@real);
+	for (.@i = 0; .@i < .@n; .@i++) {
+		.log = .@id[.@i];
+		.@k = $@pvs_gk[.@nameid[.@i]] - 1;
+		if (.@k < 0 || !.@real[.@i])
+			continue;
+		.@amt = .@amount[.@i];
+		if (.@type$[.@i] == "V" && .@amt > 0) {
+			// Bought from a stall: gone from the market.
+			.sup[.@k] = .sup[.@k] > .@amt ? .sup[.@k] - .@amt : 0;
+			.chg[.@k] = 1;
+		} else if (.@type$[.@i] == "B" && .@amt < 0) {
+			// Sold into a buying store: back on the market.
+			.sup[.@k] -= .@amt;
+			if (.sup[.@k] > $@pvs_gcap[.@k])
+				.sup[.@k] = $@pvs_gcap[.@k];
+			.chg[.@k] = 1;
+		}
+	}
+	if (.@n > 0)
+		modstore_set "log", .log;
+	callsub S_Save;
+	freeloop(0);
+	.busy = 0;
+	if (.clock + 3600 <= gettimetick(2))
+		callsub S_CatchUp;
+	return;
+
+// ---------------------------------------------------------------------------
+// S_Hour <time>: one hour of the world, from that time: stock leaves, the
+// parties hunt, and the MvPs that come up die or don't.
+S_Hour:
+	.@ts = getarg(0);
+	// Decay: each item loses its share; a fraction of one leaves by chance,
+	// so a single card goes at the right rate too.
+	for (.@k = 0; .@k < $@pvs_gcount; .@k++) {
+		if (.sup[.@k] <= 0)
+			continue;
+		.@x = .sup[.@k] * .pdec[.@k];
+		.@leave = .@x / 1000000;
+		if (rand(1000000) < .@x % 1000000)
+			.@leave++;
+		if (.@leave > 0) {
+			.sup[.@k] = .sup[.@k] > .@leave ? .sup[.@k] - .@leave : 0;
+			.chg[.@k] = 1;
+		}
+	}
+
+	// The groups out this hour: parties' worth, by the hour and the day.
+	.@hour = (.@ts / 3600 + .tzh) % 24;
+	.@dow = ((.@ts + .tzh * 3600) / 86400 + 4) % 7; // 1970-01-01 was a Thursday
+	.@worth = .parties * .hourpct[.@hour] * .daypct[.@dow] / 10000;
+	.@out = .@worth * .gper / 100;
+	if (.@out > .maxg) .@out = .maxg;
+	.out = .@out;
+	deletearray .outn;
+	deletearray .@mkills;
+	deletearray .@maps;
+	for (.@i = 0; .@i < .maxg; .@i++) {
+		if (.@i >= .@out) {
+			// Gone offline.
+			if (.pleft[.@i] > 0 || .pmap[.@i] >= 0) {
+				.pleft[.@i] = 0;
+				.pmap[.@i] = -1;
+				modstore_delete "p." + .@i;
+			}
+			continue;
+		}
+		if (.pleft[.@i] <= 0 || .pmap[.@i] < 0) {
+			// A new group: a size, a level, a map near it, 1-4 hours there.
+			.@r = rand(100);
+			.@size = .@r < 60 ? 1 : .@r < 85 ? 2 : 3;
+			.@lv = (rand(.lv_lo, .lv_hi) + rand(.lv_lo, .lv_hi)) / 2;
+			.@m = callsub(S_PickMap, .@lv, .@ts, .@size);
+			if (.@m < 0)
+				continue;
+			.pmap[.@i] = .@m;
+			.plv[.@i] = .@lv;
+			.psize[.@i] = .@size;
+			.pleft[.@i] = rand(1, 4);
+			.mlast[.@m] = .@ts;
+			modstore_set "m." + $@pvs_map$[.@m], .@ts;
+			modstore_set "p." + .@i + ".m", $@pvs_map$[.@m];
+			modstore_set "p." + .@i + ".lv", .@lv;
+			modstore_set "p." + .@i + ".size", .@size;
+		}
+		.@m = .pmap[.@i];
+		if (!.@mkills[.@m])
+			.@maps[getarraysize(.@maps)] = .@m;
+		.@mkills[.@m] += .gkills[.psize[.@i]] * rand(70, 130) / 100;
+		.outn[.psize[.@i]]++;
+		.pleft[.@i]--;
+		modstore_set "p." + .@i + ".left", .pleft[.@i];
+	}
+
+	// Each hunted map: its groups' kills, no more than its spawns allow,
+	// and the drops of those kills.
+	.kills = 0;
+	for (.@j = 0; .@j < getarraysize(.@maps); .@j++) {
+		.@m = .@maps[.@j];
+		.@kills = .@mkills[.@m];
+		if (.@kills > $@pvs_mcap[.@m])
+			.@kills = $@pvs_mcap[.@m];
+		.kills += .@kills;
+		.@y = $@pvs_mstart[.@m];
+		.@end = .@y + $@pvs_mlen[.@m];
+		for (; .@y < .@end; .@y++) {
+			// millionths of one item: per party-hour, scaled to these kills and rates
+			.@x = $@pvs_yrate[.@y] * .@kills / $@pvs_party_kills * .mult[$@pvs_ycls[.@y]] / 100;
+			.@add = .@x / 1000000;
+			if (rand(1000000) < .@x % 1000000)
+				.@add++;
+			if (.@add > 0)
+				callsub S_Add, $@pvs_gk[$@pvs_yitem[.@y]] - 1, .@add;
+		}
+	}
+
+	// MvPs: one that is up may be killed, by its level and how many are out,
+	// no more often than its respawn and the daily cap.
+	.@day = (.@ts + .tzh * 3600) / 86400;
+	for (.@v = 0; .@v < $@pvs_mvpcount && .mvp_cap > 0; .@v++) {
+		if (.vnext[.@v] > .@ts)
+			continue;
+		if (.vday[.@v] != .@day) {
+			.vday[.@v] = .@day;
+			.vn[.@v] = 0;
+		}
+		if (.vn[.@v] >= .mvp_cap)
+			continue;
+		.@lv = $@pvs_mvplv[.@v];
+		.@pm = .@lv <= 60 ? 350 : .@lv <= 80 ? 250 : .@lv <= 99 ? 150 : .@lv <= 130 ? 80 : 40;
+		.@crowd = .parties > 0 ? .@worth * 100 / .parties : 0; // how busy the hour is
+		if (.@crowd > 200) .@crowd = 200;
+		.@pm = .@pm * $@pvs_mvpn[.@v] * .@crowd / 100;
+		if (.@pm > 900) .@pm = 900;
+		if (rand(1000) >= .@pm)
+			continue;
+		.vn[.@v]++;
+		.vnext[.@v] = .@ts + $@pvs_mvpre[.@v];
+		.lastmvp = .@v + 1;
+		.lastmvp_at = .@ts;
+		.@key$ = "v." + $@pvs_mvp[.@v];
+		modstore_set .@key$ + ".next", .vnext[.@v];
+		modstore_set .@key$ + ".day", .vday[.@v];
+		modstore_set .@key$ + ".n", .vn[.@v];
+		.@y = $@pvs_mvpstart[.@v];
+		.@end = .@y + $@pvs_mvplen[.@v];
+		for (; .@y < .@end; .@y++)
+			if (rand(10000) < $@pvs_vrate[.@y] * .mult[$@pvs_vcls[.@y]] / 100)
+				callsub S_Add, $@pvs_gk[$@pvs_vitem[.@y]] - 1, 1;
+	}
+	return;
+
+// S_PickMap <level>, <time>, <size>: a map for a group of that level, by its weight
+// and how long since anyone hunted it (up to 8x after a week); -1 if none.
+S_PickMap:
+	.@lv = getarg(0);
+	.@ts = getarg(1);
+	.@size = getarg(2);
+	for (.@pass = 0; .@pass < 3; .@pass++) {
+		.@lo = .@pass == 0 ? .@lv - 15 : .@pass == 1 ? .@lv - 40 : 0;
+		.@hi = .@pass == 0 ? .@lv + 5 : .@pass == 1 ? .@lv + 10 : 999;
+		.@sum = 0;
+		.@n = 0;
+		for (.@m = 0; .@m < $@pvs_mcount; .@m++) {
+			if ($@pvs_mlv[.@m] < .@lo || $@pvs_mlv[.@m] > .@hi)
+				continue;
+			.@bonus = .mlast[.@m] > 0 ? (.@ts - .mlast[.@m]) * 100 / 86400 : 700;
+			if (.@bonus > 700) .@bonus = 700;
+			if (.@bonus < 0) .@bonus = 0;
+			.@cm[.@n] = .@m;
+			// Solo players go anywhere; duos lean to the known spots, full
+			// parties more so.
+			.@w = .@size == 1 ? 1 : .@size == 2 ? $@pvs_mw[.@m] : $@pvs_mw[.@m] * $@pvs_mw[.@m];
+			.@cw[.@n] = .@w * (100 + .@bonus);
+			.@sum += .@cw[.@n];
+			.@n++;
+		}
+		if (.@n == 0)
+			continue;
+		.@r = rand(.@sum);
+		for (.@c = 0; .@c < .@n; .@c++) {
+			.@r -= .@cw[.@c];
+			if (.@r < 0)
+				return .@cm[.@c];
+		}
+		return .@cm[.@n - 1];
+	}
+	return -1;
+
+// S_Add <item index>, <amount>: into the supply, up to the item's cap.
+S_Add:
+	.@k = getarg(0);
+	if (.@k < 0)
+		return;
+	.sup[.@k] += getarg(1);
+	if (.sup[.@k] > $@pvs_gcap[.@k])
+		.sup[.@k] = $@pvs_gcap[.@k];
+	.chg[.@k] = 1;
+	return;
+
+// S_Save: what changed, into the store and to the engine.
+S_Save:
+	for (.@k = 0; .@k < $@pvs_gcount; .@k++) {
+		if (!.chg[.@k])
+			continue;
+		.chg[.@k] = 0;
+		.@id = $@pvs_gid[.@k];
+		if (.sup[.@k] > 0)
+			modstore_set "s." + .@id, .sup[.@k];
+		else
+			modstore_delete "s." + .@id;
+		$@pop_item_supply[.@id] = .sup[.@k] + 1;
+	}
+	return;
+
+// S_Stalls <force>: how many sell stalls stand, by how much of a settled
+// market's variety is in stock: each item counts up to one copy, or what it
+// settles at if that is less, so a pile of Elunium is not a full market.
+// Times the street's share this hour ($@pv_streetpct, prontera-vendors.txt),
+// which leaves the sell count to this script while it runs ($@pvs_stalls).
+// 30 % of "Sell stalls" with nothing in stock, all of them from 75 %: a
+// settled market scores 77-89 %, since a rare item is in stock only now and
+// then.
+S_Stalls:
+	.@full = callfunc("F_ModSetting", .mod$, "sell_shops", 1) ? callfunc("F_ModSetting", .mod$, "vendors", 30) : 0;
+	.@full = .@full * ($@pv_streetpct > 0 ? $@pv_streetpct : 100) / 100;
+	$@pvs_stalls = 1;
+	.@want = 0;
+	.@have = 0;
+	for (.@k = 0; .@k < $@pvs_gcount; .@k++) {
+		.@x = .steadym[.@k] < 1000000 ? .steadym[.@k] : 1000000;
+		.@want += .@x;
+		.@have += .sup[.@k] * 1000000 < .@x ? .sup[.@k] * 1000000 : .@x;
+	}
+	.stock_pct = .@want > 0 ? .@have * 100 / .@want : 100;
+	.@f = .stock_pct * 100 / 75;
+	if (.@f > 100) .@f = 100;
+	.@n = .@full * (30 + 70 * .@f / 100) / 100;
+	if (.@full > 0 && .@n < 1) .@n = 1;
+	.stalls_full = .@full;
+	if (getarg(0) || .@n != .stalls) {
+		.stalls = .@n;
+		population_vendor_count "prontera-vendors/sell/", .@n;
+	}
+	return;
+
+// S_Prices: each item's price by how its stock compares with where it
+// settles. Only items that settle at 2 or more copies: a rarer one is simply
+// there or not. Up to +25 % with none left, -15 % from twice its stock.
+S_Prices:
+	for (.@i = 0; .@i < getarraysize($@pvs_plist); .@i++) {
+		.@id = $@pvs_plist[.@i];
+		$@pvs_pct[.@id] = 0;
+		if (!$@pv_board_on)
+			$@pop_item_pct[.@id] = 0;
+	}
+	deletearray $@pvs_plist;
+	.@n = 0;
+	for (.@k = 0; .@k < $@pvs_gcount; .@k++) {
+		if (.steadym[.@k] < 2000000)
+			continue;
+		.@r = .sup[.@k] * 100000000 / .steadym[.@k]; // stock, % of settled
+		if (.@r < 100)
+			.@pct = 100 + 25 * (100 - .@r) / 100;
+		else
+			.@pct = 100 - 15 * (.@r - 100 > 100 ? 100 : .@r - 100) / 100;
+		if (.@pct == 100)
+			continue;
+		.@id = $@pvs_gid[.@k];
+		$@pvs_pct[.@id] = .@pct;
+		$@pvs_plist[.@n] = .@id;
+		.@n++;
+		// Without the dynamic market nobody else publishes prices.
+		if (!$@pv_board_on)
+			$@pop_item_pct[.@id] = .@pct;
+	}
+	return;
+
+// S_PublishAll: every item the supply limits, to the engine.
+S_PublishAll:
+	for (.@k = 0; .@k < $@pvs_gcount; .@k++) {
+		.chg[.@k] = 0;
+		$@pop_item_supply[$@pvs_gid[.@k]] = .sup[.@k] + 1;
+	}
+	return;
+
+// ---------------------------------------------------------------------------
+// @supply [<item> | hunt <hours> | reset [empty|filled]]  (GMs)
+OnAtSupply:
+	if (!.on) {
+		dispbottom "The hunted supply is off: Settings > Mods > prontera-vendors > Hunted supply.";
+		end;
+	}
+	// Not here: starting can sleep while it catches up, and a sleep detaches
+	// the player, so nothing below would reach them.
+	if (!.ready) {
+		dispbottom "The hunted supply is still starting; try again in a moment.";
+		end;
+	}
+	// The listings below walk every item and party: past rAthena's 2048 jumps.
+	freeloop(1);
+	.@arg$ = .@atcmd_numparameters > 0 ? .@atcmd_parameters$[0] : "";
+	if (.@arg$ == "reset") {
+		if (.busy) {
+			dispbottom "Busy catching up; try again in a moment.";
+			end;
+		}
+		.@how$ = .@atcmd_numparameters > 1 ? .@atcmd_parameters$[1] : "";
+		.@keep = .filled;
+		if (.@how$ == "empty") .filled = 0;
+		if (.@how$ == "filled") .filled = 1;
+		.busy = 1;
+		freeloop(1);
+		.now = gettimetick(2);
+		callsub S_New;
+		callsub S_PublishAll;
+		callsub S_Stalls, 0;
+		callsub S_Prices;
+		freeloop(0);
+		.busy = 0;
+		dispbottom "The supply starts over, " + (.filled ? "at its steady state." : "empty: it fills as the parties hunt.");
+		.filled = .@keep;
+		end;
+	}
+	if (.@arg$ == "hunt") {
+		.@h = .@atcmd_numparameters > 1 ? atoi(.@atcmd_parameters$[1]) : 1;
+		if (.@h < 1) .@h = 1;
+		if (.@h > 168) .@h = 168;
+		if (.busy) {
+			dispbottom "Busy catching up; try again in a moment.";
+			end;
+		}
+		.busy = 1;
+		freeloop(1);
+		.@ts = gettimetick(2);
+		.@kills = 0;
+		for (.@i = 0; .@i < .@h; .@i++) {
+			callsub S_Hour, .@ts + .@i * 3600;
+			.@kills += .kills;
+		}
+		callsub S_Save;
+		callsub S_Stalls, 0;
+		callsub S_Prices;
+		freeloop(0);
+		.busy = 0;
+		dispbottom "Hunted " + .@h + " hour(s): " + .@kills + " kills.";
+		end;
+	}
+	if (.@arg$ != "") {
+		.@item = atoi(.@arg$);
+		if (.@item <= 0) {
+			.@found = searchitem(.@ids, .@arg$);
+			if (.@found <= 0) {
+				dispbottom "No such item (use its name or id).";
+				end;
+			}
+			.@item = .@ids[0];
+		}
+		.@k = $@pvs_gk[.@item] - 1;
+		if (.@k < 0) {
+			dispbottom getitemname(.@item) + ": not limited by the supply (an NPC sells it, players make it, or no stall lists it plain).";
+			end;
+		}
+		dispbottom getitemname(.@item) + ": " + .sup[.@k] + " on the market (at most " + $@pvs_gcap[.@k] + "), settles near " + (.steadym[.@k] / 1000000) + "." + (.steadym[.@k] % 1000000 / 100000) + "; half leaves in " + .hlh[.@k] + " h.";
+		end;
+	}
+	.@total = 0;
+	.@have = 0;
+	for (.@k = 0; .@k < $@pvs_gcount; .@k++) {
+		.@total += .sup[.@k];
+		if (.sup[.@k] > 0)
+			.@have++;
+	}
+	dispbottom "Hunted supply: " + .parties + " parties' worth; last hour " + .out + " groups out (" + .outn[1] + " solo, " + .outn[2] + " duos/trios, " + .outn[3] + " parties), " + .kills + " kills. Loot half-life " + .hl_hours + " h, MvP kills " + .mvp_cap + "/day.";
+	dispbottom "  " + .@have + " of " + $@pvs_gcount + " limited items in stock, " + .@total + " in all; the market is " + .stock_pct + "% settled, so " + .stalls + " of " + .stalls_full + " sell stalls stand.";
+	.@shown = 0;
+	for (.@i = 0; .@i < .maxg && .@shown < 8; .@i++) {
+		if (.pmap[.@i] < 0 || .pleft[.@i] < 0)
+			continue;
+		dispbottom "  " + .gname$[.psize[.@i]] + .plv[.@i] + .gwhat$[.psize[.@i]] + " on " + $@pvs_map$[.pmap[.@i]] + " (lv " + $@pvs_mlv[.pmap[.@i]] + "), " + .pleft[.@i] + " more hour(s)";
+		.@shown++;
+	}
+	if (.lastmvp > 0)
+		dispbottom "  last MvP: " + getmonsterinfo($@pvs_mvp[.lastmvp - 1], MOB_NAME) + " on " + $@pvs_mvpmap$[.lastmvp - 1] + ", " + ((gettimetick(2) - .lastmvp_at) / 60) + " min ago (simulated time)";
+	dispbottom "@supply <item> | hunt <hours> | reset [empty|filled]";
+	end;
+}

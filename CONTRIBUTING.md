@@ -53,6 +53,12 @@ Follow these in addition to everything below:
   that project's repository**, as a pull request there, followed by a small pull
   request here that moves the pin. Do not patch around them from this
   repository. See [Changes that belong in another repository](#changes-that-belong-in-another-repository).
+- **Put a feature in the mod, not the platform.** A feature one mod needs lives
+  in that mod: its scripts, its tables, and files its build script generates.
+  The population engine, rAthena, the client API and the supervisor only get a
+  small, general hook, off by default, and only when no mod could do it. See
+  [Where a change belongs](CLAUDE.md#where-a-change-belongs-the-mod-first-the-platform-last)
+  in CLAUDE.md, which has a worked example of each.
 - **Report what you actually verified.** A pull request that says "built on
   macOS, not run on Windows" is far more useful than one that implies
   everything was tested.
@@ -328,6 +334,11 @@ it first if you cannot push to it. Then:
      commit.
    - RemoteClient: set `config/REMOTECLIENT_PIN` to the merged commit, a full
      40-character hash.
+
+   When a `docker-slim` or RemoteClient pin is a tagged release, the build
+   scripts download that release's binary; any other commit is built from
+   source, which adds a minute or two to every CI run. So before the pin
+   moves, ask for a release at the merged commit.
    - rAthena or roBrowserLegacy: `scripts/vendor-bump.sh <rathena|roBrowserLegacy>`.
 
 Some changes need both sides at once, such as a protocol change between the

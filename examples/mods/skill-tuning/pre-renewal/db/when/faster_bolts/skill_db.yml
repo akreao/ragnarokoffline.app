@@ -1,0 +1,71 @@
+# skill-tuning, PRE-RENEWAL only: Fire Bolt and Cold Bolt cast 20% faster.
+#
+# Why this is in pre-renewal/: the two eras ship different cast times for the
+# bolts, and "20% faster" is a different list of numbers in each. mod.json
+# names this folder as "prerenewalFolder", so a renewal server never reads it.
+# renewal/db/when/faster_bolts/skill_db.yml is the renewal half.
+#
+# Why it is in db/when/faster_bolts/: so the "faster_bolts" setting switches
+# it. A file in an era folder at the same path as one in the mod's own folder
+# REPLACES it (pre-renewal/db/skill_db.yml would hide db/skill_db.yml), but a
+# file under db/when/<key>/ is ADDED to it. Here, that keeps Blessing and
+# Arrow Shower from db/skill_db.yml in effect beside this.
+#
+# Stock pre-renewal: 700 ms per level (0.7 s to 7 s). Here: 560 ms per level.
+# There is no fixed cast in pre-renewal, so DEX still shortens all of it, and
+# at 150 DEX it is instant either way.
+#
+# After-cast delay is not touched (stock 1 s at level 1, +0.2 s a level). To
+# change it, add an AfterCastActDelay list the same way.
+
+Header:
+  Type: SKILL_DB
+  Version: 4
+
+Body:
+  - Id: 19
+    Name: MG_FIREBOLT
+    CastTime:
+      - Level: 1
+        Time: 560
+      - Level: 2
+        Time: 1120
+      - Level: 3
+        Time: 1680
+      - Level: 4
+        Time: 2240
+      - Level: 5
+        Time: 2800
+      - Level: 6
+        Time: 3360
+      - Level: 7
+        Time: 3920
+      - Level: 8
+        Time: 4480
+      - Level: 9
+        Time: 5040
+      - Level: 10
+        Time: 5600
+  - Id: 14
+    Name: MG_COLDBOLT
+    CastTime:
+      - Level: 1
+        Time: 560
+      - Level: 2
+        Time: 1120
+      - Level: 3
+        Time: 1680
+      - Level: 4
+        Time: 2240
+      - Level: 5
+        Time: 2800
+      - Level: 6
+        Time: 3360
+      - Level: 7
+        Time: 3920
+      - Level: 8
+        Time: 4480
+      - Level: 9
+        Time: 5040
+      - Level: 10
+        Time: 5600

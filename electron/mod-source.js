@@ -36,6 +36,15 @@ const RELEASE_LIMIT = 2 * 1024 * 1024;
 const ASSET_LIMIT = 50 * 1024 * 1024;
 const UNPACKED_LIMIT = 96 * 1024 * 1024;
 const MAX_FILES = 2000;
+// A release's notes, as much as the Updates tab shows (collapsed, a click to
+// open the rest). GitHub allows far more; a page of changes is plenty.
+const NOTES_LIMIT = 20000;
+// How many versions' notes one update shows: a mod updated after a long while
+// says how many earlier ones it left out rather than listing dozens.
+const NOTES_VERSIONS = 10;
+// Releases asked for in one lookup when an update skips versions. One page:
+// a mod more than this many releases behind is told there are earlier ones.
+const RELEASES_PAGE = 30;
 // Long enough that opening the Mods tab twice does not spend two of the sixty
 // lookups an hour GitHub allows without signing in; short enough that a
 // release published a few minutes ago shows up when somebody goes looking.
@@ -180,7 +189,7 @@ async function latestRelease(repo, { api = GITHUB_API, allow, cache, fresh = fal
 		repo,
 		tag: value.tag_name,
 		name: typeof value.name === 'string' ? value.name.slice(0, 200) : '',
-		notes: typeof value.body === 'string' ? value.body.slice(0, 4000) : '',
+		notes: typeof value.body === 'string' ? value.body.slice(0, NOTES_LIMIT) : '',
 		url: secure(value.html_url) || `https://github.com/${repo}/releases/tag/${encodeURIComponent(value.tag_name)}`,
 		publishedAt: typeof value.published_at === 'string' ? value.published_at : '',
 		assets: (Array.isArray(value.assets) ? value.assets : [])
@@ -190,6 +199,74 @@ async function latestRelease(repo, { api = GITHUB_API, allow, cache, fresh = fal
 	};
 	if (cache) cache.set(key, { at: now(), release });
 	return release;
+}
+
+/**
+ * The published releases of `repo`, newest first, as `{ version, notes }`:
+ * one page of GitHub's releases list, drafts and pre-releases left out, as
+ * `releases/latest` leaves them out. `full` says the page was full, so there
+ * may be older ones it did not reach. Cached like the latest release.
+ */
+async function releaseNotes(repo, { api = GITHUB_API, allow, cache, fresh = false, now = Date.now, userAgent } = {}) {
+	if (!REPO.test(repo)) throw new Error(`${repo} is not a GitHub repository name`);
+	const key = `${repo.toLowerCase()} releases`;
+	const cached = cache && cache.get(key);
+	if (cached && !fresh && now() - cached.at < CACHE_MS) return cached.release;
+
+	const response = await get(`${api}/repos/${repo}/releases?per_page=${RELEASES_PAGE}`, { limit: RELEASE_LIMIT, headers: headersFor(userAgent), allow });
+	if (limited(response)) throw rateLimitError(response);
+	if (response.status !== 200) throw new Error(`GitHub answered HTTP ${response.status} when asked for ${repo}'s releases.`);
+	let value;
+	try { value = JSON.parse(response.body.toString('utf8')); } catch { throw new Error(`GitHub's answer about ${repo} was not JSON.`); }
+	if (!Array.isArray(value)) throw new Error(`GitHub's answer about ${repo} was not a list of releases.`);
+	const releases = value
+		.filter(r => r && typeof r === 'object' && !r.draft && !r.prerelease && typeof r.tag_name === 'string' && TAG.test(r.tag_name))
+		.map(r => ({ version: r.tag_name, notes: typeof r.body === 'string' ? r.body.slice(0, NOTES_LIMIT).trim() : '' }));
+	const result = { releases, full: value.length >= RELEASES_PAGE };
+	if (cache) cache.set(key, { at: now(), release: result });
+	return result;
+}
+
+/**
+ * A CHANGELOG.md as `{ version, notes }` sections: each `## <version>` line
+ * and the lines under it, up to the next `## `. A `##` heading that is not a
+ * version (`## Unreleased`) ends a section and starts none. Lines, not
+ * Markdown: the Updates tab shows the text as text.
+ */
+function changelogSections(text) {
+	const sections = [];
+	let current = null;
+	for (const line of String(text).split(/\r?\n/)) {
+		if (/^##\s/.test(line)) {
+			const version = line.replace(/^##\s*/, '').trim();
+			current = /^v?\d/i.test(version) ? { version: version.slice(0, 40), lines: [] } : null;
+			if (current) sections.push(current);
+		} else if (current) current.lines.push(line);
+	}
+	return sections.map(s => ({ version: s.version, notes: s.lines.join('\n').trim() }));
+}
+
+/**
+ * What an update brings: the notes of every version after `installed` up to
+ * and including `latest`, newest first. One version is its notes alone (the
+ * row already says which); several each go under their own `## <version>`,
+ * at most NOTES_VERSIONS of them. `more` says older versions may exist that
+ * `sections` does not hold. Versions with nothing written are left out.
+ */
+function notesSince(sections, installed, latest, { more = false } = {}) {
+	const seen = new Set();
+	const between = sections
+		.filter(s => s.notes && isNewer(s.version, installed) && !isNewer(s.version, latest))
+		.filter(s => { const key = s.version.replace(/^v/i, ''); return !seen.has(key) && seen.add(key); })
+		.sort((a, b) => (isNewer(a.version, b.version) ? -1 : isNewer(b.version, a.version) ? 1 : 0));
+	if (!between.length) return '';
+	if (between.length === 1 && !more) return between[0].notes.slice(0, NOTES_LIMIT);
+	const shown = between.slice(0, NOTES_VERSIONS);
+	let text = shown.map(s => `## ${s.version}\n${s.notes}`).join('\n\n');
+	const left = between.length - shown.length;
+	if (left) text += `\n\n…and ${left} earlier version${left === 1 ? '' : 's'}.`;
+	else if (more) text += '\n\n…and earlier versions.';
+	return text.slice(0, NOTES_LIMIT);
 }
 
 /**
@@ -386,8 +463,20 @@ async function checkUpdates(installed, listing, options = {}) {
 		}
 		try {
 			const release = await latestRelease(record.repo, options);
-			out.push({ ...base, listed: true, latest: release.tag, update: isNewer(release.tag, record.tag),
-				url: release.url, notes: release.notes.slice(0, 1200), publishedAt: release.publishedAt });
+			const update = isNewer(release.tag, record.tag);
+			let notes = release.notes;
+			// An update that skips versions shows what each of them changed.
+			// One more lookup, only for a mod that has an update; without it
+			// (a rate limit, say) the latest release's notes still show.
+			if (update) {
+				try {
+					const { releases, full } = await releaseNotes(record.repo, options);
+					const skipped = notesSince(releases, record.tag, release.tag, { more: full });
+					if (skipped) notes = skipped;
+				} catch { /* the latest release's notes, as before */ }
+			}
+			out.push({ ...base, listed: true, latest: release.tag, update,
+				url: release.url, notes, publishedAt: release.publishedAt });
 		} catch (e) {
 			out.push({ ...base, listed: true, error: e.message });
 			// One rate limit answers for all of them.
@@ -410,6 +499,15 @@ function registryUpdates(installed, listing, { appVersion } = {}) {
 	const out = [];
 	for (const mod of installed) {
 		const entry = listing.find(m => m.name === mod.name);
+		// The list publishes this mod from its own repository, but this copy
+		// didn't come from there (no source record): the author's working copy,
+		// or one dropped in by hand. Nothing here can say whether it's behind,
+		// so it is never offered an update -- and Settings says so, rather than
+		// leaving the player to wonder why releases don't show up.
+		if (entry && entry.source && entry.source.github) {
+			out.push({ name: mod.name, localCopy: true, repo: entry.source.github, installed: mod.version || '', update: false });
+			continue;
+		}
 		if (!entry || entry.source || !entry.version) continue;
 		const needs = appRequirement(entry.requires && entry.requires.app, appVersion);
 		const newer = isNewer(entry.version, mod.version);
@@ -423,8 +521,9 @@ function registryUpdates(installed, listing, { appVersion } = {}) {
 const sha256 = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 
 module.exports = {
-	readSource, globToRegExp, get, latestRelease, pickAsset, download, stage, commit, discard,
+	readSource, globToRegExp, get, latestRelease, releaseNotes, pickAsset, download, stage, commit, discard,
 	readRecord, checkUpdates, registryUpdates, appRequirement, compareVersions, isNewer, contents, sha256,
-	RateLimited, GITHUB_API, ASSET_LIMIT, UNPACKED_LIMIT, MAX_FILES, CACHE_MS, RECORD, onlyGitHub,
+	changelogSections, notesSince,
+	RateLimited, GITHUB_API, ASSET_LIMIT, UNPACKED_LIMIT, MAX_FILES, CACHE_MS, RECORD, NOTES_VERSIONS, onlyGitHub,
 	githubPage,
 };

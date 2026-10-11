@@ -1,0 +1,23 @@
+{
+  "name": "city-unity",
+  "author": "akreao",
+  "description": "kRO's Major City Contribution system from 2015. Join the City Merchant Union in the Eden Group lobby, collect Union Insignias while you hunt, and invest them in Prontera, Geffen, Payon, Morroc, Juno, Einbroch, Lighthalzen, Rachel or Veins to unlock that city's Unity gear. A request board adds a weekly boss bounty and daily dungeon deliveries, with English quest text. Works with or without eden-rework-2021. Renewal only.",
+  "tags": [
+    "quest",
+    "unity",
+    "gear",
+    "npc",
+    "eden",
+    "kro",
+    "renewal"
+  ],
+  "icon": "images/icon.png",
+  "homepage": "https://github.com/akreao/city-unity",
+  "requires": {
+    "era": "renewal"
+  },
+  "source": {
+    "github": "akreao/city-unity",
+    "asset": "city-unity-*.zip"
+  }
+}

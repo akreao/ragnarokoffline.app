@@ -1,0 +1,64 @@
+From 0000000000000000000000000000000000000007
+Subject: [PATCH] Companion rebirth: the player's choice, never automatic
+
+Entering a transcendent class from a 2nd job is a REBIRTH, and the engine no longer takes it on
+its own. The new class usually cannot wear what the companion has on, so the change unequips gear -
+and while anything the player handed over goes back to the player rather than being destroyed, it
+still leaves the companion stripped. That is a decision, not a level-up.
+
+What changes:
+
+  * a rebirth is never automatic. pop_companion_next_job() takes allow_rebirth, the automatic path
+    passes false, and the rebirth rows are skipped there.
+  * the gate on those rows is fixed: job 70 -> 50. 70 is the transcendent class's own ceiling; 50 is
+    the requirement to ENTER it, and a 2nd class stops at job 50, so the old gate could never be met
+    and no companion could ever advance past its 2nd job.
+  * the High Novice route exists now: High Novice -> a high 1st job at base 40 (the same uniform
+    roll as Novice), then a high 1st job -> its transcendent class on the same 99/50 gate.
+  * @companion rebirth <name> novice|trans - novice is the proper rebirth (High Novice, level reset
+    to 1/1), trans goes straight to the transcendent class keeping its level.
+  * the change machinery is shared: pop_companion_apply_job_change() takes a target, so the
+    automatic path and the rebirth run the identical jobchange, skill reseed and gear dance instead
+    of two implementations drifting apart.
+
+The panel offers this from a Rebirth tab, which appears only for a companion the server reports as
+ready (the roster line carries a rebirth tri-state computed with the same predicate).
+--- a/src/custom/atcommand.inc
++++ b/src/custom/atcommand.inc
+@@ -287,9 +287,35 @@
+ 	// NAME_LENGTH where they are looked up.
+ 	char cmd[32], param[128];
+ 	if (!message || !*message || sscanf(message, "%31s %127[^\n]", cmd, param) < 1) {
+-		clif_displaymessage(fd, "Usage: @companion list | favorite <name> | unfavorite <name> | summon <name> | remove <name> | gear <name> [slots] | homunculus <name> [on|off]");
++		clif_displaymessage(fd, "Usage: @companion list | favorite <name> | unfavorite <name> | summon <name> | remove <name> | gear <name> [slots] | homunculus <name> [on|off] | rebirth <name> novice|trans");
+ 		return -1;
+ 	}
++	// RAGNAROKMAC (rebirth): the player's explicit choice for a maxed 2nd-class companion.
++	// Never automatic - entering a transcendent class unequips gear the companion can no longer
++	// wear, and anything the player handed over goes back to them.
++	if (strcmpi(cmd, "rebirth") == 0) {
++		char rb_name[NAME_LENGTH], rb_mode[16];
++		if (sscanf(param, "%23s %15s", rb_name, rb_mode) != 2) {
++			clif_displaymessage(fd, "Usage: @companion rebirth <name> novice|trans");
++			return -1;
++		}
++		int mode;
++		if (strcmpi(rb_mode, "novice") == 0 || strcmpi(rb_mode, "high") == 0)
++			mode = 0;
++		else if (strcmpi(rb_mode, "trans") == 0 || strcmpi(rb_mode, "transcend") == 0)
++			mode = 1;
++		else {
++			clif_displaymessage(fd, "Rebirth options: novice (High Novice, level 1) or trans (straight to the transcendent class).");
++			return -1;
++		}
++		char rb_reply[192];
++		rb_reply[0] = '\0';
++		const int rb_rc = population_engine_companion_rebirth(sd->status.account_id, rb_name, mode,
++			rb_reply, sizeof(rb_reply));
++		clif_displaymessage(fd, rb_reply[0] ? rb_reply
++			: (rb_rc == 0 ? "That companion is not ready to be reborn." : "Rebirth done."));
++		return 0;
++	}
+ 	if (strcmpi(cmd, "list") == 0) {
+ 		// RAGNAROKMAC (Phase 3): "list raw" emits the machine-readable form for
+ 		// the in-game panel (@CP|name|job|level|active|favorite|live). The plain

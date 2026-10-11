@@ -2,6 +2,7 @@
 // Unified virtual ammunition logic for population combat shells.
 
 #include "population_shell_ammo.hpp"
+#include "population_shell_inventory.hpp"
 
 #include <algorithm>
 #include <common/timer.hpp>
@@ -97,7 +98,8 @@ static int pe_shell_ammo_weight_room(const map_session_data *sd)
 template <size_t N>
 static void pe_shell_stock_ammo(map_session_data *sd, const ShellAmmoChoice (&choices)[N])
 {
-	if (!sd)
+	// A companion fires what it carries; its owner restocks it (population_shell_inventory).
+	if (!sd || population_shell_has_own_inventory(sd))
 		return;
 
 	for (const ShellAmmoChoice &choice : choices) {
@@ -247,8 +249,8 @@ static bool pe_shell_ammochange(map_session_data *sd, mob_data *md, const ShellA
 		}
 	}
 
-	if (bestIndex < 0)
-		return false;
+	if (bestIndex < 0) // a companion may carry kinds these lists leave out (Sharp Arrow, Bloody Shell)
+		return population_shell_inventory_equip_carried_ammo(sd, 1 << choices[0].subtype, rqAmount);
 	if (sd->equip_index[EQI_AMMO] == bestIndex)
 		return true;
 	return pc_equipitem(sd, bestIndex, EQP_AMMO, false);
@@ -329,5 +331,6 @@ bool population_shell_equip_ammo_for_skill(map_session_data *sd, mob_data *md, u
 		return true;
 	if (pe_shell_try_skill_ammo(sd, md, ammo_mask, amount, kKunai))
 		return true;
-	return false;
+	// Cannonballs and throwing items have no list: only a companion's own stack can feed them.
+	return population_shell_inventory_equip_carried_ammo(sd, ammo_mask, amount);
 }

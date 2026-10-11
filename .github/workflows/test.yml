@@ -9,7 +9,7 @@ permissions:
 jobs:
   server-language:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       # Upstream, without our fixes: each diagnostic must still find its bug
@@ -22,6 +22,10 @@ jobs:
       - run: python3 tests/diagnostics/verify-weapon-bounds.py vendor/rathena-upstream --expect-fault
       # Our fork, which carries the fixes, before and after our own additions.
       - run: bash scripts/vendor-fetch.sh rathena vendor/rathena
+      # The selection-package supplement is a bounded copy of stock Renewal
+      # rewards. Check before mods, against the configured pin; never skip.
+      - name: Supplementary selection packages describe the pinned server
+        run: python3 tests/diagnostics/verify-selection-packages.py
       - run: python3 tests/diagnostics/verify-language.py vendor/rathena
       - run: python3 tests/diagnostics/verify-base-sp.py vendor/rathena
       - run: python3 tests/diagnostics/verify-skill-level.py vendor/rathena
@@ -36,6 +40,19 @@ jobs:
       # one of them, and the server says nothing. Gear is checked against the
       # renewal item database.
       - run: python3 third-party/population-engine/validate.py vendor/rathena
+      - run: python3 tests/diagnostics/verify-shell-returns.py
+      # vendor/rathena is now the pin with the server mods applied, the tree the
+      # navigation-server-npcs, -monsters and -warps indexes describe (each
+      # one's test matches the first name), and the stock groups.yml and
+      # atcommands.yml that groups.rs's STOCK_GRANTS and STOCK_ALIASES restate.
+      # These tests skip without such a checkout; here they must not, or a pin
+      # bump would leave a table stale unnoticed.
+      # scripts/navigation-index.sh regenerates the indexes.
+      - uses: dtolnay/rust-toolchain@stable
+      - name: The navigation indexes and stock grants describe the pinned server
+        env:
+          REQUIRE_PINNED_RATHENA: "1"
+        run: cargo test --locked --quiet --manifest-path stack/Cargo.toml -- the_shipped_index_matches_the_pinned_server stock_tables_match_the_pinned_server
   client-build:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -92,9 +109,16 @@ jobs:
       - name: Build the pinned container client and verify private stdin capability
         shell: bash
         run: bash scripts/build-docker-slim.sh
+      # tests/navigation-names.test.cjs runs the client's navigation merge in
+      # a real Lua; it skips without one, so one runner must have it.
+      - name: Install Lua for the navigation merge test
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y -qq lua5.1 || (sudo apt-get update -qq && sudo apt-get install -y -qq lua5.1)
       - name: Test lifecycle and the real process protocol
         timeout-minutes: 5
         shell: bash
+        env:
+          REQUIRE_LUA: ${{ runner.os == 'Linux' && '1' || '' }}
         run: |
           binary_path="$(node -p 'require("node:path").resolve("bin/robrowser-remoteclient" + (process.platform === "win32" ? ".exe" : ""))')"
           stack_path="$(node -p 'require("node:path").resolve("stack/target/debug/ragnarok-stack" + (process.platform === "win32" ? ".exe" : ""))')"

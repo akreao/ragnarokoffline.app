@@ -1,0 +1,48 @@
+{
+  "name": "skill-tuning",
+  "version": "1.0.0",
+  "author": "Ragnarok Offline",
+  "description": "Retunes a handful of stock skills: longer Blessing, a wider Arrow Shower, faster bolts, a longer Monk combo window, a harder-hitting Bash. A worked example of changing skills from a mod.",
+  "requires": { "app": ">=1.4.3", "era": "any" },
+  "renewalFolder": "renewal",
+  "prerenewalFolder": "pre-renewal",
+  "settings": [
+    {
+      "key": "faster_bolts",
+      "type": "boolean",
+      "default": true,
+      "label": "Faster Fire Bolt and Cold Bolt",
+      "description": "Cuts both bolts' cast time by a fifth (and halves their fixed cast in renewal)."
+    },
+    {
+      "key": "longer_combo_window",
+      "type": "boolean",
+      "default": true,
+      "label": "Longer Monk combo window",
+      "description": "Gives Triple Attack, Chain Combo and Combo Finish 300 ms more delay, which is also 300 ms more time to press the next combo skill."
+    },
+    {
+      "key": "bash_bonus",
+      "type": "number",
+      "default": 30,
+      "min": 0,
+      "max": 200,
+      "label": "Extra Bash damage (%)",
+      "description": "Bash deals this much more damage than stock. 0 leaves its damage alone."
+    },
+    {
+      "key": "freezing_cold_bolt",
+      "type": "boolean",
+      "default": false,
+      "label": "Cold Bolt can freeze",
+      "description": "Each Cold Bolt cast that deals damage has a 5% chance to freeze its target."
+    },
+    {
+      "key": "log_hooks",
+      "type": "boolean",
+      "default": false,
+      "label": "Log every hook call",
+      "description": "Writes each Lua hook call to the map server's log. For checking the mod works; leave it off."
+    }
+  ]
+}

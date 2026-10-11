@@ -76,6 +76,22 @@
   }
 
   /**
+   * The unapplied options to keep once the Installed list is redrawn: those
+   * of a mod whose Options box was drawn again, which is every name in
+   * `settingsBaseline`. A mod that is gone, refused, or now has its own
+   * settings page instead (an update can add one) has no box any more, and
+   * its old entry, with nothing to compare against, would read as "options
+   * changed" through every Apply.
+   */
+  function keptOptions(settings, settingsBaseline) {
+    const out = {};
+    for (const [name, values] of Object.entries(settings || {})) {
+      if (Object.hasOwn(settingsBaseline || {}, name)) out[name] = values;
+    }
+    return out;
+  }
+
+  /**
    * How many installed mods have an update waiting, for the red number on the
    * Mods tab and its Updates sub-tab. `updates` is check_mod_updates' answer by
    * name; a lookup that failed, or a mod no longer in the registry, is not an
@@ -135,5 +151,5 @@
       : { text: 'Mods applied. They load the next time you open the game.', button: 'Open game' };
   }
 
-  return { adopt, applied, pending, pendingText, pendingDetail, needsReopen, appliedNotice, updateCount, updateCountLabel };
+  return { adopt, applied, pending, keptOptions, pendingText, pendingDetail, needsReopen, appliedNotice, updateCount, updateCountLabel };
 });

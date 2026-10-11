@@ -2,6 +2,60 @@
   "version": 1,
   "mods": [
     {
+      "name": "adventurer-guide",
+      "version": "",
+      "author": "rhewid",
+      "description": "An Adventurer Guide NPC in Prontera (136,171) that reads your class and level. It tells you where to level, with a hunting tip for your class at every spot; what gear to buy from NPCs and which gear and cards to farm (with prices, drop rates and maps); stat and skill builds with several playstyles per class; MVPs that could be worth a try with the boss skills to watch for; and this server's EXP and drop rates. Pre-renewal and renewal each use their own data, taken from the server's own item, monster and shop tables.",
+      "homepage": "https://github.com/rhewid/adventurer-guide",
+      "tags": [
+        "builds",
+        "cards",
+        "drops",
+        "gear",
+        "guide",
+        "mvp",
+        "npc",
+        "quality-of-life"
+      ],
+      "icon": "",
+      "screenshots": [],
+      "requires": {
+        "mods": [],
+        "era": "",
+        "app": ""
+      },
+      "source": {
+        "github": "rhewid/adventurer-guide",
+        "asset": "adventurer-guide-*.zip"
+      },
+      "files": []
+    },
+    {
+      "name": "affix-forge",
+      "version": "",
+      "author": "rhewid",
+      "description": "Equipment that monsters drop also comes with 1-4 random affixes from 214 options in four rarity tiers, on the ground or in your inventory. The Affix Smith in Prontera moves, removes and rerolls affixes for zeny and materials you set.",
+      "homepage": "https://github.com/rhewid/affix-forge",
+      "tags": [
+        "drops",
+        "equipment",
+        "npc",
+        "random-options"
+      ],
+      "icon": "",
+      "screenshots": [],
+      "requires": {
+        "mods": [],
+        "era": "",
+        "app": ""
+      },
+      "source": {
+        "github": "rhewid/affix-forge",
+        "asset": "affix-forge-*.zip"
+      },
+      "files": []
+    },
+    {
       "name": "arpg-equipments",
       "version": "",
       "author": "Iguera",
@@ -28,10 +82,37 @@
       "files": []
     },
     {
+      "name": "auto-hunt",
+      "version": "",
+      "author": "Thomas (v4.1 hunting core) / clarois (v4.2 skill presets, v4.3 auto-teleport)",
+      "description": "AFK hunting from an on-screen panel: attacks the nearest monster, wanders when the area is empty, avoids warps, recovers from getting stuck, auto-heals, and casts a per-character skill preset from your hotbar. Opt-in auto-teleport flies to a fresh spot when nothing is in range. Client-side only - it presses hotbar slots through the app's own client API, so the server still enforces cooldowns, SP, range and targeting. Based on Auto-Hunt v4.1 by Thomas.",
+      "homepage": "https://github.com/clarois/auto-hunt",
+      "tags": [
+        "afk",
+        "auto-hunt",
+        "client",
+        "farming",
+        "hotbar",
+        "quality-of-life"
+      ],
+      "icon": "",
+      "screenshots": [],
+      "requires": {
+        "mods": [],
+        "era": "",
+        "app": ""
+      },
+      "source": {
+        "github": "clarois/auto-hunt",
+        "asset": "auto-hunt-*.zip"
+      },
+      "files": []
+    },
+    {
       "name": "autoloot",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "author": "BlaXun",
-      "description": "An Autoloot window in game: loot every drop at or below a rarity you choose, whole item types such as cards, and a list of exact items -- with a monster check that shows what you would pick up. Works even where @autoloot is kept for GMs, and your item list is kept across logins.",
+      "description": "An Autoloot window in game, in the option menu (Esc) or with Alt+O: loot every drop at or below a rarity you choose, whole item types such as cards, and a list of exact items -- with a monster check that shows what you would pick up. Works even where @autoloot is kept for GMs, and your item list is kept across logins.",
       "homepage": "https://github.com/Flux159/ragnarokoffline.app/tree/main/registry/mods/autoloot",
       "tags": [
         "drops",
@@ -47,16 +128,32 @@
       },
       "files": [
         {
+          "path": "CHANGELOG.md",
+          "sha256": "a65a69cd177964dc3dc61f96f7821fe6bc19aebd2ffc3c6f0631375de5d83d61"
+        },
+        {
           "path": "README.md",
-          "sha256": "f64b046033070073fb4d9ef8e12fe8a4e76e7fdb27834518f4f9e413c7d3fffa"
+          "sha256": "2fdfdfb1ba30a9724ce658c5a95e4d731cadbdb73a3ce3d993430211e5b7e89b"
         },
         {
           "path": "client/index.js",
-          "sha256": "0b824bfde3bd66d0472f50f0715e6226b020f025593bb31d13d7e914893fc9b4"
+          "sha256": "20d5d8ac903f13685d60c7ec563424d638d290f2343f775f27b26bfb8fa50f9f"
+        },
+        {
+          "path": "data/texture/ui/esc_autoloot_a.bmp",
+          "sha256": "4b9cd03a1ef8cd33fed21d8c7fe8fc842fb42094229c7a92024e9d329b92b8aa"
+        },
+        {
+          "path": "data/texture/ui/esc_autoloot_b.bmp",
+          "sha256": "3a9eb827cbe2cff4c1e093c8ec5f4be1078559092b7ab9abe30eab28757833f6"
+        },
+        {
+          "path": "data/texture/ui/esc_autoloot_c.bmp",
+          "sha256": "3a9eb827cbe2cff4c1e093c8ec5f4be1078559092b7ab9abe30eab28757833f6"
         },
         {
           "path": "mod.json",
-          "sha256": "99d831b471098d1e110120d4698589960c9be8b2d46d7e0731a056103589cad5"
+          "sha256": "394a870f150e4da7d71674b8e1a71b4f1f76d91643522b296dbc78b4863c10fc"
         },
         {
           "path": "npc/autoloot.txt",
@@ -233,8 +330,10 @@
         "npc",
         "quality-of-life"
       ],
-      "icon": "",
-      "screenshots": [],
+      "icon": "images/icon.png",
+      "screenshots": [
+        "images/cash-shop.png"
+      ],
       "requires": {
         "mods": [],
         "era": "",
@@ -244,13 +343,138 @@
         "github": "LilArt420/cashshopmod",
         "asset": "cash-shop-extended-*.zip"
       },
-      "files": []
+      "files": [
+        {
+          "path": "images/cash-shop.png",
+          "sha256": "59312e6a6cb77b303652bf51279aaa6e2992c43c90c59d4f3ec79fe6b39bc510"
+        },
+        {
+          "path": "images/icon.png",
+          "sha256": "b31932fe6a704db42b21a4ceee244a31be3bb1f34479277cb22acca19d24354d"
+        }
+      ]
+    },
+    {
+      "name": "city-unity",
+      "version": "",
+      "author": "akreao",
+      "description": "kRO's Major City Contribution system from 2015. Join the City Merchant Union in the Eden Group lobby, collect Union Insignias while you hunt, and invest them in Prontera, Geffen, Payon, Morroc, Juno, Einbroch, Lighthalzen, Rachel or Veins to unlock that city's Unity gear. A request board adds a weekly boss bounty and daily dungeon deliveries, with English quest text. Works with or without eden-rework-2021. Renewal only.",
+      "homepage": "https://github.com/akreao/city-unity",
+      "tags": [
+        "eden",
+        "gear",
+        "kro",
+        "npc",
+        "quest",
+        "renewal",
+        "unity"
+      ],
+      "icon": "images/icon.png",
+      "screenshots": [],
+      "requires": {
+        "mods": [],
+        "era": "renewal",
+        "app": ""
+      },
+      "source": {
+        "github": "akreao/city-unity",
+        "asset": "city-unity-*.zip"
+      },
+      "files": [
+        {
+          "path": "images/icon.png",
+          "sha256": "bfe8c3472d18059cd373a366a075fc282aaa38c4c7fe15428fd6e2d0e86ef219"
+        }
+      ]
+    },
+    {
+      "name": "droprate-penalty-remover",
+      "version": "1.0.1",
+      "author": "Leptis",
+      "description": "Remove the renewal drop rate penalty based on the level difference between you and the monster. Every monster drops at its full rate, whatever your level.",
+      "homepage": "https://github.com/Flux159/ragnarokoffline.app/tree/main/registry/mods/droprate-penalty-remover",
+      "tags": [
+        "drops",
+        "quality-of-life",
+        "renewal"
+      ],
+      "icon": "",
+      "screenshots": [],
+      "requires": {
+        "mods": [],
+        "era": "renewal",
+        "app": ">=1.3.0"
+      },
+      "files": [
+        {
+          "path": "db/level_penalty.yml",
+          "sha256": "c5ccd5c1499da0bf0348fe7b2082f7688ae880d71f7944d5cba574755e813f63"
+        },
+        {
+          "path": "mod.json",
+          "sha256": "e6333ffb39131a458f15decbbe3de4688f725a13cc87f07f3fdbaed23a464f4a"
+        }
+      ]
+    },
+    {
+      "name": "eden-rework-2021",
+      "version": "",
+      "author": "akreao",
+      "description": "The Eden Group as kRO reworked it in April 2021. Instructors Ur and Boya and four new Administrators hand out the Paradise gear quests, six mission boards bring champion hunts and deliveries, and the update adds cave shortcuts, Odin's Past and English quest text. The old Eden gear and mission NPCs are hidden while it is on. Renewal only.",
+      "homepage": "https://github.com/akreao/eden-rework-2021",
+      "tags": [
+        "eden",
+        "gear",
+        "kro",
+        "missions",
+        "npc",
+        "quest",
+        "renewal"
+      ],
+      "icon": "images/icon.png",
+      "screenshots": [
+        "images/administrators.jpg",
+        "images/mission-board.jpg",
+        "images/champion-hunt.jpg",
+        "images/quest-window.jpg"
+      ],
+      "requires": {
+        "mods": [],
+        "era": "renewal",
+        "app": ""
+      },
+      "source": {
+        "github": "akreao/eden-rework-2021",
+        "asset": "eden-rework-2021-*.zip"
+      },
+      "files": [
+        {
+          "path": "images/administrators.jpg",
+          "sha256": "0e1eff732d4e1e1fdadfcde1136361cdc2ccab997befe3d671c1ad894b518244"
+        },
+        {
+          "path": "images/champion-hunt.jpg",
+          "sha256": "2e4c65484382f092cb208afa8f595b81b72979df927dfede79a3ea66ce4e0900"
+        },
+        {
+          "path": "images/icon.png",
+          "sha256": "4be96bdf205c0a74919c87d05ddc4164d25c7230b1adf63761fa9df96203833d"
+        },
+        {
+          "path": "images/mission-board.jpg",
+          "sha256": "9667c7e52d9e7b7ad1cfba6a030a6031e4c4ea379495908fff856eff776416bc"
+        },
+        {
+          "path": "images/quest-window.jpg",
+          "sha256": "0ffe4208d0bb862628c81524bb131b00acde9d89fbc2c80a466492e5d9ded035"
+        }
+      ]
     },
     {
       "name": "exp-card",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "author": "BlaXun",
-      "description": "Every monster kill has a chance to drop a tiered Exp Card, bound to the killer for the standard pickup window. Two families -- Base Exp Cards and Job Exp Cards -- each with ten levels; higher-level mobs drop higher-level cards. At 1x, a level 10 card grants roughly 5% of the exp a level-98 character needs for the next level, and each lower level is about half the one above it; card exp scales with the server's Base/Job EXP rates. Streamlines offline levelling without touching per-mob drop tables.",
+      "description": "Every monster kill has a chance to drop a tiered Exp Card, bound to the killer for the standard pickup window. Two families -- Base Exp Cards and Job Exp Cards -- each with ten levels; higher-level mobs drop higher-level cards. At 1x, a card grants about 5% of the next level at the lowest level that may use it (a level 10 card: 30,000 exp, from base level 91); card exp scales with the server's Base/Job EXP rates. Streamlines offline levelling without touching per-mob drop tables.",
       "homepage": "https://github.com/Flux159/ragnarokoffline.app/tree/main/registry/mods/exp-card",
       "tags": [
         "drops",
@@ -269,8 +493,12 @@
       },
       "files": [
         {
+          "path": "CHANGELOG.md",
+          "sha256": "056f47f4d8b65a17293851c910dacc290b68ea3852766b7a22209e6cbe93bdd7"
+        },
+        {
           "path": "README.md",
-          "sha256": "8a92b7ab55ec3b76f42385c2ecaa6a6c737f7b1620f0605e7ad56524111e05e9"
+          "sha256": "07ce4b9408a2096a02b2ce1c16cd19f8867692019de18e4727332530acca5c98"
         },
         {
           "path": "System/itemInfo.lua",
@@ -278,7 +506,7 @@
         },
         {
           "path": "db/item_db.yml",
-          "sha256": "fb5d7eb528238a877dac9be5d5c0125efb6478c378cfc6b83cc8e70e44b2026d"
+          "sha256": "b80cc5266e2ca54819254fa03d8c6f874d2a968f915ccb094f0c4b9e415f3a7f"
         },
         {
           "path": "images/exp-card.png",
@@ -290,11 +518,130 @@
         },
         {
           "path": "mod.json",
-          "sha256": "952e56168647401194448832c4ffbdb464ee959d0d87ec88acfc1800bc93cdca"
+          "sha256": "333b33b37c54a9f2ce0031d8e04a4e06b58d349f23e20b3f266541b348e0e0b3"
         },
         {
           "path": "npc/exp_card.txt",
-          "sha256": "e06490d46d57710a922eb67fffdb3f584e98725fb8bebb1a4264d8b0536bd774"
+          "sha256": "865a3c89f754f8281c0a416a38c4bae91e2d24338039e21d9507a21e9d7cedc5"
+        },
+        {
+          "path": "pre-re/db/item_db.yml",
+          "sha256": "0eea2d33ee164ea4a97c4b38f84cc49ad08f2eb02e3fa4bcaf11efdf36e61c42"
+        }
+      ]
+    },
+    {
+      "name": "exprate-penalty-remover",
+      "version": "1.0.0",
+      "author": "BlaXun",
+      "description": "Remove the renewal EXP penalty for killing monsters far below or far above your level. The bonus for monsters 3-15 levels above you is kept.",
+      "homepage": "https://github.com/Flux159/ragnarokoffline.app/tree/main/registry/mods/exprate-penalty-remover",
+      "tags": [
+        "experience",
+        "leveling",
+        "quality-of-life",
+        "renewal"
+      ],
+      "icon": "",
+      "screenshots": [],
+      "requires": {
+        "mods": [],
+        "era": "renewal",
+        "app": ">=1.3.0"
+      },
+      "files": [
+        {
+          "path": "db/level_penalty.yml",
+          "sha256": "f474fbb694a1ce33978c88b88e02c4658e596a9d72d2cb7b8c9f3262f21cfa97"
+        },
+        {
+          "path": "mod.json",
+          "sha256": "8622efccd7bd9a92495e5c6de67fa6e83d0b0ec97c09093d31fc384a3ee93402"
+        }
+      ]
+    },
+    {
+      "name": "friendlier-refine",
+      "version": "1.0.0",
+      "author": "BlaXun",
+      "description": "Refining without the dread. A failed refine no longer destroys your equipment (a setting brings breaking back), and choose from which refine level a failure takes the item down one level instead. Works with the refine window every town blacksmith opens and with the Advanced Refiners Suhnbi (Payon) and Holink (Malangdo, renewal), in renewal and pre-renewal. The success chance of every refine, and how many levels a failure takes off, are rAthena's own values and can be changed by editing renewal/db/refine.yml or pre-renewal/db/refine.yml in the mod's folder (Windows %APPDATA%\\Ragnarok Offline\\state\\mods\\friendlier-refine, macOS ~/Library/Application Support/Ragnarok Offline/state/mods/friendlier-refine, Linux ~/.local/share/Ragnarok Offline/state/mods/friendlier-refine). Rate is the chance of success out of 10000 (6000 is 60%); DowngradeAmount is the levels a failure takes off. While a \"Revert from\" option is ticked, its own file under db/when/ sets the levels lost instead. The server reads these files only when it starts, so restart it after an edit (Apply in Settings, or quit and start the game again). An update of this mod replaces them, so keep a copy of your changes. Refines inside quests are left as they are: Vestri (Mjolnir seal) and the Novice Academy's refining machine use your edited success rates but still break the item on failure, and the Kagerou/Oboro job quest's tool keeps its own chances and always drops one level. The README has the details.",
+      "homepage": "https://github.com/Flux159/ragnarokoffline.app/tree/main/registry/mods/friendlier-refine",
+      "tags": [
+        "equipment",
+        "quality-of-life",
+        "refine"
+      ],
+      "icon": "",
+      "screenshots": [],
+      "requires": {
+        "mods": [],
+        "era": "any",
+        "app": ">=1.4.3"
+      },
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "56c5f62caae4c0f4a588d08eac547d761de4ce05467e8ceb37771c5d7b038235"
+        },
+        {
+          "path": "mod.json",
+          "sha256": "7a70bfbad2f365f72cd8f0ed7608fedef6d7fc2a90930ac263d3a181695d4e6b"
+        },
+        {
+          "path": "npc/functions.txt",
+          "sha256": "82a68458e644d5eea039c24aa50db9ce159458ae1018f7fe6b0e7344b1cfae22"
+        },
+        {
+          "path": "npc/suhnbi.txt",
+          "sha256": "7a9d642e78bc9f513f59a64d20ba0687b2c2f1c61514df4f03ea543e7ea26ade"
+        },
+        {
+          "path": "pre-renewal/db/refine.yml",
+          "sha256": "943ab813796d5963f1c799c9b2346c9e0a55d08e62faa3a80b26959506722d4f"
+        },
+        {
+          "path": "pre-renewal/db/when/allow_break/refine.yml",
+          "sha256": "78a73c600b41f3f075912cbc801bae6e0b27f85912f9570581974f8ae4937575"
+        },
+        {
+          "path": "pre-renewal/db/when/revert_from_05/refine.yml",
+          "sha256": "9f2dd8c19d3c83728cebccd55720779028377e1e09c80b7ce43c16e71030ff20"
+        },
+        {
+          "path": "pre-renewal/db/when/revert_from_07/refine.yml",
+          "sha256": "1eae11661081faf44bda3fae418d512b0a7e432b5654d48fef89a96644d8c5a8"
+        },
+        {
+          "path": "pre-renewal/db/when/revert_from_09/refine.yml",
+          "sha256": "5bf4e0b4d81a2e824abd740545f549e306b5a0331c6c55c704ef8c675e0d7e47"
+        },
+        {
+          "path": "renewal/db/refine.yml",
+          "sha256": "4dbaf83194090c377bb1e5f94e9b6572c2b1c6097d1771115948924b134d3cf7"
+        },
+        {
+          "path": "renewal/db/when/allow_break/refine.yml",
+          "sha256": "8d74a18712066f7fee9affc79c39b2888511d308d0300a01e4538293113469ed"
+        },
+        {
+          "path": "renewal/db/when/revert_from_05/refine.yml",
+          "sha256": "9b9c6f90e2296eff40dcdce7fe5a0f8c73c2cd17daf177a2ec954eb08300e526"
+        },
+        {
+          "path": "renewal/db/when/revert_from_07/refine.yml",
+          "sha256": "2c3b64bd552aff8197a9ea5de6858ad94de7ca93a1e02e8566f61337d68922df"
+        },
+        {
+          "path": "renewal/db/when/revert_from_09/refine.yml",
+          "sha256": "e7b786f58f058fc3960e2526122dbe1a874778b9e95e54470cffca3badbb2f3b"
+        },
+        {
+          "path": "renewal/db/when/revert_from_11/refine.yml",
+          "sha256": "e7b9581e7d1d063a86a36a6288c4704fdc27776b68fba3ecb650ba8d1f5b571d"
+        },
+        {
+          "path": "renewal/npc/holink.txt",
+          "sha256": "cc18a0b7886355ecfb1f083629cf16fe85c098722b14aeede837221c5781bdd8"
         }
       ]
     },
@@ -393,8 +740,36 @@
       ]
     },
     {
+      "name": "path-of-ragnarok",
+      "version": "",
+      "author": "rhewid",
+      "description": "A Path-of-Exile style passive skill tree. Your first class gives you an origin in the centre of a 695-node tree, every job level earns a point (50 max), and you grow outward through stats, resistances, damage against races and elements, skill boosts, auto-casts and free recasts, card sockets, masteries, job-line and rebirth branches, keystones and teleport rifts. Balanced around pre-renewal; it also loads on renewal but is not balanced for it.",
+      "homepage": "https://github.com/rhewid/path-of-ragnarok",
+      "tags": [
+        "cards",
+        "client",
+        "passive-tree",
+        "pre-renewal",
+        "progression",
+        "skills",
+        "stats"
+      ],
+      "icon": "",
+      "screenshots": [],
+      "requires": {
+        "mods": [],
+        "era": "",
+        "app": ""
+      },
+      "source": {
+        "github": "rhewid/path-of-ragnarok",
+        "asset": "path-of-ragnarok-*.zip"
+      },
+      "files": []
+    },
+    {
       "name": "prontera-vendors",
-      "version": "1.3.0",
+      "version": "1.6.0",
       "author": "BlaXun",
       "description": "A living player market on Prontera's main road. Fake players run real vending stalls on the inner sidewalks (cards, weapons and armor by class, refined gear, potions, gems, pet eggs, loot from every dungeon and more) and real buying stores on the outer sidewalks that buy your loot: ores, quest turn-ins, junk drops and the loot of every dungeon and leveling field. Prices follow a real server's market (kRO), stalls undercut each other and change as their owners come and go, and everything is tunable in Settings. Needs the population engine switched on.",
       "homepage": "",
@@ -417,8 +792,12 @@
       },
       "files": [
         {
+          "path": "CHANGELOG.md",
+          "sha256": "a1f078e4eb46484c156cdcfc39a5440ac15689a41196d68cce5c07d9d8f54f41"
+        },
+        {
           "path": "README.md",
-          "sha256": "9eea56235500b9b23e8eb8d537451f2b739b489529fe3e1ee0967adf82739c71"
+          "sha256": "1a85b2b3e41f6cdc84ba6393e91329576cb17b744f87f6523ba5b7e17d809dae"
         },
         {
           "path": "db/population_vendor_pop.yml",
@@ -442,37 +821,117 @@
         },
         {
           "path": "mod.json",
-          "sha256": "2a770fe9f3e5b910a3cde5e06c70ed791ef39b8ab8ea0e4d0abdd8bccc866209"
+          "sha256": "db7d3d24aa916ba0a28ab4b5d11d21665de1675b107886a95be2becd0d7572f2"
         },
         {
           "path": "npc/prontera-vendors-customers.txt",
           "sha256": "b8a87d0ddddc8e2dfc33ae5ccfc40c6e66d54e8994c361e2c2f324b0a9a57b84"
         },
         {
+          "path": "npc/prontera-vendors-density.txt",
+          "sha256": "dd5a82d290248d387a9741e905f866a05f5011273c758dae7004a82ca878391b"
+        },
+        {
+          "path": "npc/prontera-vendors-market-data.txt",
+          "sha256": "8f09a12931464d914a200574be699655adffb853eefab0dbd81076fbcd19cd1a"
+        },
+        {
+          "path": "npc/prontera-vendors-market.txt",
+          "sha256": "4e08cb648891b6125c0d06ca11ddb0bb9fbe413c5f47505d9b7d5da6c41a361a"
+        },
+        {
           "path": "npc/prontera-vendors-newer.txt",
-          "sha256": "9d57fc8e30ae8e4930d157fda62dbed4f4ace57878f0f7394985c5e4d12f4b69"
+          "sha256": "290c1e13a56573c8048f7d3515d4a2f48631b048f27c55a504e836c5ff8da24b"
+        },
+        {
+          "path": "npc/prontera-vendors-supply-data.txt",
+          "sha256": "44233289657cb68cdd21a5ccea210cbca1805ceb505803817cf64f3e52d578c2"
+        },
+        {
+          "path": "npc/prontera-vendors-supply.txt",
+          "sha256": "75887d2014bed34659b248279647f18215114f17e3f3eb0fdf8beacabd93f851"
         },
         {
           "path": "npc/prontera-vendors.txt",
-          "sha256": "00ece05ed4b084b4c34642925a014787ce464b8f2e884deff3ee635451157711"
+          "sha256": "b339ca644d5442ee8301bedfa83f8e91fdbe7318615fa3089418acbcad0d830e"
         },
         {
           "path": "pre-re/db/population_vendor_pop.yml",
-          "sha256": "c76df9746abc9d5d3d272177d066c20859e87a3c2e4d37195817da85746a5fa9"
+          "sha256": "2dafb45521a3356f023aa594bec61d80a3f59b0210116e2af1e0d9a88149a9a4"
         },
         {
           "path": "pre-re/db/population_vendor_prices/prontera-vendors.csv",
-          "sha256": "2824002dd05b0490c442d7e374523655a23f7adf7a64507c3d9a3b94f7f00e03"
+          "sha256": "3e0ed540c23aa579fd054124d7d381420bd030b4b978752fe0e050cae6b655dd"
         },
         {
           "path": "pre-re/db/population_vendors.yml",
-          "sha256": "541de8d95ccb18512692697eba8d930bcaa6fb3872678e15edb0b404c8b462e0"
+          "sha256": "eb02374aafd901219ad1a5ef34f2e07f1f9df15fb10b5ea5be5ed2b4a21589fe"
+        },
+        {
+          "path": "pre-re/npc/prontera-vendors-market-data.txt",
+          "sha256": "ac88f96ac421c79df8be3ad5023d7f6417eacae258711268fe5e0b2b36de83e3"
+        },
+        {
+          "path": "pre-re/npc/prontera-vendors-supply-data.txt",
+          "sha256": "357aefa0eb1320830692b0ff593e7016410c1a2a1c9f8547027015f775a260dd"
         },
         {
           "path": "settings/index.html",
-          "sha256": "2c155db40d6bcb8a9834a0c34001bfa3b02dc508a1ff71ecbbcd2bd52fea7c77"
+          "sha256": "85dfb34d5e848f9c1fd3e6632c253040fe674d499ffeefc51a786d94b9305947"
         }
       ]
+    },
+    {
+      "name": "quick-move",
+      "version": "",
+      "author": "rhewid",
+      "description": "Quality-of-life item moving: reliable fast double click in NPC shops, plus Ctrl+click to move items between Inventory, Storage, Cart, Equipment, Vending, Trade and Rodex.",
+      "homepage": "https://github.com/rhewid/quick-move",
+      "tags": [
+        "client",
+        "inventory",
+        "quality-of-life",
+        "shop",
+        "storage"
+      ],
+      "icon": "",
+      "screenshots": [],
+      "requires": {
+        "mods": [],
+        "era": "",
+        "app": ""
+      },
+      "source": {
+        "github": "rhewid/quick-move",
+        "asset": "quick-move-*.zip"
+      },
+      "files": []
+    },
+    {
+      "name": "random-headgear-box",
+      "version": "",
+      "author": "rhewid",
+      "description": "Every monster can drop a Random Headgear Box (0.05% by default, adjustable). Opening one gives a random headgear that nothing in the stock item database drops or sells: 417 in pre-renewal, including Snake Head and Skull Cap, and 1,207 in renewal. Works in both eras.",
+      "homepage": "https://github.com/rhewid/random-headgear-box",
+      "tags": [
+        "drops",
+        "equipment",
+        "headgear",
+        "pre-renewal",
+        "renewal"
+      ],
+      "icon": "",
+      "screenshots": [],
+      "requires": {
+        "mods": [],
+        "era": "",
+        "app": ""
+      },
+      "source": {
+        "github": "rhewid/random-headgear-box",
+        "asset": "random-headgear-box-*.zip"
+      },
+      "files": []
     },
     {
       "name": "refine-matk",
@@ -517,6 +976,109 @@
           "sha256": "0819a593314d4254b1fea0b8d209de0ddab2b0176bed8a8bf0646f266f84a663"
         }
       ]
+    },
+    {
+      "name": "renewal-world",
+      "version": "0.1.0",
+      "author": "BlaXun",
+      "description": "Opens renewal's new lands in pre-renewal, joined to the old world where renewal joins them: Bifrost, Mora, Eclage and El Dicastes, Verus, the ships from Alberta to Dewata, Port Malaya, Malangdo and Rockridge, and new floors of Niflheim, Izlude, Abyss Lakes, Einbroch and Magma dungeons. With the quest areas setting on, also Lasagna, Bios Island, Rudus, Amicitia, the nightmare and illusion dungeons, Prontera Castle and other episode areas, whose entrances renewal keeps behind quests. 122 maps. This first version opens the way only: the new maps have no monsters, shops or quests yet. Every entrance renewal locks behind a quest is a free gate here.",
+      "homepage": "https://github.com/Flux159/ragnarokoffline.app/tree/main/registry/mods/renewal-world",
+      "tags": [
+        "exploration",
+        "maps",
+        "pre-renewal",
+        "travel",
+        "world"
+      ],
+      "icon": "",
+      "screenshots": [],
+      "requires": {
+        "mods": [],
+        "era": "pre-renewal",
+        "app": ">=1.4.3"
+      },
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "84d4925dd92d00ee5b24cb97535efcebe3a45f22c1487314fa191c97df0f9762"
+        },
+        {
+          "path": "mod.json",
+          "sha256": "f916b4541c82d3b0b9dc1267e276f05d506da64301eec70e16e373f2d6bd94d5"
+        },
+        {
+          "path": "npc/renewal_world_gates.txt",
+          "sha256": "4e2d28c28a7ecc89fe479e734b147407b381857e21d15792c6cae00b0ca998e1"
+        },
+        {
+          "path": "npc/renewal_world_mapflags.txt",
+          "sha256": "c621d6331a08b02ed2e06ca1f28499efb8e098064e0a34df9df1e57459747118"
+        },
+        {
+          "path": "npc/renewal_world_warps.txt",
+          "sha256": "7c26dfbcb82b06a872dcaf7c0e5caa91c7c1624fdb4f1bc795a96168e2fba253"
+        },
+        {
+          "path": "npc/when/quest_areas/renewal_world_quest_areas.txt",
+          "sha256": "7c1284bdc8a86b68fcc3b908be4c702c7693a88282cba70af0298fa873209580"
+        }
+      ]
+    },
+    {
+      "name": "royal-nightmare",
+      "version": "",
+      "author": "Lil Art",
+      "description": "A solo challenge in a nightmare version of Prontera, for Base Level 230 and up. Fight through two hordes of the Nightmare Queen's cursed townspeople, then her Death Witches, and finally Demi Freyja, within a 60-minute limit shown on screen. Clearing it opens a reward chest; it can be run again after 8 hours. One player at a time. Renewal only.",
+      "homepage": "https://github.com/LilArt420/royalnightmare",
+      "tags": [
+        "challenge",
+        "endgame",
+        "instance",
+        "mvp",
+        "npc"
+      ],
+      "icon": "images/icon.png",
+      "screenshots": [],
+      "requires": {
+        "mods": [],
+        "era": "renewal",
+        "app": ""
+      },
+      "source": {
+        "github": "LilArt420/royalnightmare",
+        "asset": "royal-nightmare-*.zip"
+      },
+      "files": [
+        {
+          "path": "images/icon.png",
+          "sha256": "680a9d2920038ab63a2e11ce9f7c3c2c2458b327a7b47a5ce0e1ab0d2d15fab1"
+        }
+      ]
+    },
+    {
+      "name": "solo-community-goals",
+      "version": "",
+      "author": "akreao",
+      "description": "Server-wide goals sized for one player or a small party. The Illusion dungeon bosses appear after 5% of the kills they normally wait for, Bomi turns into Berserk Bomi after one delivery instead of thirty, the Orbs of Seal in the Illusion of Frozen stay lit until all four are, and Rachel's temple opens the Sanctuary quest without 10,000 donations. Every number is in the settings. The stock scripts still spawn the bosses, so their dialogue, drops and rewards are unchanged.",
+      "homepage": "https://github.com/akreao/solo-community-goals",
+      "tags": [
+        "bosses",
+        "quality-of-life",
+        "quests",
+        "solo"
+      ],
+      "icon": "",
+      "screenshots": [],
+      "requires": {
+        "mods": [],
+        "era": "any",
+        "app": ""
+      },
+      "source": {
+        "github": "akreao/solo-community-goals",
+        "asset": "solo-community-goals-*.zip"
+      },
+      "files": []
     },
     {
       "name": "standart-npc",
@@ -676,6 +1238,31 @@
           "sha256": "2b08b5d6dfade6a7e658a239431ec08a0cc3efbe89cbf7aa3617455c2bf5794e"
         }
       ]
+    },
+    {
+      "name": "whosell",
+      "version": "",
+      "author": "rhewid",
+      "description": "Search for Vendors: a window (and @whosell / @whobuy) to find who sells or buys an item by name, card and zeny range, with price, amount, seller and shop location. Finds real players' shops and, with the population engine, the fake-player market. Follows the active UI skin.",
+      "homepage": "https://github.com/rhewid/whosell",
+      "tags": [
+        "market",
+        "search",
+        "ui",
+        "vending"
+      ],
+      "icon": "",
+      "screenshots": [],
+      "requires": {
+        "mods": [],
+        "era": "",
+        "app": ""
+      },
+      "source": {
+        "github": "rhewid/whosell",
+        "asset": "whosell-*.zip"
+      },
+      "files": []
     }
   ]
 }

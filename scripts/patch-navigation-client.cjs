@@ -56,6 +56,7 @@ loader = loader.replace(arrayPattern, `local is_array = true
 const decodeNeedle = 'result = JSON.parse(userStringDecoder.decode(value));';
 if (loader.split(decodeNeedle).length !== 2) throw Error('Navigation JSON decode call not found');
 loader = loader.replace(decodeNeedle, 'result = JSON.parse(userStringDecoder.decode(value, userCharpage));');
+loader = require('./navigation-names.cjs').patchLoader(loader);
 patched = patched.slice(0,start) + loader + patched.slice(stop);
 
 const classicNavigationHtml = String.raw`<div class="Navigation">
@@ -735,6 +736,19 @@ patched = patched.replace(displayMethodNeedle, `\tNavigation.loadDetailMapPrevie
 \t\tconst root = Navigation.getRoot();
 \t\troot.querySelectorAll(".location-row.selected").forEach((item) => item.classList.remove("selected"));
 \t\tif (locationItem) locationItem.classList.add("selected");
+\t\t// The location's own sprite, not the group's: results are grouped by
+\t\t// name, and two NPCs of one name can look nothing alike (rAthena has an
+\t\t// Arena Manager in sec_in02 and another in Morocc).
+\t\tconst spriteId = Number(location.spriteId) || 0;
+\t\tif (spriteId > 0) {
+\t\t\t_navigationPreviewModel.entity = new Entity();
+\t\t\t_navigationPreviewModel.entity.set({ job: spriteId, action: 0, direction: 0 });
+\t\t\t_navigationPreviewModel.render = true;
+\t\t\tRenderer.render(renderNavigationEntityPreview);
+\t\t} else {
+\t\t\t_navigationPreviewModel.entity = null;
+\t\t\t_navigationPreviewModel.render = false;
+\t\t}
 \t\troot.querySelector(".detail-coordinates").textContent = location.x == null || location.y == null ? "Map-wide spawn" : "(" + location.x + ", " + location.y + ")";
 \t\tconst findButton = root.querySelector(".find-result");
 \t\tfindButton.classList.remove("disabled");
@@ -762,16 +776,6 @@ patched = patched.replace(displayMethodNeedle, `\tNavigation.loadDetailMapPrevie
 \t\t\taddStat("Element", result.element || "Unknown");
 \t\t\taddStat("Type", result.race || "Unknown");
 \t\t\taddStat("Size", result.size || "Unknown");
-\t\t}
-\t\tconst spriteId = Number(result.spriteId) || 0;
-\t\tif (spriteId > 0) {
-\t\t\t_navigationPreviewModel.entity = new Entity();
-\t\t\t_navigationPreviewModel.entity.set({ job: spriteId, action: 0, direction: 0 });
-\t\t\t_navigationPreviewModel.render = true;
-\t\t\tRenderer.render(renderNavigationEntityPreview);
-\t\t} else {
-\t\t\t_navigationPreviewModel.entity = null;
-\t\t\t_navigationPreviewModel.render = false;
 \t\t}
 \t\tconst locationList = root.querySelector(".location-list");
 \t\tlocationList.replaceChildren();

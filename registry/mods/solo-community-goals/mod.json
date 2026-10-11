@@ -1,0 +1,19 @@
+{
+  "name": "solo-community-goals",
+  "author": "akreao",
+  "description": "Server-wide goals sized for one player or a small party. The Illusion dungeon bosses appear after 5% of the kills they normally wait for, Bomi turns into Berserk Bomi after one delivery instead of thirty, the Orbs of Seal in the Illusion of Frozen stay lit until all four are, and Rachel's temple opens the Sanctuary quest without 10,000 donations. Every number is in the settings. The stock scripts still spawn the bosses, so their dialogue, drops and rewards are unchanged.",
+  "tags": [
+    "bosses",
+    "quests",
+    "solo",
+    "quality-of-life"
+  ],
+  "homepage": "https://github.com/akreao/solo-community-goals",
+  "requires": {
+    "era": "any"
+  },
+  "source": {
+    "github": "akreao/solo-community-goals",
+    "asset": "solo-community-goals-*.zip"
+  }
+}

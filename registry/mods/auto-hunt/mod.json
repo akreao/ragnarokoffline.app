@@ -1,0 +1,17 @@
+{
+  "name": "auto-hunt",
+  "author": "Thomas (v4.1 hunting core) / clarois (v4.2 skill presets, v4.3 auto-teleport)",
+  "description": "AFK hunting from an on-screen panel: attacks the nearest monster, wanders when the area is empty, avoids warps, recovers from getting stuck, auto-heals, and casts a per-character skill preset from your hotbar. Opt-in auto-teleport flies to a fresh spot when nothing is in range. Client-side only - it presses hotbar slots through the app's own client API, so the server still enforces cooldowns, SP, range and targeting. Based on Auto-Hunt v4.1 by Thomas.",
+  "tags": [
+    "afk",
+    "auto-hunt",
+    "client",
+    "farming",
+    "hotbar",
+    "quality-of-life"
+  ],
+  "source": {
+    "github": "clarois/auto-hunt",
+    "asset": "auto-hunt-*.zip"
+  }
+}

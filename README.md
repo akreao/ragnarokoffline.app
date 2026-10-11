@@ -79,6 +79,13 @@ Cloudflare account or token; connecting your own fixed hostname is optional.
 Friends open the HTTPS link in their browser and play on your running world.
 See [setup, invitation expiry and Stop sharing](docs/FRIENDS_SHARING.md).
 
+## Hosting on a machine with no screen
+
+Start the app with `--headless` and it opens no windows: the server starts on
+its own, and Settings opens in a browser at an address it prints. It works the
+same on macOS, Windows and Linux, so a home server or a cloud machine can host
+the world. Experimental for now; see [Running headless](docs/HEADLESS.md).
+
 ## Hosting and playing with friends on your LAN
 
 Everyone on the same wifi can play together on one person's machine. Only the
@@ -280,12 +287,14 @@ change between macOS, Windows and Linux; only the host-side VM integration does.
 
 ### What each piece is, and whose it is
 
-| Piece | Origin | Role here |
-|---|---|---|
-| [rAthena](https://github.com/rathena/rathena) | upstream, GPL-3.0 | the server. Built arch-native at image build time from our fork, [Flux159/rathena](https://github.com/Flux159/rathena), plus the optional population engine below |
-| [Population Engine](https://github.com/YlenXWalker/Population-Engine) | upstream, GPL-3.0 | server-side AI characters, compiled in but off by default. Vendored in `third-party/`, see its README |
-| [roBrowserLegacy](https://github.com/MrAntares/roBrowserLegacy) | upstream, GPL-3.0 | the client. Built from source with a few patches in `patches/` |
-| [RemoteClient](https://github.com/Flux159/roBrowserLegacy-RemoteClient-Rust) | GPL-3.0 | Rust rewrite of roBrowserLegacy's Node asset server |
+| Piece | Origin | Our fork | Role here |
+|---|---|---|---|
+| [rAthena](https://github.com/rathena/rathena) | upstream, GPL-3.0 | [Flux159/rathena](https://github.com/Flux159/rathena) | the server. Built arch-native at image build time from the fork's `ragnarokoffline` branch, plus the optional population engine below |
+| [Population Engine](https://github.com/YlenXWalker/Population-Engine) | upstream, GPL-3.0 | none: a modified copy in `third-party/` | server-side AI characters, compiled in but off by default. See its README |
+| [roBrowserLegacy](https://github.com/MrAntares/roBrowserLegacy) | upstream, GPL-3.0 | [Flux159/roBrowserLegacy](https://github.com/Flux159/roBrowserLegacy) | the client. Built from the fork's `ragnarokoffline` branch, with our additions in `patches/` |
+| [RemoteClient](https://github.com/Flux159/roBrowserLegacy-RemoteClient-Rust) | ours, GPL-3.0 | not a fork | Rust rewrite of roBrowserLegacy's Node asset server |
+
+How the forks are kept, and what goes on them rather than in `patches/`: [docs/FORKS.md](docs/FORKS.md).
 
 ---
 
@@ -389,7 +398,9 @@ rebuild, no compiler, no Docker.
 
 You can change what monsters are worth and what they drop, add NPCs with real
 quests, replace the login screen and the loading screens with your own art,
-build a map that is in nobody's GRF and put monsters and NPCs on it, decide
+build a map that is in nobody's GRF and put monsters and NPCs on it — with
+**Settings → Tools → [Map editor](docs/mods/MAP_EDITOR.md)**, which an AI agent
+can drive too — decide
 where new characters wake up, and restyle the client itself. Settings → Mods
 lists what is installed, with a checkbox each.
 

@@ -54,13 +54,16 @@ fn agent_slot(request: &Value) -> Result<u32, String> {
 }
 /// Documented in docs/MODDING.md ("Group 20 is taken") so mods keep off it.
 pub const AGENT_GROUP: u32 = 20;
-/// What every player may use, whatever mods are installed: `@companion`, the
-/// population engine's command that the Companions panel in game drives
-/// (draft, summon, dismiss, gear...). rAthena grants a command only through
-/// groups.yml, and the engine adds it to no group, so without this only GMs
-/// could have companions. Group 0 is rAthena's own, so the entry needs no
-/// Name or Level; the groups that inherit from it get the command too.
-pub const PLAYER_GRANT_OWNER: &str = "Ragnarok Offline (companions)";
+/// What every player may use, whatever mods are installed:
+/// - `@companion`, the population engine's command that the Companions panel
+///   in game drives (draft, summon, dismiss, gear...);
+/// - `@modstore`, which a mod's client UI reads its store through (api.store,
+///   docs/MOD_STORE.md). It reads only what mods keep under `client`.
+/// rAthena grants a command only through groups.yml, and neither is in any
+/// group, so without this only GMs could use them. Group 0 is rAthena's own,
+/// so the entry needs no Name or Level; the groups that inherit from it get
+/// the commands too.
+pub const PLAYER_GRANT_OWNER: &str = "Ragnarok Offline (player commands)";
 pub const PLAYER_GRANT_YML: &str = "Header:
   Type: PLAYER_GROUP_DB
   Version: 1
@@ -69,6 +72,7 @@ Body:
   - Id: 0
     Commands:
       companion: true
+      modstore: true
 ";
 
 pub const AGENT_GROUP_OWNER: &str = "Ragnarok Offline (AI agent)";
@@ -672,7 +676,7 @@ mod tests {
         let request = json::parse(r#"{"password":"hunter2-secret"}"#).unwrap();
         let sql = statement("agent", &request).unwrap();
         assert!(!sql.contains("hunter2-secret") && !sql.contains(&hex("hunter2-secret")[2..]), "{sql}");
-        assert!(sql.contains(&hex("$pbkdf2-sha256$200000$")[2..]), "{sql}");
+        assert!(sql.contains(&hex(&format!("$pbkdf2-sha256${}$", crate::password::ITERATIONS))[2..]), "{sql}");
         assert!(sql.contains(&format!("WHERE BINARY userid={} AND group_id={AGENT_GROUP}", hex(AGENT_ACCOUNT))), "{sql}");
         assert!(sql.contains("WHERE NOT EXISTS (SELECT 1 FROM login AS existing WHERE userid="), "{sql}");
         assert!(sql.contains(&format!("'M','a@a.com',{AGENT_GROUP},'{DEFAULT_BIRTHDATE}'")));
@@ -693,7 +697,7 @@ mod tests {
     #[test]
     fn every_password_this_app_writes_is_already_hashed() {
         let secret = "a-test-only-secret";
-        let hashed = &hex("$pbkdf2-sha256$200000$")[2..];
+        let hashed = &hex(&format!("$pbkdf2-sha256${}$", crate::password::ITERATIONS))[2..];
         let cases = [
             ("create", format!(r#"{{"username":"friend-1","password":"{secret}","confirmation":"{secret}"}}"#), 0),
             ("invite-create", format!(r#"{{"username":"friend-1","password":"{secret}","confirmation":"{secret}"}}"#), 0),
@@ -758,12 +762,13 @@ mod tests {
         let body = body.unwrap();
         assert!(body.contains("  - Id: 0\n    Commands:\n      companion: true\n"), "{body}");
         assert_eq!(body.matches("companion: true").count(), 1, "{body}");
+        assert_eq!(body.matches("modstore: true").count(), 1, "{body}");
         // A mod that also gives it is told, and the rest of its grants stand.
         let (_, notes) = crate::mods::combine_whole_conf(
             "groups.yml",
             &[
                 (PLAYER_GRANT_OWNER.to_string(), PLAYER_GRANT_YML.to_string()),
-                ("m".to_string(), PLAYER_GRANT_YML.replace("companion: true", "companion: true\n      showexp: true")),
+                ("m".to_string(), PLAYER_GRANT_YML.replace("      modstore: true\n", "      showexp: true\n")),
             ],
             &[],
         );

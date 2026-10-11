@@ -1,0 +1,11 @@
+{
+  "name": "navigation-server-npcs",
+  "version": "1.0.0",
+  "author": "Ragnarok Offline",
+  "description": "Navigation finds the NPCs this server actually has, where it puts them and under the names it shows, including the ones other mods add.",
+  "default": "off",
+  "requires": {
+    "app": ">=1.5.2",
+    "era": "any"
+  }
+}

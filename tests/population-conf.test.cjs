@@ -1,7 +1,7 @@
 'use strict';
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { lines, companionLimit, areaShare, companionHire, companionFee, skillWeaponCheck, COMPANION_LIMIT_MIN, COMPANION_LIMIT_MAX } = require('../electron/population-conf');
+const { lines, companionLimit, areaShare, companionHire, companionFee, skillWeaponCheck, shellLoot, LOOT_DEFAULTS, COMPANION_LIMIT_MIN, COMPANION_LIMIT_MAX } = require('../electron/population-conf');
 
 // The bounds the Settings slider exposes: 4 (the historic cap) to 11, because
 // rAthena's MAX_PARTY in our fork is 12 and a slot must stay free for real
@@ -94,4 +94,41 @@ test('the weapon rule is written, and is off unless turned on', () => {
 	assert.match(lines({ ...base, population_enable: false, population_skill_weapon_check: true }),
 		/^population_engine_skill_weapon_check: 1$/m, 'written while the engine is off, so it sticks');
 	for (const v of [false, 'yes', 1, null, undefined]) assert.equal(skillWeaponCheck({ population_skill_weapon_check: v }), 0, String(v));
+});
+
+// Shell looting: off unless the box is ticked, so a save from before keeps
+// every drop on the ground as it always was, and every knob has a default.
+test('shell looting is written, and is off unless turned on', () => {
+	const base = { population_enable: true, population_max: 1500, population_density: 100 };
+	assert.match(lines(base), /^population_engine_loot_enable: 0$/m);
+	assert.match(lines({ ...base, population_loot_enable: true }), /^population_engine_loot_enable: 1$/m);
+	assert.match(lines({ ...base, population_enable: false, population_loot_enable: true }),
+		/^population_engine_loot_enable: 1$/m, 'written while the engine is off, so it sticks');
+	for (const v of [false, 'yes', 1, null, undefined]) assert.equal(shellLoot({ population_loot_enable: v }).enable, 0, String(v));
+});
+
+test('an old save gets the loot defaults, in the units the server reads', () => {
+	const text = lines({ population_enable: true, population_max: 1500, population_density: 100 });
+	assert.match(text, /^population_engine_loot_rare_rate: 100$/m, '1% is 100 per 10000');
+	assert.match(text, /^population_engine_loot_rare_pickup_pct: 95$/m);
+	assert.match(text, /^population_engine_loot_common_pickup_pct: 70$/m);
+	assert.match(text, /^population_engine_loot_forget_pct: 10$/m);
+	assert.match(text, /^population_engine_loot_timeout_ms: 15000$/m, 'seconds in Settings, ms for the server');
+	assert.match(text, /^population_engine_loot_radius: 9$/m);
+	assert.match(text, /^population_engine_loot_hp_abort_pct: 30$/m);
+	assert.deepEqual(shellLoot({}), { enable: 0, ...LOOT_DEFAULTS });
+});
+
+test('loot values are converted and clamped, never refused', () => {
+	assert.equal(shellLoot({ population_loot_rare_pct: 0 }).rarePct, 0, '0 = cards only');
+	assert.match(lines({ population_loot_rare_pct: 0.25 }), /^population_engine_loot_rare_rate: 25$/m);
+	assert.equal(shellLoot({ population_loot_rare_pct: 250 }).rarePct, 100);
+	assert.equal(shellLoot({ population_loot_rare_pct: 'nonsense' }).rarePct, 1);
+	assert.equal(shellLoot({ population_loot_forget_pct: 140 }).forgetPct, 100);
+	assert.equal(shellLoot({ population_loot_rare_pickup_pct: 101 }).rarePickupPct, 100);
+	assert.equal(shellLoot({ population_loot_common_pickup_pct: -1 }).commonPickupPct, 0);
+	assert.equal(shellLoot({ population_loot_timeout_s: 0 }).timeoutS, 1);
+	assert.equal(shellLoot({ population_loot_timeout_s: 9999 }).timeoutS, 600);
+	assert.equal(shellLoot({ population_loot_radius: 50 }).radius, 20);
+	assert.equal(shellLoot({ population_loot_hp_abort_pct: -5 }).hpAbortPct, 0);
 });

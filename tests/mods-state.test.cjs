@@ -40,6 +40,23 @@ test('a changed setting is pending; the same values are not', () => {
   assert.deepEqual(M.pending({ baseline, checked, present: present(mods), settings: { alpha: { rate: 1 } }, settingsBaseline }), []);
 });
 
+test('options are kept across a redraw only for a mod whose Options box is drawn again', () => {
+  // alpha's box was drawn again; beta is gone; gamma was updated to a
+  // version with its own settings page, so its box is not drawn any more.
+  const settings = { alpha: { rate: 2 }, beta: { rate: 3 }, gamma: { vendors: 20 } };
+  const settingsBaseline = { alpha: JSON.stringify({ rate: 1 }) };
+  const kept = M.keptOptions(settings, settingsBaseline);
+  assert.deepEqual(kept, { alpha: { rate: 2 } });
+  const baseline = M.adopt(null, [...mods, { name: 'gamma', enabled: true }]);
+  const checked = { alpha: true, beta: false, gamma: true };
+  const present = ['alpha', 'beta', 'gamma'];
+  assert.deepEqual(M.pending({ baseline, checked, present, settings: kept, settingsBaseline }),
+    [{ name: 'alpha', change: 'settings' }]);
+  // Before: gamma's old entry, with no baseline, was a change that never went away.
+  assert.deepEqual(M.pending({ baseline, checked, present, settings, settingsBaseline }).map(c => c.name),
+    ['alpha', 'beta', 'gamma']);
+});
+
 test('an install that is on waits for Apply; a skin installs itself', () => {
   let baseline = M.adopt(null, mods);
   const after = [...mods, { name: 'gamma', enabled: true }, { name: 'blue', enabled: true, kind: 'skin' }];

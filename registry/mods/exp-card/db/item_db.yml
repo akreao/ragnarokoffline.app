@@ -9,18 +9,16 @@
 #   50051..50060  Base_Exp_Card_1  .. Base_Exp_Card_10   -- grant BASE exp
 #   50061..50070  Job_Exp_Card_1   .. Job_Exp_Card_10    -- grant JOB exp
 #
-# Exp per card at a 1x rate is a roughly geometric curve, anchored at
-# Lv 10 = 60,000 (~5% of the Renewal level-98 base-exp requirement,
-# ~1.25M in db/re/job_exp.yml). Each level down halves-or-so, matching
-# the shape of rAthena's own NextBaseExp curve -- so a Lv 1 card at
-# player level 5 is roughly the same 3-5% chunk of the next level that a
-# Lv 10 card is at player level 98:
+# Exp per card at a 1x rate: about 5% of the next level at the lowest base
+# level that may use it (its EquipLevelMin), and about 3% nine levels
+# later, from Renewal's NextBaseExp for a second job (db/re/job_exp.yml).
+# Until 1.2.0 tiers 5-10 were 2,000-60,000, up to 14% of a level a card.
 #
-#   Lv 1  ->     100      Lv 6  ->  4,000
-#   Lv 2  ->     250      Lv 7  ->  7,500
-#   Lv 3  ->     500      Lv 8  -> 15,000
-#   Lv 4  ->   1,000      Lv 9  -> 30,000
-#   Lv 5  ->   2,000      Lv 10 -> 60,000
+#   Lv 1  ->     100      Lv 6  ->  2,250
+#   Lv 2  ->     250      Lv 7  ->  3,000
+#   Lv 3  ->     500      Lv 8  ->  5,500
+#   Lv 4  ->   1,000      Lv 9  -> 11,000
+#   Lv 5  ->   1,500      Lv 10 -> 30,000
 #
 # Job cards use the same numbers on the job axis. If you want a different
 # curve, edit the twenty scripts below.
@@ -46,6 +44,14 @@
 #   Lv 4 -> 31    Lv 9  -> 81
 #   Lv 5 -> 41    Lv 10 -> 91
 #
+# Untradeable (Trade): a card stays with the character that found it -- no
+# trading, dropping, vending (no cart), mail, auction or guild storage. It may
+# still go to personal storage or be sold to an NPC.
+#
+# Price: an NPC pays 100z for a Lv 1 card and 100z more a level, up to 1,000z
+# for Lv 10 -- half the Buy price, as for any item, so Buy is 200z a level
+# (no NPC sells the cards). Selling is the only way to get rid of one.
+#
 # Version 3 is the ITEM_DB version this build reads; take it from the
 # header of vendor/rathena/db/import-tmpl/item_db.yml if you retarget.
 Header:
@@ -58,8 +64,15 @@ Body:
     AegisName: Base_Exp_Card_1
     Name: Base Exp Card Lv1
     Type: Usable
-    Buy: 0
+    Buy: 200
     Weight: 1
+    Trade:
+      NoDrop: true
+      NoTrade: true
+      NoCart: true
+      NoGuildStorage: true
+      NoMail: true
+      NoAuction: true
     EquipLevelMin: 1
     Script: |
       .@exp = 100 * getbattleflag("base_exp_rate") / 100;
@@ -70,8 +83,15 @@ Body:
     AegisName: Base_Exp_Card_2
     Name: Base Exp Card Lv2
     Type: Usable
-    Buy: 0
+    Buy: 400
     Weight: 1
+    Trade:
+      NoDrop: true
+      NoTrade: true
+      NoCart: true
+      NoGuildStorage: true
+      NoMail: true
+      NoAuction: true
     EquipLevelMin: 11
     Script: |
       .@exp = 250 * getbattleflag("base_exp_rate") / 100;
@@ -82,8 +102,15 @@ Body:
     AegisName: Base_Exp_Card_3
     Name: Base Exp Card Lv3
     Type: Usable
-    Buy: 0
+    Buy: 600
     Weight: 1
+    Trade:
+      NoDrop: true
+      NoTrade: true
+      NoCart: true
+      NoGuildStorage: true
+      NoMail: true
+      NoAuction: true
     EquipLevelMin: 21
     Script: |
       .@exp = 500 * getbattleflag("base_exp_rate") / 100;
@@ -94,8 +121,15 @@ Body:
     AegisName: Base_Exp_Card_4
     Name: Base Exp Card Lv4
     Type: Usable
-    Buy: 0
+    Buy: 800
     Weight: 1
+    Trade:
+      NoDrop: true
+      NoTrade: true
+      NoCart: true
+      NoGuildStorage: true
+      NoMail: true
+      NoAuction: true
     EquipLevelMin: 31
     Script: |
       .@exp = 1000 * getbattleflag("base_exp_rate") / 100;
@@ -106,11 +140,18 @@ Body:
     AegisName: Base_Exp_Card_5
     Name: Base Exp Card Lv5
     Type: Usable
-    Buy: 0
+    Buy: 1000
     Weight: 1
+    Trade:
+      NoDrop: true
+      NoTrade: true
+      NoCart: true
+      NoGuildStorage: true
+      NoMail: true
+      NoAuction: true
     EquipLevelMin: 41
     Script: |
-      .@exp = 2000 * getbattleflag("base_exp_rate") / 100;
+      .@exp = 1500 * getbattleflag("base_exp_rate") / 100;
       if (.@exp > 0) getexp2 .@exp, 0;
       dispbottom "Base Exp Card Lv5: +" + callfunc("F_InsertComma", .@exp) + " base experience.";
 
@@ -118,11 +159,18 @@ Body:
     AegisName: Base_Exp_Card_6
     Name: Base Exp Card Lv6
     Type: Usable
-    Buy: 0
+    Buy: 1200
     Weight: 1
+    Trade:
+      NoDrop: true
+      NoTrade: true
+      NoCart: true
+      NoGuildStorage: true
+      NoMail: true
+      NoAuction: true
     EquipLevelMin: 51
     Script: |
-      .@exp = 4000 * getbattleflag("base_exp_rate") / 100;
+      .@exp = 2250 * getbattleflag("base_exp_rate") / 100;
       if (.@exp > 0) getexp2 .@exp, 0;
       dispbottom "Base Exp Card Lv6: +" + callfunc("F_InsertComma", .@exp) + " base experience.";
 
@@ -130,11 +178,18 @@ Body:
     AegisName: Base_Exp_Card_7
     Name: Base Exp Card Lv7
     Type: Usable
-    Buy: 0
+    Buy: 1400
     Weight: 1
+    Trade:
+      NoDrop: true
+      NoTrade: true
+      NoCart: true
+      NoGuildStorage: true
+      NoMail: true
+      NoAuction: true
     EquipLevelMin: 61
     Script: |
-      .@exp = 7500 * getbattleflag("base_exp_rate") / 100;
+      .@exp = 3000 * getbattleflag("base_exp_rate") / 100;
       if (.@exp > 0) getexp2 .@exp, 0;
       dispbottom "Base Exp Card Lv7: +" + callfunc("F_InsertComma", .@exp) + " base experience.";
 
@@ -142,11 +197,18 @@ Body:
     AegisName: Base_Exp_Card_8
     Name: Base Exp Card Lv8
     Type: Usable
-    Buy: 0
+    Buy: 1600
     Weight: 1
+    Trade:
+      NoDrop: true
+      NoTrade: true
+      NoCart: true
+      NoGuildStorage: true
+      NoMail: true
+      NoAuction: true
     EquipLevelMin: 71
     Script: |
-      .@exp = 15000 * getbattleflag("base_exp_rate") / 100;
+      .@exp = 5500 * getbattleflag("base_exp_rate") / 100;
       if (.@exp > 0) getexp2 .@exp, 0;
       dispbottom "Base Exp Card Lv8: +" + callfunc("F_InsertComma", .@exp) + " base experience.";
 
@@ -154,11 +216,18 @@ Body:
     AegisName: Base_Exp_Card_9
     Name: Base Exp Card Lv9
     Type: Usable
-    Buy: 0
+    Buy: 1800
     Weight: 1
+    Trade:
+      NoDrop: true
+      NoTrade: true
+      NoCart: true
+      NoGuildStorage: true
+      NoMail: true
+      NoAuction: true
     EquipLevelMin: 81
     Script: |
-      .@exp = 30000 * getbattleflag("base_exp_rate") / 100;
+      .@exp = 11000 * getbattleflag("base_exp_rate") / 100;
       if (.@exp > 0) getexp2 .@exp, 0;
       dispbottom "Base Exp Card Lv9: +" + callfunc("F_InsertComma", .@exp) + " base experience.";
 
@@ -166,11 +235,18 @@ Body:
     AegisName: Base_Exp_Card_10
     Name: Base Exp Card Lv10
     Type: Usable
-    Buy: 0
+    Buy: 2000
     Weight: 1
+    Trade:
+      NoDrop: true
+      NoTrade: true
+      NoCart: true
+      NoGuildStorage: true
+      NoMail: true
+      NoAuction: true
     EquipLevelMin: 91
     Script: |
-      .@exp = 60000 * getbattleflag("base_exp_rate") / 100;
+      .@exp = 30000 * getbattleflag("base_exp_rate") / 100;
       if (.@exp > 0) getexp2 .@exp, 0;
       dispbottom "Base Exp Card Lv10: +" + callfunc("F_InsertComma", .@exp) + " base experience.";
 
@@ -179,8 +255,15 @@ Body:
     AegisName: Job_Exp_Card_1
     Name: Job Exp Card Lv1
     Type: Usable
-    Buy: 0
+    Buy: 200
     Weight: 1
+    Trade:
+      NoDrop: true
+      NoTrade: true
+      NoCart: true
+      NoGuildStorage: true
+      NoMail: true
+      NoAuction: true
     EquipLevelMin: 1
     Script: |
       .@exp = 100 * getbattleflag("job_exp_rate") / 100;
@@ -191,8 +274,15 @@ Body:
     AegisName: Job_Exp_Card_2
     Name: Job Exp Card Lv2
     Type: Usable
-    Buy: 0
+    Buy: 400
     Weight: 1
+    Trade:
+      NoDrop: true
+      NoTrade: true
+      NoCart: true
+      NoGuildStorage: true
+      NoMail: true
+      NoAuction: true
     EquipLevelMin: 11
     Script: |
       .@exp = 250 * getbattleflag("job_exp_rate") / 100;
@@ -203,8 +293,15 @@ Body:
     AegisName: Job_Exp_Card_3
     Name: Job Exp Card Lv3
     Type: Usable
-    Buy: 0
+    Buy: 600
     Weight: 1
+    Trade:
+      NoDrop: true
+      NoTrade: true
+      NoCart: true
+      NoGuildStorage: true
+      NoMail: true
+      NoAuction: true
     EquipLevelMin: 21
     Script: |
       .@exp = 500 * getbattleflag("job_exp_rate") / 100;
@@ -215,8 +312,15 @@ Body:
     AegisName: Job_Exp_Card_4
     Name: Job Exp Card Lv4
     Type: Usable
-    Buy: 0
+    Buy: 800
     Weight: 1
+    Trade:
+      NoDrop: true
+      NoTrade: true
+      NoCart: true
+      NoGuildStorage: true
+      NoMail: true
+      NoAuction: true
     EquipLevelMin: 31
     Script: |
       .@exp = 1000 * getbattleflag("job_exp_rate") / 100;
@@ -227,11 +331,18 @@ Body:
     AegisName: Job_Exp_Card_5
     Name: Job Exp Card Lv5
     Type: Usable
-    Buy: 0
+    Buy: 1000
     Weight: 1
+    Trade:
+      NoDrop: true
+      NoTrade: true
+      NoCart: true
+      NoGuildStorage: true
+      NoMail: true
+      NoAuction: true
     EquipLevelMin: 41
     Script: |
-      .@exp = 2000 * getbattleflag("job_exp_rate") / 100;
+      .@exp = 1500 * getbattleflag("job_exp_rate") / 100;
       if (.@exp > 0) getexp2 0, .@exp;
       dispbottom "Job Exp Card Lv5: +" + callfunc("F_InsertComma", .@exp) + " job experience.";
 
@@ -239,11 +350,18 @@ Body:
     AegisName: Job_Exp_Card_6
     Name: Job Exp Card Lv6
     Type: Usable
-    Buy: 0
+    Buy: 1200
     Weight: 1
+    Trade:
+      NoDrop: true
+      NoTrade: true
+      NoCart: true
+      NoGuildStorage: true
+      NoMail: true
+      NoAuction: true
     EquipLevelMin: 51
     Script: |
-      .@exp = 4000 * getbattleflag("job_exp_rate") / 100;
+      .@exp = 2250 * getbattleflag("job_exp_rate") / 100;
       if (.@exp > 0) getexp2 0, .@exp;
       dispbottom "Job Exp Card Lv6: +" + callfunc("F_InsertComma", .@exp) + " job experience.";
 
@@ -251,11 +369,18 @@ Body:
     AegisName: Job_Exp_Card_7
     Name: Job Exp Card Lv7
     Type: Usable
-    Buy: 0
+    Buy: 1400
     Weight: 1
+    Trade:
+      NoDrop: true
+      NoTrade: true
+      NoCart: true
+      NoGuildStorage: true
+      NoMail: true
+      NoAuction: true
     EquipLevelMin: 61
     Script: |
-      .@exp = 7500 * getbattleflag("job_exp_rate") / 100;
+      .@exp = 3000 * getbattleflag("job_exp_rate") / 100;
       if (.@exp > 0) getexp2 0, .@exp;
       dispbottom "Job Exp Card Lv7: +" + callfunc("F_InsertComma", .@exp) + " job experience.";
 
@@ -263,11 +388,18 @@ Body:
     AegisName: Job_Exp_Card_8
     Name: Job Exp Card Lv8
     Type: Usable
-    Buy: 0
+    Buy: 1600
     Weight: 1
+    Trade:
+      NoDrop: true
+      NoTrade: true
+      NoCart: true
+      NoGuildStorage: true
+      NoMail: true
+      NoAuction: true
     EquipLevelMin: 71
     Script: |
-      .@exp = 15000 * getbattleflag("job_exp_rate") / 100;
+      .@exp = 5500 * getbattleflag("job_exp_rate") / 100;
       if (.@exp > 0) getexp2 0, .@exp;
       dispbottom "Job Exp Card Lv8: +" + callfunc("F_InsertComma", .@exp) + " job experience.";
 
@@ -275,11 +407,18 @@ Body:
     AegisName: Job_Exp_Card_9
     Name: Job Exp Card Lv9
     Type: Usable
-    Buy: 0
+    Buy: 1800
     Weight: 1
+    Trade:
+      NoDrop: true
+      NoTrade: true
+      NoCart: true
+      NoGuildStorage: true
+      NoMail: true
+      NoAuction: true
     EquipLevelMin: 81
     Script: |
-      .@exp = 30000 * getbattleflag("job_exp_rate") / 100;
+      .@exp = 11000 * getbattleflag("job_exp_rate") / 100;
       if (.@exp > 0) getexp2 0, .@exp;
       dispbottom "Job Exp Card Lv9: +" + callfunc("F_InsertComma", .@exp) + " job experience.";
 
@@ -287,10 +426,17 @@ Body:
     AegisName: Job_Exp_Card_10
     Name: Job Exp Card Lv10
     Type: Usable
-    Buy: 0
+    Buy: 2000
     Weight: 1
+    Trade:
+      NoDrop: true
+      NoTrade: true
+      NoCart: true
+      NoGuildStorage: true
+      NoMail: true
+      NoAuction: true
     EquipLevelMin: 91
     Script: |
-      .@exp = 60000 * getbattleflag("job_exp_rate") / 100;
+      .@exp = 30000 * getbattleflag("job_exp_rate") / 100;
       if (.@exp > 0) getexp2 0, .@exp;
       dispbottom "Job Exp Card Lv10: +" + callfunc("F_InsertComma", .@exp) + " job experience.";

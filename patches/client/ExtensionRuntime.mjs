@@ -11,6 +11,19 @@ function freeze(value) {
     return value;
 }
 
+// The map server writes a stored string's bytes outside ASCII as one \u00XX
+// each (chat would mangle them otherwise); put the UTF-8 back together.
+const utf8 = new TextDecoder('utf-8');
+function storeText(value) {
+    if (typeof value === 'string') {
+        return /[\u0080-\u00ff]/.test(value) ? utf8.decode(Uint8Array.from(value, c => c.charCodeAt(0) & 0xff)) : value;
+    }
+    if (value && typeof value === 'object') {
+        for (const key of Object.keys(value)) value[key] = storeText(value[key]);
+    }
+    return value;
+}
+
 export function createRuntime({ storage, report = (...args) => console.error(...args) } = {}) {
     const listeners = new Map();
     const components = new Map();
@@ -409,6 +422,25 @@ export function createRuntime({ storage, report = (...args) => console.error(...
                     if (typeof bridge.hostRequest !== 'function') return Promise.reject(new Error('this client cannot reach host routes'));
                     return Promise.resolve().then(() => bridge.hostRequest(name, path, copy(options)))
                         .then(value => freeze(copy(value)));
+                },
+            }),
+            // The mod store (docs/MOD_STORE.md), read-only: what the mod's
+            // server side keeps under `client`, answered by the map server's
+            // @modstore as a server request. The name is bound here.
+            store: Object.freeze({
+                get(scope, path = 'client', options = {}) {
+                    if (disposed) throw new Error(`Plugin ${name} is disposed`);
+                    if (!['global', 'account', 'char'].includes(scope)) throw new TypeError("store.get: scope must be 'global', 'account' or 'char'");
+                    if (typeof path !== 'string' || !/^client(\.[A-Za-z0-9_]+)*$/.test(path) || path.length > 255) {
+                        throw new TypeError("store.get: a client reads paths under 'client', such as 'client.board'");
+                    }
+                    if (typeof bridge.serverRequest !== 'function') return Promise.reject(new Error('this client cannot make server requests'));
+                    const timeout = Math.min(Math.max(Number(options.timeout) || 5000, 500), 30000);
+                    return Promise.resolve(bridge.serverRequest('modstore', `${name} ${scope} ${path}`, timeout)).then(answer => {
+                        const text = String(answer);
+                        if (!text.startsWith('1 ')) throw new Error(`store.get: ${text.replace(/^0 /, '') || 'no answer'}`);
+                        return freeze(storeText(JSON.parse(text.slice(2))));
+                    });
                 },
             }),
             server: Object.freeze({

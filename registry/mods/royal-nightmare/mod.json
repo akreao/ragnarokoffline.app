@@ -1,0 +1,21 @@
+{
+  "name": "royal-nightmare",
+  "author": "Lil Art",
+  "description": "A solo challenge in a nightmare version of Prontera, for Base Level 230 and up. Fight through two hordes of the Nightmare Queen's cursed townspeople, then her Death Witches, and finally Demi Freyja, within a 60-minute limit shown on screen. Clearing it opens a reward chest; it can be run again after 8 hours. One player at a time. Renewal only.",
+  "tags": [
+    "instance",
+    "challenge",
+    "mvp",
+    "endgame",
+    "npc"
+  ],
+  "icon": "images/icon.png",
+  "homepage": "https://github.com/LilArt420/royalnightmare",
+  "requires": {
+    "era": "renewal"
+  },
+  "source": {
+    "github": "LilArt420/royalnightmare",
+    "asset": "royal-nightmare-*.zip"
+  }
+}

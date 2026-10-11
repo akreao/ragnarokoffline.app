@@ -206,7 +206,8 @@ function rosterBody(text) {
 
 /**
  * Parse one @CP line. Format (see population_engine_companion_list_raw):
- *   @CP|name|job|base_level|active|favorite|live_level|live_job|pet|duty
+ *   @CP|name|job|base_level|active|favorite|live_level|live_job|pet|duty|rebirth
+ *      |heal_at|emergency_at|rest_below|rest_until
  *   @CPEND|count
  *
  * @param {string} text
@@ -305,6 +306,32 @@ function _feeText(t) {
 	return parts.join(' and ');
 }
 
+/** A numeric @CP field by position, or null when this server does not send it. */
+function _field(parts, i) {
+	const raw = parts.length > i ? parseInt(parts[i], 10) : NaN;
+	return Number.isFinite(raw) ? raw : null;
+}
+
+/**
+ * The healer and resting thresholds to show on the Battle tab: what the server holds for
+ * the party, read from a summoned companion first (the commands set every summoned one),
+ * else any companion, else the defaults every companion starts with.
+ */
+function _thresholds() {
+	const fallback = { healAt: 75, emergencyAt: 35, restBelow: 30, restUntil: 95 };
+	const from = _roster.find(m => m.active && m.healAt !== null) || _roster.find(m => m.healAt !== null);
+	if (!from) {
+		return fallback;
+	}
+	const pick = key => (from[key] !== null && from[key] !== undefined ? from[key] : fallback[key]);
+	return {
+		healAt: pick('healAt'),
+		emergencyAt: pick('emergencyAt'),
+		restBelow: pick('restBelow'),
+		restUntil: pick('restUntil')
+	};
+}
+
 function parseRosterLine(text) {
 	const body = rosterBody(text);
 	if (body === null) {
@@ -322,7 +349,10 @@ function parseRosterLine(text) {
 				m.liveJob !== _roster[i].liveJob ||
 				m.level !== _roster[i].level || m.active !== _roster[i].active ||
 				m.liveLevel !== _roster[i].liveLevel || m.hom !== _roster[i].hom ||
-				m.duty !== _roster[i].duty);
+				m.duty !== _roster[i].duty ||
+				m.healAt !== _roster[i].healAt || m.emergencyAt !== _roster[i].emergencyAt ||
+				m.restBelow !== _roster[i].restBelow || m.restUntil !== _roster[i].restUntil ||
+				m.canRoam !== _roster[i].canRoam || m.roam !== _roster[i].roam || m.dead !== _roster[i].dead);
 		_roster = fresh;
 		_pending = [];
 		const age = _rosterRequestedAt ? Math.round((Date.now() - _rosterRequestedAt) / 1000) : 0;
@@ -367,7 +397,26 @@ function parseRosterLine(text) {
 		// The duty the server holds: 'tank', 'support', 'attacker', or null for none yet (and
 		// for an older server that does not send it). Kept only in _duties before, the badge
 		// went blank on every restart, reload and relog although the server still had it.
-		duty: DUTY_NAMES[parseInt(parts[9], 10)] || null
+		duty: DUTY_NAMES[parseInt(parts[9], 10)] || null,
+		// Rebirth readiness: -1 = this class cannot be reborn, 0 = a 2nd class that has not
+		// met the gate yet, 1 = ready. APPENDED after duty so the fields either side already
+		// relies on keep their positions; an older server simply offers no rebirth.
+		rebirth: (() => {
+			const raw = parts.length > 10 ? parseInt(parts[10], 10) : NaN;
+			return Number.isFinite(raw) ? raw : -1;
+		})(),
+		// The Battle tab's saved thresholds, appended after rebirth. null from an older server,
+		// which leaves the boxes on their defaults as before.
+		healAt: _field(parts, 11),
+		emergencyAt: _field(parts, 12),
+		restBelow: _field(parts, 13),
+		restUntil: _field(parts, 14),
+		// Roaming (walks the map on its own) and down (a summoned companion that is dead),
+		// appended after the thresholds. The server sends -1 for roaming while Settings ->
+		// Population -> Companion roaming is off, and an older server nothing: no control then.
+		canRoam: parts[15] === '0' || parts[15] === '1',
+		roam: parts[15] === '1',
+		dead: parts[16] === '1'
 	});
 	// The server has answered for this companion; its duty is the one to show.
 	if (parts.length > 9) {
@@ -392,6 +441,7 @@ function _render() {
 		_drawBattle();
 		_drawSkills();
 		_drawGear();
+		_drawRebirth();
 		_mountSkillPicker();
 	});
 }
@@ -455,8 +505,10 @@ function _drawParty() {
 
 		const nm = document.createElement('div');
 		nm.className = 'nm';
-		nm.textContent = (m.favorite ? '★ ' : '') + m.name;
-		nm.title = m.name;
+		nm.textContent = (m.dead ? '✝ ' : '') + (m.favorite ? '★ ' : '') + m.name;
+		nm.title = m.dead
+			? `${m.name} is down. Revive it with Resurrection or a Yggdrasil Leaf.`
+			: m.name;
 
 		const cls = document.createElement('div');
 		cls.className = 'cls';
@@ -538,10 +590,28 @@ function _drawParty() {
 			m.hom ? `Put ${m.name}'s homunculus away` : `Bring ${m.name}'s homunculus back`
 		);
 
+		// Roam: this companion walks the map on its own instead of following. Like the pet
+		// switch, the label is the state the server holds and the click asks for the other.
+		const roam = !m.canRoam ? null : _button(
+			m.roam ? 'Roaming' : 'Following',
+			m.roam ? 'b on' : 'b',
+			() => {
+				talk(`@companion roam ${m.name} ${m.roam ? 'off' : 'on'}`, false);
+			},
+			m.roam ? `${m.name} walks the map on its own. Click to have it follow you`
+				: `${m.name} follows you. Click to let it roam the map on its own`
+		);
+
 		// The row's call shape is pinned by tests/companion-panel-row and -skill-picker, and this
 		// control is conditional, so build the row as usual and slot the button in beside Duty
 		// and Skills rather than rebuilding the child list on every added control.
 		const row = _row(id, lv, badge, duty, skills, summon, fav, trash);
+		if (m.dead) {
+			row.classList.add('dead');
+		}
+		if (roam) {
+			row.insertBefore(roam, summon);
+		}
 		if (pet) {
 			row.insertBefore(pet, summon);
 		}
@@ -652,6 +722,22 @@ function _drawBattle() {
 	});
 	page.append(grid);
 
+	// Movement: follow you, or walk the map on their own as field players do. Per companion
+	// on the Party tab; these set every one of them. Only while the server allows roaming
+	// (Settings -> Population -> Companion roaming), which the roster says.
+	if (_roster.some(m => m.canRoam)) {
+		const hm = document.createElement('h4');
+		hm.textContent = 'Movement (whole party)';
+		page.append(hm);
+		const moves = document.createElement('div');
+		moves.className = 'grid';
+		moves.append(
+			_button('Follow', 'b wide', () => talk('@companion roam off', false), 'Stay with you'),
+			_button('Roam', 'b wide', () => talk('@companion roam on', false), 'Walk the map on their own')
+		);
+		page.append(moves);
+	}
+
 	const h2 = document.createElement('h4');
 	h2.textContent = 'Orders';
 	page.append(h2);
@@ -662,6 +748,9 @@ function _drawBattle() {
 		_button('Recall', 'b wide', () => talk('recall', true), 'Teleport every companion to you')
 	);
 	page.append(orders);
+
+	// What the server has saved, so the boxes open on the party's own values.
+	const saved = _thresholds();
 
 	const h3 = document.createElement('h4');
 	h3.textContent = 'Healer thresholds';
@@ -676,13 +765,13 @@ function _drawBattle() {
 	normal.type = 'number';
 	normal.min = 1;
 	normal.max = 99;
-	normal.value = '75';
+	normal.value = String(saved.healAt);
 	const emergency = document.createElement('input');
 	emergency.className = 'num';
 	emergency.type = 'number';
 	emergency.min = 1;
 	emergency.max = 99;
-	emergency.value = '35';
+	emergency.value = String(saved.emergencyAt);
 
 	page.append(_row(
 		(() => {
@@ -703,6 +792,55 @@ function _drawBattle() {
 			const a = Math.max(1, Math.min(99, Number(normal.value) || 75));
 			const b = Math.max(1, Math.min(99, Number(emergency.value) || 35));
 			talk(`@companion heal ${a} ${b}`, false);
+		})
+	));
+
+	// When companions sit down to rest between fights (whole party, like the
+	// healer thresholds). The server keeps "until" at least 5 above "below",
+	// or a companion would stand up and sit straight back down.
+	const h5 = document.createElement('h4');
+	h5.textContent = 'Resting';
+	page.append(h5);
+	const restHint = document.createElement('div');
+	restHint.className = 'hint';
+	restHint.textContent = 'Between fights, companions sit down to recover below this SP or HP level, '
+		+ 'and stand once both are back. 0 = never rest.';
+	page.append(restHint);
+
+	const restBelow = document.createElement('input');
+	restBelow.className = 'num';
+	restBelow.type = 'number';
+	restBelow.min = 0;
+	restBelow.max = 90;
+	restBelow.value = String(saved.restBelow);
+	const restUntil = document.createElement('input');
+	restUntil.className = 'num';
+	restUntil.type = 'number';
+	restUntil.min = 5;
+	restUntil.max = 100;
+	restUntil.value = String(saved.restUntil);
+
+	page.append(_row(
+		(() => {
+			const s = document.createElement('span');
+			s.className = 'nm';
+			s.textContent = 'Rest below';
+			return s;
+		})(),
+		restBelow,
+		(() => {
+			const s = document.createElement('span');
+			s.className = 'lv';
+			s.textContent = '% / until';
+			return s;
+		})(),
+		restUntil,
+		_button('Set', 'b', () => {
+			const a = Math.max(0, Math.min(90, Math.round(Number(restBelow.value)) || 0));
+			const b = Math.max(a + 5, Math.min(100, Math.round(Number(restUntil.value)) || 95));
+			restBelow.value = String(a);
+			restUntil.value = String(b);
+			talk(`@companion rest ${a} ${b}`, false);
 		})
 	));
 }
@@ -982,6 +1120,73 @@ function _mountSkillPicker() {
 	}
 }
 
+/// The Rebirth tab: a companion that has maxed its 2nd job can be reborn, and the player chooses
+/// how. Both options change class, which unequips anything the new class cannot wear - gear the
+/// player handed over goes back to the player, so the choice is made with that on screen rather than
+/// discovered afterwards.
+function _drawRebirth() {
+	const page = _page('rebirth');
+	if (!page) {
+		return;
+	}
+	page.replaceChildren();
+
+	const hint = document.createElement('div');
+	hint.className = 'hint';
+	hint.textContent = 'Reborn companions start again, so this is never automatic. Entering a transcendent class also unequips gear it can no longer wear; what you gave it comes back to you. Only a 2nd class at base 99 / job 50 can be reborn.';
+	page.append(hint);
+
+	const ready = _roster.filter(m => m.rebirth === 1);
+	const waiting = _roster.filter(m => m.rebirth === 0);
+
+	if (!ready.length && !waiting.length) {
+		const e = document.createElement('div');
+		e.className = 'empty';
+		e.textContent = 'No companion here can be reborn. 1st classes advance on their own; only a maxed 2nd class is offered this.';
+		page.append(e);
+		return;
+	}
+
+	ready.forEach(m => {
+		const h = document.createElement('h4');
+		h.textContent = `${m.name} - ready to be reborn`;
+		page.append(h);
+
+		const grid = document.createElement('div');
+		grid.className = 'grid';
+		grid.append(_button('High Novice', 'b', () => {
+			confirmInWindow(
+				`Rebirth ${m.name} as a High Novice?`,
+				`It restarts at level 1 and climbs back up as a high class, then a transcendent one. Gear it can no longer wear is unequipped, and anything you gave it comes back to you.`,
+				'Rebirth', true
+			).then(ok => {
+				if (!ok) return;
+				talk(`@companion rebirth ${m.name} novice`, false);
+				window.setTimeout(refreshRoster, 900);
+			});
+		}, 'The proper rebirth: High Novice at level 1, then the full climb'));
+		grid.append(_button('Transcendent', 'b', () => {
+			confirmInWindow(
+				`Advance ${m.name} straight to its transcendent class?`,
+				`It keeps its level and becomes the transcendent class immediately. Gear it can no longer wear is unequipped, and anything you gave it comes back to you.`,
+				'Advance', false
+			).then(ok => {
+				if (!ok) return;
+				talk(`@companion rebirth ${m.name} trans`, false);
+				window.setTimeout(refreshRoster, 900);
+			});
+		}, 'Straight to the transcendent class, keeping its level'));
+		page.append(grid);
+	});
+
+	waiting.forEach(m => {
+		const p = document.createElement('div');
+		p.className = 'hint';
+		p.textContent = `${m.name} - not ready yet: needs base 99 and job 50.`;
+		page.append(p);
+	});
+}
+
 function _drawGear() {
 	const page = _page('gear');
 	if (!page) {
@@ -1063,7 +1268,10 @@ function installChatHook() {
  * @param {string} detail
  * @return {Promise<boolean>}
  */
-function confirmInWindow(question, detail) {
+/// Ask a yes/no in-window. `okLabel` names the confirming action, because the same dialog is used
+/// for things that are not deletions (a rebirth is not a delete, and a button that says Delete for
+/// it says the opposite of what it does). The default keeps the delete caller's wording unchanged.
+function confirmInWindow(question, detail, okLabel = 'Delete', okDanger = true) {
 	return new Promise(resolve => {
 		const root = CompanionPanel.getRoot();
 		const overlay = document.createElement('div');
@@ -1074,11 +1282,16 @@ function confirmInWindow(question, detail) {
 				<div class="confirm-detail"></div>
 				<div class="confirm-buttons">
 					<button class="b" data-act="cancel">Cancel</button>
-					<button class="b danger" data-act="ok">Delete</button>
+					<button class="b" data-act="ok"></button>
 				</div>
 			</div>`;
 		overlay.querySelector('.confirm-question').textContent = question;
 		overlay.querySelector('.confirm-detail').textContent = detail || '';
+		const okButton = overlay.querySelector('[data-act="ok"]');
+		okButton.textContent = okLabel;
+		if (okDanger) {
+			okButton.classList.add('danger');
+		}
 
 		const done = answer => {
 			overlay.remove();
@@ -1171,7 +1384,8 @@ CompanionPanel.init = function init() {
 			});
 			// Switching to a tab re-reads the roster, so a stale list cannot sit
 			// there looking broken after companions are summoned or benched.
-			if (btn.dataset.tab === 'party' || btn.dataset.tab === 'gear') {
+			if (btn.dataset.tab === 'party' || btn.dataset.tab === 'gear' ||
+				btn.dataset.tab === 'rebirth') {
 				refreshRoster();
 			}
 			// The Skills tab shows a chooser, so it opens with the list already fresh.

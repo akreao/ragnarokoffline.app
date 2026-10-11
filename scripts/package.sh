@@ -346,16 +346,14 @@ tar -cf "$EN/data.tar" -C "$SRC" data
 cp -R "$SRC/SystemEN" "$EN/SystemEN"
 done
 
-# The single files link-assets lifts from ROenglishRE's Compatibility layers;
-# config/TRANSLATION_EXTRAS lists them and says why only these.
-grep -v '^[[:space:]]*\(#\|$\)' "$ROOT/config/TRANSLATION_EXTRAS" | while IFS=$'\t' read -r SRC _; do
-    [ -f "$ROOT/vendor/ROenglishRE/Translation/$SRC" ] || {
-        echo "warning: TRANSLATION_EXTRAS names $SRC, which the pinned ROenglishRE lacks" >&2
-        continue
-    }
-    mkdir -p "$(dirname "$PAYLOAD/vendor/ROenglishRE/Translation/$SRC")"
-    cp "$ROOT/vendor/ROenglishRE/Translation/$SRC" "$PAYLOAD/vendor/ROenglishRE/Translation/$SRC"
-done
+# What link-assets takes from ROenglishRE's Compatibility layers: the files
+# config/TRANSLATION_LAYERS takes from every layer a packet version could
+# stack, and the sources config/TRANSLATION_EXTRAS names. A tar, for the reason
+# data.tar is one -- most are images under the CP949 folder name -- and
+# unpacked into Translation/ by the shell, as data.tar is. The script writes it
+# itself; it says why.
+node "$ROOT/scripts/translation-layers.cjs" "$ROOT" \
+    "$PAYLOAD/vendor/ROenglishRE/Translation/compatibility.tar"
 
 # The Visual C++ runtime, for the Windows installer to hand to Windows.
 #

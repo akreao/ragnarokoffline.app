@@ -46,8 +46,27 @@ test('the grant only applies from 3rd job onward', () => {
 		'novice + 1st + 2nd jobs (0..23) must be excluded from the grant');
 	assert.match(around, /jid >= 4001 && jid <= 4022/,
 		'transcendent jobs (4001..4022) must be excluded - they advance to 3rd, not 4th');
-	assert.match(around, /if \(!pre_third\)/,
+	assert.match(around, /if \(!pre_third\b/,
 		'and the grant must sit behind that exclusion');
+});
+
+test('the grant is paid per level gained, not per poll', () => {
+	// The grant sits in the global combat timer, which runs every
+	// population_engine_shell_timer_ms (100 ms). Paid on every tick, a 3rd-job
+	// companion gained 90 points ten times a second and reached its profile's
+	// maxima at once, whatever its level.
+	const i = src.indexOf('population_engine_companion_points_per_level');
+	const around = src.slice(i - 1400, i + 700);
+	assert.match(state, /int16_t\s+points_granted_level\s*=\s*0;/,
+		'each shell must remember the level it has been paid up to');
+	assert.match(around, /lv > sd->pop\.points_granted_level/,
+		'points are paid only when the base level is above that mark');
+	assert.match(around, /grant \* levels/,
+		'and paid once for each level gained');
+	assert.match(around, /sd->pop\.points_granted_level == 0 \|\| lv < sd->pop\.points_granted_level/,
+		'the first poll after a spawn or recall, and a rebirth, set the mark without paying');
+	assert.match(around, /sd->pop\.points_granted_level = lv;\s*\n/,
+		'the mark follows the level, so 1st and 2nd job levels are never paid later');
 });
 
 test('a companion dropped by a party rebuild is healed by ownership, not released', () => {

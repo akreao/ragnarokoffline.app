@@ -3,15 +3,41 @@
 //= The "Vendors" total is split across the vendors in
 //= db/population_vendors.yml by their Count, so a Count is a theme's share,
 //= not a fixed number. Settings take effect when the server starts.
+//=
+//= The street follows the clock, every hour on the hour: "Sell stalls" and
+//= "Buy stalls" are the most that stand, in the evening; fewer the rest of
+//= the day (a core of AFK merchants overnight, the fewest in the morning).
+//= Stalls shout more in the evening and seldom at night. With the hunted
+//= supply on, it sets the sell stalls itself ($@pvs_stalls), times the
+//= street's share ($@pv_streetpct).
 //===========================================================================
 -	script	ProntVendorsCfg	-1,{
 	end;
 OnInit:
-	.@mod$ = "prontera-vendors";
-	.@sell = callfunc("F_ModSetting", .@mod$, "sell_shops", 1) ? callfunc("F_ModSetting", .@mod$, "vendors", 30) : 0;
-	population_vendor_count "prontera-vendors/sell/", .@sell;
-	population_vendor_rotation "prontera-vendors/", callfunc("F_ModSetting", .@mod$, "rotation_minutes", 240);
-	.@gap = callfunc("F_ModSetting", .@mod$, "callout_seconds", 180);
-	population_vendor_callouts "prontera-vendors/", callfunc("F_ModSetting", .@mod$, "callouts", 1), .@gap / 2, .@gap * 3 / 2;
+	.mod$ = "prontera-vendors";
+	// Share of the stalls that stand, and how far apart shouts are (% of the
+	// setting), by the hour: 0-6 night, 7-11 morning, 12-16 afternoon,
+	// 17-18 early evening, 19-22 evening, 23 late.
+	setarray .streetpct[0], 80, 80, 80, 80, 80, 80, 80, 70, 70, 70, 70, 70, 85, 85, 85, 85, 85, 95, 95, 100, 100, 100, 100, 90;
+	setarray .shoutpct[0], 300, 300, 300, 300, 300, 300, 300, 150, 150, 150, 150, 150, 120, 120, 120, 120, 120, 100, 100, 80, 80, 80, 80, 100;
+	population_vendor_rotation "prontera-vendors/", callfunc("F_ModSetting", .mod$, "rotation_minutes", 120);
+	callsub S_Street;
 	end;
+
+OnMinute00:
+	callsub S_Street;
+	end;
+
+// S_Street: the stall counts and the shouts for this hour.
+S_Street:
+	.@h = gettime(DT_HOUR);
+	$@pv_streetpct = .streetpct[.@h];
+	.@sell = callfunc("F_ModSetting", .mod$, "sell_shops", 1) ? callfunc("F_ModSetting", .mod$, "vendors", 30) : 0;
+	if (!$@pvs_stalls)
+		population_vendor_count "prontera-vendors/sell/", .@sell * $@pv_streetpct / 100;
+	.@buy = callfunc("F_ModSetting", .mod$, "buy_shops", 1) ? callfunc("F_ModSetting", .mod$, "buy_stalls", 30) : 0;
+	population_vendor_count "prontera-vendors/buy/", .@buy * $@pv_streetpct / 100;
+	.@gap = callfunc("F_ModSetting", .mod$, "callout_seconds", 180) * .shoutpct[.@h] / 100;
+	population_vendor_callouts "prontera-vendors/", callfunc("F_ModSetting", .mod$, "callouts", 1), .@gap / 2, .@gap * 3 / 2;
+	return;
 }

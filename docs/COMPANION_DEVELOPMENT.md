@@ -114,8 +114,9 @@ listed above.
 - Priest, High Priest, Arch Bishop, trans Arch Bishop, and Cardinal shells can
   use fixed level 3 Resurrection on dead real party members and companions.
 - Level 3 restores 50% HP. Normal SP and timing apply.
-- The Blue Gemstone requirement is intentionally virtual and unlimited because
-  a shell has no player-accessible inventory.
+- With Companion inventory on (`population_engine_companion_inventory`), a
+  companion pays the Blue Gemstone from its own bag and does not try
+  Resurrection without one. Otherwise, and for ambient shells, it is waived.
 - A real player can use a Yggdrasil Leaf on a dead companion.
 - If the owner leaves the map while the companion is dead, stale cleanup
   releases it and removes it from the party.
@@ -144,6 +145,8 @@ listed above.
 | `third-party/population-engine/files/src/map/population_engine/core/population_shell_state.hpp` | Companion runtime state in the normal engine layout |
 | `third-party/population-engine/files/src/map/population_engine/core/population_shell_combat_skills.hpp` | Matching runtime state in the combat-skills layout; keep both state definitions aligned |
 | `third-party/population-engine/patches/0001-population-engine-hooks.patch` | rAthena-owned hooks, including party acceptance, membership callbacks, damage/death integration, and population ally semantics |
+| `third-party/population-engine/files/src/map/population_engine/runtime/population_shell_inventory.cpp` | The companion's own bag: no top-ups, item-cost checks, potion choice, and saving and restoring it (`inventory_detail`) |
+| `third-party/population-engine/patches/0033-companion-inventory.patch` | Lifts the `skill_get_requirement` waiver for recruited companions, so rAthena checks and takes their item and ammunition costs |
 | `third-party/population-engine/patches/0003-companion-loot-owner.patch` | Redirects recruited-shell loot priority to the active same-map owner and excludes recruited shells as item-share recipients; ambient shells, real-player sharing, and EXP attribution are unchanged |
 | `scripts/apply-party-chat-hook.py` | Idempotently inserts the party-chat command hook into pinned `clif.cpp` without a fragile line-number patch |
 | `scripts/apply-server-mods.sh` | Copies engine-owned files, applies rAthena patches, then installs the party-chat hook |
@@ -153,11 +156,140 @@ listed above.
 | `third-party/population-engine/files/db/population_skill_db.yml` | Configurable skill lists and conditions |
 | `third-party/population-engine/files/db/population_gear_sets.yml` | Configurable equipment sets |
 | `third-party/population-engine/files/db/population_chat.yml` | Ambient chat categories and messages |
+| `third-party/population-engine/files/src/map/population_engine/strategy/` | Companion strategies: `db/population_strategy.yml` (per-monster, per-job and per-build rules, strategies as a state machine, events, `<name> trace`). Self-contained; the engine calls it from thirteen marked places (see below). Reference: [docs/mods/companion-strategies/](mods/companion-strategies/README.md) |
+| `third-party/population-engine/files/src/map/population_engine/runtime/population_companion_roam.{hpp,cpp}` | Roaming (a companion walks its owner's map on its own) and the "I'm down" notice; see below |
+| `third-party/population-engine/patches/0034-companion-roam-command.patch` | `@companion roam [<name>] on\|off`, which the Companions window sends |
+| `third-party/population-engine/files/db/population_strategy.yml` | Companion strategies table; ships empty, mods add to it through `db/import/` |
 
 The Population Engine is vendored as its own files plus patches against pinned
 rAthena. Do not edit `vendor/rathena` as the source of truth. Regenerate or
 update files under `third-party/population-engine`, then prove they apply to a
 clean pin.
+
+### Companion strategies: where the engine calls in
+
+What is still to build, and in which order: [COMPANION_STRATEGY_ROADMAP.md](COMPANION_STRATEGY_ROADMAP.md).
+
+`strategy/population_strategy.{hpp,cpp}` holds the whole feature. The engine
+reaches it from these lines, each marked `RAGNAROKMAC (companion strategies)`:
+
+| File | Line | Why |
+|---|---|---|
+| `population_engine_factory.cpp` | `#include "strategy/population_strategy.cpp"`, **last** | it uses the combat file's internal checks (`pop_skill_weapon_ok`, `pop_skill_state_ok`, `population_shell_resolve_sc_name`), visible only after it in the unity build |
+| `population_engine.cpp` | load, reload, final | beside `population_skill_db()` |
+| `population_engine.cpp` | `population_engine_on_party_chat` | every real player's party line, before the leader check |
+| `population_engine.cpp` | companion loop: `population_strategy_target(...)` around `pop_companion_combat_target` | `Targeting:` |
+| `population_engine.cpp` | `pop_companion_follow_owner`: the leash | a rule holding its ground gets the leash a fight in the owner's sight gets (`AREA_SIZE + 2`), so holding wins over the leash, never over the warps |
+| `population_engine.cpp` | companion loop: the idle stop-walking and `pop_companion_update_formation` | an idle companion's rule-started walk and spot are kept |
+| `population_engine_combat.cpp` | include of the header | |
+| `population_engine_combat.cpp` | `population_shell_combat_process_tick`, right after party resurrection | the companion's turn: resurrection outranks every rule |
+| `population_engine_combat.cpp` | rotation loop of `population_shell_pick_attack_skill`, and the sphere chain's `pick` | `Allow:`, `Ban:` and `Rotation: false` |
+| `population_engine_combat.cpp` | `population_shell_combat_process_tick`: `flag_skill_only` | `Attack: false` (`population_strategy_attack_allowed`) |
+| `population_engine_combat.cpp` | `population_shell_cast_expired_self_buffs`, `population_shell_cast_ally_attack_skill`, the emergency Hiding pick | `Allow:` and `Ban:` bind the engine's own buffs, heals and Hiding too (`population_strategy_skill_allowed`); a Priest's Sanctuary at a boss came from here |
+
+Re-vendoring upstream means re-applying exactly these. Every entry point returns
+at once when no rules are loaded or the shell is not a recruited companion.
+
+### Roaming: where the engine calls in
+
+`runtime/population_companion_roam.{hpp,cpp}` holds the feature: the roam flag
+(`sd->pop.companion_roam`, column `roam`, v14), the roaming companion's target and
+walk, `@companion roam`, and the death notice with the window's `dead` field. The
+`.cpp` is included at the end of `population_engine.cpp`, like
+`population_shell_control.cpp`, so it uses the engine's own helpers, and it reads
+and writes its column itself rather than through the engine's save and recall
+statements. `population_companion_roams()` is false while
+`population_engine_companion_roam` is off (Settings → Population → Companion
+roaming, off by default), so every hook, marked `RAGNAROKMAC (roam)`, returns at
+once for a companion that does not roam:
+
+| File | Where | Why |
+|---|---|---|
+| `population_engine.cpp` | `pop_companion_follow_owner`: the sitting check, the leash, and a return before the in-sight warp | the whole map is its own; a map change still brings it along |
+| `population_engine.cpp` | `pop_shell_rest`: the owner walking | a roamer's rest is not cut short by its owner moving elsewhere |
+| `population_engine.cpp` | companion loop: life watch, `population_companion_roam_target(...)` around `pop_companion_combat_target`, the stop-walking and the formation step | its own fight near itself, its walk kept, no formation |
+| `population_engine.cpp` | `population_engine_on_shell_death`, companion branch | "I'm down!" in party chat (roaming companions only) and the window refreshed |
+| `population_engine.cpp` | party-chat `recall` | recalled companions follow again |
+| `population_engine.cpp` | `population_engine_recall_companions`, after the query | the flag restored from the rows (a nested query would clobber the recall's result set) |
+| `population_engine.cpp` | `population_engine_companion_list_raw` and the recruit `INSERT` | the `roam` and `dead` fields; a re-recruited row starts following |
+| `population_engine_combat.cpp` | `population_shell_combat_process_tick`, the no-target return for companions | a roamer walks on: forward roam, then the random step, the field shells' own |
+
+The unity build means `make` does not see a change to the included `.cpp`:
+touch `population_engine.cpp` after editing it, or the server keeps the old code.
+
+### Companion strategies: lessons from the playtests
+
+What the Phreeoni playtests taught about how the strategy module, the engine's
+own companion behaviour and rAthena fit together. Read before changing the
+module or the hooks.
+
+**A companion that can do nothing takes no turn.** A Stone Cursed companion was
+moved off the screen during the playtests. On the pinned rAthena, `unit_walktoxy`
+and `unit_walktobl` do check `unit_can_move` before starting a walk (unless
+`unit_walktoxy` is passed `flag&2`), so the move came from somewhere else: a walk
+already under way, or the follow code's warp to the owner. The companion loop
+skips a companion that can neither move, cast nor attack (petrified, frozen,
+asleep, stunned), and every movement rule asks `unit_can_move`. It does **not**
+skip one that can only not move: Ankle Snare, Spider Web, Madness Canceller and
+Intensive Aim stop movement alone, and a companion under them still fights (and
+has to, to turn Intensive Aim back off).
+
+**Where the strategy turn sits in `population_shell_combat_process_tick` decides
+what it starves.** A rule that acts ends the turn. Before party Resurrection, it
+starved Resurrection (near a boss some rule acts every turn); so it runs after it,
+unless the plan revives itself (`population_strategy_handles_resurrection`). It
+also runs before the support passes, so a plan whose last rule is `Hold` never
+reaches the engine's own buffs and heals: that is by design, and the plan names
+them. Any new hook must be placed with the same question: what does a rule that
+acts every turn take away?
+
+**Sanctuary heals monsters.** It heals every unit standing in it that is not
+undead or a demon, monsters included (`skill.cpp`, `UNT_SANCTUARY`), and damages
+those two. The engine placed it at a shell's own or an ally's feet, right where
+the monsters hitting them stood. `pop_ground_heal_helps_enemy` in the combat file
+now refuses a placement with such a monster within its 5x5. The engine's three
+placements and the strategy module's rule casts all ask it.
+
+**Heals fail on an undead-armoured ally.** On the undead, by race or by an
+armour's element (Evil Druid card), Heal, Highness Heal, Resurrection and
+Aspersio turn into attacks, and on an ally they fail (`skill.cpp`,
+`skill_castend_nodamage_id`). Sanctuary neither heals nor hurts such an ally. A
+healer that picked the most hurt member lost every cast on that one.
+`pop_ally_skill_refused` now names these skills, so the engine's ally scans and
+its party Resurrection pass such a member over. The strategy module's ally
+selectors ask it for a rule's `Cast` too.
+
+**Let rAthena pace actions.** The cast timer (`ud.skilltimer`) and the after-cast
+delay (`ud.canact_tick`) already account for DEX, cards and Bragi. Adding the
+skill database's base cast and delay on top (`skill_get_cast`, `skill_get_delay`)
+made companions slower than players. Combo steps must even be cast inside the
+previous step's delay, which rAthena checks itself.
+
+**The engine's own behaviours compete with rules.** FleeOnLowHP is on by default
+(`population_engine_ai` 0x1FF includes 0x010) and runs every non-tank shell off
+below 30 % HP; the Support role walks toward hurt allies; following, the leash,
+the idle stop and the formation step move companions; the built-in Resurrection
+casts at once. A rule wins only by acting earlier in the same turn, or by a hook
+that yields. Document each new interplay here.
+
+**Change an upstream line as little as possible.** `tests/companion-*.test.cjs`
+pin engine source text (the leash test failed on all three runners when its line
+was edited). Prefer one added line with its own marker, or widening a value the
+engine already computes (holding position widens the leash rather than bypassing
+it), over rewriting an existing line.
+
+**A plan must be able to express "nobody" and "who".** Most new keys came from
+plans that could not say what they needed: `Absent`/`Present` (nobody of that kind
+is left / someone lies dead), `Ally: attacked` (who is being hit, not who is
+lowest), `Enemy: hidden` with `Boss` (not every burrowed slave), distance bands
+measured from a member, `Kite`. When a playtest problem cannot be fixed in YAML,
+the missing piece is usually one of these: a word, not a special case.
+
+**Scratch builds.** rAthena's Makefile does not see changes to the `.cpp` files the
+engine `#include`s (the factory unity build): touch `population_engine.cpp` before
+an incremental `make`, or the binary is stale. The working tree is checked out with
+CRLF; stage LF content (`tr -d '\r' | git hash-object -w --stdin`) so a commit is
+not a whole-file rewrite.
 
 ## Invariants that must not regress
 
@@ -181,6 +313,10 @@ clean pin.
     contain parallel `s_population` layouts and must remain synchronised.
 12. Local binaries, Docker images, app payloads, runtime files, GRFs, logs, and
     test archives must never enter Git.
+13. Companion strategies run for recruited companions, and for regular combat
+    shells only through plans marked `For: shells` or `For: all`; an empty
+    `population_strategy.yml` changes nothing. Their state lives in the strategy
+    module, not in `s_population`.
 
 ## Verification record for PR #128
 
@@ -239,6 +375,11 @@ idempotent application, and a clean Population Engine data validation.
   always consent if the party has room.
 - Behaviour coverage is only as good as each class's generated resources and
   configured skill lists.
+- With Companion inventory on, a companion's bag is real and saved, but the owner can only fill it by trade:
+  there is no window to see it or take items back, and nothing refills it.
+  Deleting a saved companion loses its bag. Plans can't yet use an item or
+  switch gear (see
+  [COMPANION_STRATEGY_ROADMAP.md](COMPANION_STRATEGY_ROADMAP.md#inventories-the-foundation)).
 
 ## Planned fixes and features
 
@@ -325,9 +466,10 @@ The replacement is centralized in `population_shell_ammo.*`:
   `AmmoType` requires them is about to be used, not carried by every Ninja;
 - elemental ammunition is selected against the current monster where useful;
 - every item is equipped through `pc_equipitem` and must pass `pc_isequip`;
-- inaccessible shell inventories are replenished as a virtual resource, but
+- an ambient shell's ammunition is replenished as a virtual resource, but
   never past rAthena's first overweight threshold, since a shell at 90% cannot
-  attack; and
+  attack. With Companion inventory on, a recruited companion is never
+  replenished: it fires what it carries (`population_shell_inventory`); and
 - provisioning runs at spawn, after companion map warps, and immediately
   before attacks. An equip cooldown (Desperado, Arrow Vulcan) blocks a swap,
   not an attack with the stack already equipped.

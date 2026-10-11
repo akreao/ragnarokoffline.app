@@ -99,8 +99,12 @@ test('job advancement walks the full line with a 50:50 fork and official gates',
 });
 
 test('a job change re-equips and re-arms rather than leaving stale gear', () => {
-	const fn = src.slice(src.indexOf('pop_companion_try_job_advance'));
-	const body = fn.slice(0, 4000);
+	const fn = src.slice(src.indexOf('pop_companion_apply_job_change'));
+	// Slice to the function's closing brace, NOT a character count: a fixed window silently
+	// drops whatever a later legitimate change pushes past it, and the test then fails for a
+	// reason it does not check.
+	const close = fn.indexOf('\n}\n');
+	const body = close > 0 ? fn.slice(0, close + 3) : fn;
 	assert.match(body, /pc_jobchange\(/, 'job changes go through pc_jobchange');
 	assert.match(body, /pc_unequipitem\(sd, i, 2\)/, 'the old job gear is unequipped, not destroyed');
 	assert.match(body, /skill_next_use_tick\.clear\(\)/, 'the skill preset must be re-armed for the new job');

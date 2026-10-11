@@ -1,0 +1,141 @@
+# This file is a part of rAthena.
+#   Copyright(C) 2021 rAthena Development Team
+#   https://rathena.org - https://github.com/rathena
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+###########################################################################
+# Population Engine Companion Strategies (RAGNAROKMAC)
+###########################################################################
+#
+# How recruited companions fight, per monster and per job, and (plans marked
+# For: shells or all) the regular AI characters too. It ships empty: with no
+# rules, everyone behaves exactly as without it. Mods add rules through
+# db/import/population_strategy.yml (a mod ships db/population_strategy.yml).
+# The full reference is docs/mods/companion-strategies/reference.md in the app.
+#
+# - Mob:              AegisName, mob id or All. Mobs: [list] for several.
+#   Encounter:        true -- its plans apply while one is near (14 cells), whatever the
+#                     companion is fighting: a boss and its slaves. Default: only while
+#                     the companion targets it.
+#   Targeting:        (a monster, not All)
+#     Priority:       Take it before lower-priority monsters already in the fight. (Default: 0)
+#     Ignore:         Never take it on unless the owner fights it or it attacks the party.
+#     MaxAttackers:   At most this many of the party on it (the owner counts; then companions
+#                     by id). For bosses that answer a crowd of attackers with an AoE.
+#   Jobs:
+#     - Job:          Priest, High_Priest, JOB_PRIEST, 8 or All. A job also uses its
+#                     base class's rules, then All's.
+#       For:          companions (default), shells (the regular AI characters in the world)
+#                     or all. A shells plan wants its own Build name, apart from companions'.
+#       Build:        A name for one way to play the job (combo, asura, magic...). With
+#       Requires:     { Skills, Lacks, Items, BaseLevel }, only companions that meet it
+#                     use the entry. Entries without Build apply to every build.
+#       Remove:       Delete what earlier files gave this monster and job.
+#       Reset:        Start this monster and job over from this entry.
+#       Rotation:     The normal skill rotation. Default: off under a plan about a monster
+#                     (it casts what the plan says), on under Mob: All. Heals, buffs and
+#                     resurrection are not the rotation and keep running.
+#       Ban:          Skills the normal rotation must not use against it.
+#       Start:        The strategy active when a fight with it begins.
+#       Rules:        Rules that apply whatever strategy is active.
+#       Strategies:   Named rule sets; one is active at a time. Any names you like.
+#         - Name:     defend
+#           Rules:    ...
+#           Ban:      Added to the entry's Ban while this strategy is active.
+#           Rotation: Overrides the entry's Rotation while this strategy is active.
+#
+# A rule (first match by Priority, highest first; ties go to the more specific
+# monster and job, then to file order):
+#   Name:        Lets a later file replace (same Name) or Remove: true it.
+#   Priority:    Default 0.
+#   Requires:    { Skills: [..], Lacks: [..], Items: [..], BaseLevel: n, Role: tank } -- else
+#                the rule does not exist. A Cast rule also requires the companion to know that
+#                skill. Role is the party role set in chat: tank, support, attacker, none.
+#   On:          An event; the rule may fire once within Within ms (default 3000) of it.
+#                party_chat (Match, From: anyone|owner|leader), party_member_died,
+#                casts (By: monster|party|self|enemy|anyone, Skill, At: party|self|owner|anyone;
+#                monster_casts = By: monster), signal (Name, From: others|anyone),
+#                encounter_ended (Mob, Reason: died|vanished|any), target_lost (Reason), hp_below (Value),
+#                owner_hp_below (Value), weight_above (Value), equip_broken (Slot),
+#                item_below (Item, Value), status_gained (Status).
+#   When:        A condition in population_skill_db.yml's expanded syntax, e.g.
+#                enemy_hp_pct_lt30, not_enemy_aeterna, ally_hp_pct_lt50, master_hp_pct_lt40.
+#                ally_* is the rule's own target; master_* is the owner.
+#   Charges:     { Status: SC_UTSUSEMI, Below: n | AtLeast: n } -- a counter the status
+#                keeps (Value: 1-4, default 2; Cicada's blocks left). No status = 0.
+#   Field:       { Skill: NJ_KAENSIN, Below: n | AtLeast: n, Range: 5, Owner: self, At: self }
+#                -- ground units of that skill within Range (0 = the cell itself) of the
+#                companion, or At: target of the rule's target; placed by Owner: self
+#                (default), party, monster, enemy or anyone.
+#   Count:       { Enemy: any|attacking|boss|slaves|casting, Who, Around: self|target, Range: 5,
+#                Below: n | AtLeast: n } -- monsters near the companion or the rule's target.
+#   Absent:      { Ally: nearest, Job: Priest } -- only while that selector finds nobody.
+#   Present:     { Ally: dead, Range: 9 } -- only while it finds someone.
+#                A plan with its own Cast: ALL_RESURRECTION rule replaces the engine's
+#                built-in Party Resurrection for that companion.
+#   Reach:       false -- only while the monster could not fight back against the companion
+#                where it stands (what makes a boss teleport); true -- only while it could.
+#   Enemy:       { Element: [Holy], Race: Demon, Size: Large, Boss: true } -- the monster the
+#                rule is about (its selector's, or the current target) must be one of these.
+#   Cast:        A skill. Level: (default: the level it knows).
+#                Target: enemy (default), self, owner, event, source, ally_lowest_hp, dead_ally,
+#                or a selector the rule picks itself:
+#                  { Enemy: attacking|target_of|nearest|lowest_hp|boss|slaves|casting|hidden, Boss,
+#                    Who: party|owner|self|tank|support|attacker|any, NotSelf, Prefer, Range }
+#                  { Ally: lowest_hp|nearest|missing|having|attacked, Role, Job, Status, NotSelf, Range }
+#                With an Enemy selector, When's enemy_* tokens ask about the chosen monster.
+#                Consume: true -- the cast should pay its catalyst (ItemCost). Not paid yet:
+#                companions have no inventory of their own, so it casts as if paid. With
+#                inventories, it will check and pay; nothing in a table needs to change.
+#   Retreat:     away | owner. Distance: cells (default 5).
+#   MoveTo:      reachable (the nearest cell the monster could fight back from),
+#                event (to whoever the event is about: the companion that signalled),
+#                event_cell (where an On: casts spell will land) or
+#                { Field: SA_LANDPROTECTOR, Owner: party, Within: 8 } (nearest cell of one).
+#                Already there: the rule passes and the next one runs.
+#   Leave:       { Field: WZ_STORMGUST, Owner: enemy, Within: 8 } -- standing on such a ground
+#                unit (any skill without Field): walk to the nearest free cell.
+#   Kite:        { Away: 4, Within: 7, Gap: 3 } -- run from the monster on the companion,
+#                staying within Within of the rule's target (else the owner) but not
+#                closer than Gap: the monster is led round the healer, not onto it.
+#   Hold:        true -- stand still (no chasing) and end the turn.
+#                Hold, MoveTo, KeepDistance, Retreat and Leave also hold the companion where
+#                they put it: following its owner waits (warps to another map do not).
+#   KeepDistance: n -- closer than n cells to the monster: walk to the nearest open cell
+#                at least n away. Already that far: the rule passes and the next one runs.
+#                { Min: n, Max: m }: a band; further than m, it comes back within m.
+#   Say:         Text; {name} {owner} {target} {ally} {skill} {hp}. Channel: party (default) | area.
+#   Switch:      Make another strategy of this monster and job active.
+#   SetTarget:   true -- make the chosen monster the companion's combat target (renewed
+#                while the rule applies, 3 s otherwise).
+#   Signal:      A name the party's other companions hear (On: { Event: signal, Name }).
+#                Without an event it waits 5 s between sends unless it has a Cooldown.
+#   Cooldown:    ms before the rule may fire again.
+#   OnePerParty: Only one companion of the party fires it per target at a time.
+#
+# Cast, Retreat, KeepDistance, MoveTo, Leave and Hold end the companion's turn; Say, Switch and
+# Signal do not, and are only done once the rule's other action has succeeded.
+# Strategies make each monster/job/build a small state machine: Start is the first
+# state, Switch moves between them.
+###########################################################################
+
+Header:
+  Type: POPULATION_STRATEGY_DB
+  Version: 1
+
+# RAGNAROKMAC: the import a mod's table arrives through.
+Footer:
+  Imports:
+    - Path: db/import/population_strategy.yml

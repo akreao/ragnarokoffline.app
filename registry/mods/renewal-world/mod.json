@@ -1,0 +1,27 @@
+{
+  "name": "renewal-world",
+  "version": "0.1.0",
+  "author": "BlaXun",
+  "description": "Opens renewal's new lands in pre-renewal, joined to the old world where renewal joins them: Bifrost, Mora, Eclage and El Dicastes, Verus, the ships from Alberta to Dewata, Port Malaya, Malangdo and Rockridge, and new floors of Niflheim, Izlude, Abyss Lakes, Einbroch and Magma dungeons. With the quest areas setting on, also Lasagna, Bios Island, Rudus, Amicitia, the nightmare and illusion dungeons, Prontera Castle and other episode areas, whose entrances renewal keeps behind quests. 122 maps. This first version opens the way only: the new maps have no monsters, shops or quests yet. Every entrance renewal locks behind a quest is a free gate here.",
+  "requires": {
+    "app": ">=1.4.3",
+    "era": "pre-renewal"
+  },
+  "tags": [
+    "world",
+    "maps",
+    "travel",
+    "exploration",
+    "pre-renewal"
+  ],
+  "homepage": "https://github.com/Flux159/ragnarokoffline.app/tree/main/registry/mods/renewal-world",
+  "settings": [
+    {
+      "key": "quest_areas",
+      "type": "boolean",
+      "default": true,
+      "label": "Open the areas renewal keeps behind episode quests",
+      "description": "On: gates lead into Lasagna, Bios Island, Rudus, Amicitia, the nightmare and illusion dungeons, Wolfchev's laboratory, the Garden of Time, Prontera Castle and the other episode areas (67 maps). Off: they stay closed, and only the main regions are open."
+    }
+  ]
+}

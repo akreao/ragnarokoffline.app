@@ -69,6 +69,8 @@ Body:
   # =========================================================================
   # LOW TIER (Lv 1–40): T1 1st classes, T4 transcendent 1st classes
   # Cities: prontera, izlude, payon, alberta, geffen, morocc
+  # Geffen Dungeon 1-2 and Payon Cave 3-4 are mid tier: their monsters
+  # outlevel this band in both eras (median 33-46 pre-renewal, 61-90 Renewal).
   # =========================================================================
 
   - Profile: novice_default
@@ -112,19 +114,15 @@ Body:
       - iz_dun01
       - iz_dun02
       - gef_dun00
-      - gef_dun01
-      - gef_dun02
       - orcsdun01
       - anthell01
       - anthell02
       - pay_dun00
       - pay_dun01
       - pay_dun02
-      - pay_dun03
-      - pay_dun04
       - moc_pryd01
       - moc_pryd02
-    DungeonsPopulation: 225
+    DungeonsPopulation: 180
 
   - Profile: combat_pve_low_transcended
     Towns:
@@ -160,19 +158,15 @@ Body:
       - iz_dun01
       - iz_dun02
       - gef_dun00
-      - gef_dun01
-      - gef_dun02
       - orcsdun01
       - anthell01
       - anthell02
       - pay_dun00
       - pay_dun01
       - pay_dun02
-      - pay_dun03
-      - pay_dun04
       - moc_pryd01
       - moc_pryd02
-    DungeonsPopulation: 75
+    DungeonsPopulation: 60
 
   # =========================================================================
   # MID TIER (Lv 40–70): T2 2nd classes, T5 transcendent 2nd classes
@@ -446,7 +440,9 @@ Body:
       - beach_dun3
       - alde_dun01
       - alde_dun02
-    DungeonsPopulation: 40
+      - pay_dun03
+      - pay_dun04
+    DungeonsPopulation: 48
 
   - Profile: pve_clown
     Towns:
@@ -481,7 +477,9 @@ Body:
       - beach_dun3
       - alde_dun01
       - alde_dun02
-    DungeonsPopulation: 40
+      - pay_dun03
+      - pay_dun04
+    DungeonsPopulation: 48
 
   - Profile: pve_monk
     Towns:
@@ -573,7 +571,9 @@ Body:
       - prt_sewb2
       - prt_sewb3
       - prt_sewb4
-    DungeonsPopulation: 80
+      - pay_dun03
+      - pay_dun04
+    DungeonsPopulation: 92
 
   - Profile: pve_rogue
     Towns:

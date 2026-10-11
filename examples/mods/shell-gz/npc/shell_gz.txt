@@ -1,0 +1,44 @@
+// When a player levels up, one to three of the AI characters nearby stop for a
+// moment and say "gz" -- the way a busy server does.
+//
+// population_shells lists the shells around a spot, nearest first: by default
+// only ambient ones, never vendors, companions, corpses or shells another
+// script is using. population_hold takes one away from the engine's AI for a
+// few seconds, so it stops walking while it "types", and population_unhold
+// gives it back. Everything the shell says or shows is stock: unittalk and
+// emotion work on any unit, and a shell is a real character.
+
+-	script	shell_gz	-1,{
+OnPCBaseLvUpEvent:
+	// Recruited companions level up too, and they are characters as well.
+	if (population_is_shell(getcharid(3)))
+		end;
+	getmapxy(.@map$, .@x, .@y);
+	.@n = population_shells(.@map$, .@x, .@y, 9, .@gid);
+	if (.@n <= 0)
+		end;
+	.@speakers = min(.@n, 1 + rand(3));
+	for (.@i = 0; .@i < .@speakers; .@i++) {
+		// sleep2 keeps the player attached; if they log out the run ends here,
+		// and a hold it left behind lapses by itself.
+		sleep2 rand(300, 1500);
+		.@who = .@gid[.@i];
+		if (!population_hold(.@who, 5000))
+			continue; // gone, or another script took it meanwhile
+		sleep2 rand(600, 1400); // stopped, typing
+		.@line = rand(10);
+		// unittalk shows the text exactly as given; real chat reads "Name : text".
+		if (.@line < 7)
+			unittalk .@who, rid2name(.@who) + " : " + .lines$[rand(getarraysize(.lines$))];
+		if (.@line >= 3)
+			emotion .emotes[rand(getarraysize(.emotes))], .@who;
+		sleep2 800;
+		population_unhold .@who;
+	}
+	end;
+
+OnInit:
+	setarray .lines$, "gz", "gz!", "gratz", "grats~", "gz gz", "nice, gz", "congrats!", "gz o/";
+	setarray .emotes, ET_CONGRATULATION, ET_OK, ET_BEST, ET_DELIGHT;
+	end;
+}

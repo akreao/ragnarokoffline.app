@@ -1,0 +1,409 @@
+# companion-tactics: what recruited companions do against particular bosses.
+# It builds on companion-roles (healer, casters, melee, at any boss); this adds
+# each boss's own mechanics, at priorities 80-99 so they come before a role's core.
+# Reference: docs/mods/companion-strategies/ (guide, team play, cookbook, reference, FAQ)
+
+Header:
+  Type: POPULATION_STRATEGY_DB
+  Version: 1
+
+Body:
+  # --- Stalactic Golem: high defence (pre-renewal 50, renewal 230), a 1.5 s Stun
+  #     Attack, and Endure and Auto Guard when hit from range. Encounter: the plan
+  #     applies while one is near, so a Priest with no target still plays its part.
+  - Mob: STALACTIC_GOLEM
+    Encounter: true
+    Jobs:
+      # Every Monk and Champion (Job: Monk is the whole family).
+      - Job: Monk
+        Ban: [MO_FINGEROFFENSIVE]    # ranged hits trigger its Endure and Auto Guard
+        Rules:
+          - Name: dodge_stun
+            Priority: 100
+            On: { Event: casts, Skill: NPC_STUNATTACK, At: self }
+            Retreat: away
+            Distance: 3
+
+      # Asura, Monk or Champion. Investigate does more the higher the defence, so it
+      # carries the fight; Asura finishes it. Fury costs 5 spheres and Asura 5 more,
+      # so the spheres are charged again after Fury. A Champion recharges with Zen
+      # (5 at once) and strikes Asura straight out of Combo Finish or Chain Crush,
+      # where it has no cast time and needs fewer spheres.
+      - Job: Monk
+        Build: asura
+        Requires: { Skills: [MO_EXTREMITYFIST] }
+        Rotation: false               # every sphere is counted: nothing the plan does not name
+        Start: approach
+        Rules:
+          - Name: too_hurt
+            Priority: 90
+            When: self_hp_pct_lt35
+            Switch: recover
+          - Name: zen                 # Champion: 5 spheres at once
+            Priority: 15
+            When: [self_spheres_lt5, not_self_combo]
+            Cast: CH_SOULCOLLECT
+          - Name: call_spirits        # Monk: one at a time
+            Priority: 14
+            Requires: { Lacks: [CH_SOULCOLLECT] }
+            When: [self_spheres_lt5, not_self_combo]
+            Cast: MO_CALLSPIRITS
+        Strategies:
+          - Name: approach            # it is slow: arrive charged
+            Rules:
+              - Name: engage
+                When: [enemy_distance_le2, self_spheres_ge5]
+                Switch: fight
+          - Name: fight
+            Rules:
+              - Name: go_finish
+                Priority: 30
+                When: [enemy_hp_pct_lt30, self_sp_pct_ge80]
+                Switch: finish
+              - Name: investigate
+                Priority: 20
+                When: self_spheres_ge2   # keep one for the next Investigate's charge
+                Cast: MO_INVESTIGATE
+          - Name: finish              # Fury, charge again, then Asura
+            Rotation: false           # plain hits: a Champion's combo starts from Triple Attack
+            Rules:
+              - Name: asura_combo     # out of Combo Finish or Chain Crush: no cast time
+                Priority: 50
+                When: [self_combo, self_explosionspirits]
+                Cast: MO_EXTREMITYFIST
+                Say: "Asura Strike!"
+                Switch: fight
+              - Name: chain_crush
+                Priority: 45
+                When: [self_combo, self_explosionspirits]
+                Cast: CH_CHAINCRUSH
+              - Name: combo_finish
+                Priority: 44
+                When: [self_combo, self_explosionspirits, self_spheres_ge5]
+                Cast: MO_COMBOFINISH
+              - Name: chain_combo
+                Priority: 43
+                When: [self_combo, self_explosionspirits, self_spheres_ge5]
+                Cast: MO_CHAINCOMBO
+              - Name: fury
+                Priority: 30
+                When: [self_spheres_ge5, not_self_explosionspirits]
+                Cast: MO_EXPLOSIONSPIRITS
+              - Name: asura            # a Monk without combos: the plain cast
+                Priority: 10
+                Requires: { Lacks: [MO_COMBOFINISH] }
+                When: [self_explosionspirits, self_spheres_ge5, not_self_combo]
+                Cast: MO_EXTREMITYFIST
+                Say: "Asura Strike!"
+                Switch: fight
+              - Name: abort            # cannot pay for Asura any more
+                When: self_sp_pct_lt60
+                Switch: fight
+          - Name: recover
+            Rules:
+              - Name: steel_body
+                Priority: 20
+                When: [self_spheres_ge5, not_self_steelbody]
+                Cast: MO_STEELBODY
+              - Name: call_for_help
+                Priority: 10
+                Say: "{owner}, I need healing!"
+                Cooldown: 8000
+              - Name: recovered
+                When: self_hp_pct_gt70
+                Switch: approach
+
+      # A combo Monk or Champion without Asura: plain hits open the combo (Triple
+      # Attack); rAthena accepts each step only right after the one before it, so the
+      # steps are listed last first and a step out of order is simply refused. Combo
+      # damage is weapon damage, so this golem's defence hurts it more than Investigate.
+      - Job: Monk
+        Build: combo
+        Requires: { Skills: [MO_CHAINCOMBO], Lacks: [MO_EXTREMITYFIST] }
+        Rotation: false
+        Start: approach
+        Strategies:
+          - Name: approach
+            Rules:
+              - Name: zen
+                Priority: 2
+                When: [not_self_combo, self_spheres_lt5]
+                Cast: CH_SOULCOLLECT
+              - Name: charge
+                Priority: 1
+                Requires: { Lacks: [CH_SOULCOLLECT] }
+                When: [not_self_combo, self_spheres_lt5]
+                Cast: MO_CALLSPIRITS
+              - Name: engage
+                When: enemy_distance_le2
+                Switch: fight
+          - Name: fight
+            Rules:
+              - Name: hurt
+                Priority: 50
+                When: self_hp_pct_lt30
+                Retreat: owner
+                Say: "{owner}, heal me!"
+              - Name: chain_crush
+                Priority: 40
+                When: self_combo
+                Cast: CH_CHAINCRUSH
+              - Name: glacier_fist
+                Priority: 39
+                When: self_combo
+                Cast: CH_TIGERFIST
+              - Name: combo_finish
+                Priority: 38
+                When: [self_combo, self_spheres_ge1]
+                Cast: MO_COMBOFINISH
+              - Name: chain_combo
+                Priority: 37
+                When: self_combo
+                Cast: MO_CHAINCOMBO
+              # Between combos, keep at least 2 spheres, or Chain Combo cannot lead on.
+              - Name: investigate_opener   # a spare sphere goes on the defence-hungry hit
+                Priority: 25
+                When: [not_self_combo, self_spheres_ge4]
+                Cast: MO_INVESTIGATE
+              - Name: zen
+                Priority: 20
+                When: [not_self_combo, self_spheres_lt2]
+                Cast: CH_SOULCOLLECT
+              - Name: refill
+                Priority: 10
+                Requires: { Lacks: [CH_SOULCOLLECT] }
+                When: [not_self_combo, self_spheres_lt2]
+                Cast: MO_CALLSPIRITS
+
+      # A magic Ninja: stand in the middle of its own ring of fire (Blaze Shield is
+      # 24 pillars in a 5x5 ring around the caster), let the golem walk through it,
+      # then Exploding Dragon. Its Flame Stones are marked Consume; catalysts are not paid
+      # until companions have an inventory of their own.
+      - Job: Ninja
+        Build: magic
+        Requires: { Skills: [NJ_KAENSIN, NJ_BAKUENRYU], Lacks: [NJ_ISSEN] }
+        Rotation: false
+        Start: prepare
+        Rules:
+          - Name: cicada
+            Priority: 90
+            Charges: { Status: SC_UTSUSEMI, Below: 2 }
+            Cast: NJ_UTSUSEMI
+        Strategies:
+          - Name: prepare
+            Rules:
+              - Name: blaze
+                Priority: 95
+                Cast: NJ_KAENSIN
+                Consume: true
+                Switch: pull
+          - Name: pull
+            Rules:
+              - Name: spear
+                Cast: NJ_HYOUSENSOU
+                Level: 1
+                Switch: hold
+          - Name: hold
+            Rules:
+              - Name: dragon
+                Priority: 20
+                When: [self_targeted, enemy_distance_le2]
+                Cast: NJ_BAKUENRYU
+                Consume: true
+                Switch: after_dragon
+              - Name: wait
+                Hold: true
+          - Name: after_dragon
+            Rules:
+              - Name: drag_again
+                Priority: 30
+                When: enemy_hp_pct_lt30
+                Field: { Skill: NJ_KAENSIN, AtLeast: 4 }
+                Retreat: away
+                Distance: 3
+                Switch: hold
+              - Name: ring_gone
+                Priority: 20
+                Field: { Skill: NJ_KAENSIN, Below: 1 }
+                Switch: prepare
+              - Name: again
+                Priority: 10
+                When: enemy_hp_pct_ge30
+                Switch: hold
+              - Name: wait
+                Hold: true
+
+      # The duo: a Final Strike Ninja and a Priest. Final Strike hits for the Ninja's
+      # CURRENT HP (pre-renewal 40*STR + HP*8*lv/100) and leaves it at 1 HP (1 % in
+      # renewal), ending Soul. So: Soul first, then a full bar, a shield (Kyrie from
+      # the Priest, or Cicada), strike, back off while the Priest heals it full, again.
+      - Job: Ninja
+        Build: final_strike
+        Requires: { Skills: [NJ_ISSEN] }
+        Rotation: false               # no thrown kunai: ranged hits set off Endure and Auto Guard
+        Start: prepare
+        Rules:
+          - Name: cicada
+            Priority: 90
+            Charges: { Status: SC_UTSUSEMI, Below: 2 }
+            Cast: NJ_UTSUSEMI
+        Strategies:
+          - Name: prepare
+            Rules:
+              - Name: soul             # costs HP, so before the bar is filled
+                Priority: 40
+                When: not_self_nen
+                Cast: NJ_NEN
+              - Name: ask_for_kyrie
+                Priority: 30
+                When: self_hp_pct_ge90
+                Signal: kyrie_me
+                Cooldown: 6000
+              - Name: strike
+                Priority: 50
+                When:
+                  AND: [self_hp_pct_ge95, enemy_distance_le1]
+                  OR: [self_kyrie, self_utsusemi]
+                Cast: NJ_ISSEN
+                Signal: struck
+                Switch: recover
+          - Name: recover              # at 1 HP: away from the slow golem until healed
+            Rules:
+              - Name: back_off
+                Priority: 50
+                KeepDistance: 5
+              - Name: healed
+                Priority: 60
+                When: self_hp_pct_ge90
+                Switch: prepare
+
+      # The golem is slow and melee: 4 cells is enough, and keeps the Ninja within reach.
+      # Disable puts the role's own stay_back (5 cells, companion-roles) aside here.
+      - Job: Priest
+        Disable: [stay_back]
+        Rules:
+          - Name: heal_the_striker     # it is at 1 HP the moment it struck
+            Priority: 95
+            On: { Event: signal, Name: struck, Within: 2000 }
+            Target: event
+            Cast: AL_HEAL
+          - Name: kyrie_for_the_strike
+            Priority: 90
+            On: { Event: signal, Name: kyrie_me, Within: 4000 }
+            Target: event
+            When: not_ally_kyrie
+            Cast: PR_KYRIE
+          - Name: heal_up
+            Priority: 80
+            Cast: AL_HEAL
+            Target: { Ally: lowest_hp }
+            When: ally_hp_pct_lt90
+          - Name: stay_back            # in the role's place (74)
+            Priority: 74
+            Target: { Enemy: boss, Range: 14 }
+            KeepDistance: 4
+
+  # --- Phreeoni: the first playtest. A Wizard, a Priest and an Assassin beside their
+  #     owner. Its escort: 10 Hodes on spawn, 6 Sandmen (earth) whenever 3 or fewer are
+  #     left (a 0.7 s cast). Below 80 % HP: Wide Stone Curse every 20 s (0.5 s cast, 14
+  #     cells: it cannot be outrun). Below 50 %: heals itself. Below 30 %: Power Up.
+  #     Below 20 %: Hiding, healing while hidden. Hit by Fire Wall: Heaven's Drive and
+  #     Helm Break. Hit from where it cannot reach: teleports away.
+  #
+  #     companion-roles already does the rest at any boss: the Priest heals, walls,
+  #     revives and cures the petrified, the Wizard keeps its distance, the Assassin
+  #     runs it round the Priest when hurt, a hidden boss is revealed, and they fall
+  #     back when the Priest is down. This is what is Phreeoni's own.
+  #
+  #     Encounter: the plan applies while Phreeoni is near, whatever each companion is
+  #     fighting. One plan for all three jobs: a Cast rule only exists for a companion
+  #     that knows the skill, so each rule finds its own job. The phases are its strategies.
+  - Mob: PHREEONI
+    Encounter: true
+    Jobs:
+      - Job: All
+        Ban: [MG_FIREWALL]            # Fire Wall sets off Heaven's Drive and Helm Break
+        Start: opening
+        Rules:                        # every phase
+          # New slaves: AoE them on the boss as they arrive. Fire hurts earth Sandmen most.
+          # Only once three stand around it: never a Meteor for a single Sandman.
+          - Name: meteor_the_slaves
+            Priority: 85
+            On: { Event: casts, Skill: NPC_SUMMONSLAVE, Within: 10000 }   # outlasts a Fire Bolt cast
+            Cast: WZ_METEOR
+            Target: source
+            Count: { Enemy: slaves, Around: target, Range: 5, AtLeast: 3 }
+          - Name: storm_the_slaves
+            Priority: 84
+            Requires: { Lacks: [WZ_METEOR] }
+            On: { Event: casts, Skill: NPC_SUMMONSLAVE, Within: 10000 }   # outlasts a Fire Bolt cast
+            Cast: WZ_STORMGUST
+            Target: source
+            Count: { Enemy: slaves, Around: target, Range: 5, AtLeast: 3 }
+          # Instant Call Slave brings them back around it with no warning: AoE once three are there.
+          - Name: meteor_the_pack
+            Priority: 83
+            Target: { Enemy: boss }
+            Count: { Enemy: slaves, Around: target, Range: 5, AtLeast: 3 }
+            Cast: WZ_METEOR
+            Cooldown: 8000
+        Strategies:
+          - Name: opening             # above 80 %
+            Rules:
+              - Name: to_stone
+                Target: { Enemy: boss }
+                When: enemy_hp_pct_lt80
+                Switch: stone
+                Say: "It's at 80%, petrify from here on."
+
+          - Name: stone               # 80 % down to 30 %: Wide Stone Curse every 20 s
+            Rules:
+              - Name: warn_stone
+                Priority: 90
+                On: { Event: casts, Skill: NPC_WIDESTONE }
+                Say: "Wide Stone!"
+              - Name: to_last
+                Target: { Enemy: boss }
+                When: enemy_hp_pct_lt30
+                Switch: last
+                Say: "Below 30%: it powers up, then hides. Burst!"
+
+          - Name: last                # below 30 %: Power Up, then Hiding below 20 %
+            Rules:
+              - Name: warn_stone
+                Priority: 90
+                On: { Event: casts, Skill: NPC_WIDESTONE }
+                Say: "Wide Stone!"
+              # Power Up hits hard: Assumptio on whoever it is on.
+              - Name: assumptio_the_attacked
+                Priority: 82
+                Cast: HP_ASSUMPTIO
+                Target: { Ally: attacked }
+                When: [not_ally_assumptio, self_sp_ge120]
+
+  # --- Trash: plain hits only, no SP spent -------------------------------------
+  - Mobs: [PORING, DROPS, POPORING, MARIN, FABRE, PUPA]
+    Jobs:
+      - Job: All
+        For: all                  # the AI characters around the world too
+        Rotation: false
+
+  # --- Regular AI characters: Wizards keep their area spells for packs -----------
+  - Mob: All
+    Jobs:
+      - Job: Wizard
+        Build: shells_aoe
+        For: shells
+        Start: single
+        Strategies:
+          - Name: single
+            Ban: [WZ_STORMGUST, WZ_METEOR, WZ_VERMILION, WZ_HEAVENDRIVE]
+            Rules:
+              - Name: pack
+                Count: { Around: target, Range: 4, AtLeast: 3 }
+                Switch: pack
+          - Name: pack
+            Rules:
+              - Name: no_pack
+                Count: { Around: target, Range: 4, Below: 3 }
+                Switch: single

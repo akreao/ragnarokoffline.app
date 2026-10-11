@@ -1,0 +1,11 @@
+{
+  "name": "navigation-server-monsters",
+  "version": "1.0.0",
+  "author": "Ragnarok Offline",
+  "description": "Navigation finds the monsters this server actually spawns, with its levels, elements and spawn counts, including the ones other mods add or change.",
+  "default": "off",
+  "requires": {
+    "app": ">=1.5.2",
+    "era": "any"
+  }
+}

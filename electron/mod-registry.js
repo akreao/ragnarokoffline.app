@@ -37,6 +37,10 @@ const NAME = /^[a-z0-9][a-z0-9._-]{0,63}$/i;
 const SHA256 = /^[a-f0-9]{64}$/;
 const TAG = /^[a-z0-9][a-z0-9-]{0,23}$/;
 const MAX_SCREENSHOTS = 4;
+// What changed in each version, at the top of a mod's folder (MOD_REGISTRY.md).
+// Text, so a megabyte is years of releases.
+const CHANGELOG = 'CHANGELOG.md';
+const CHANGELOG_LIMIT = 1024 * 1024;
 // What the settings window will render. Decided here rather than left to
 // whatever a browser is willing to guess from the bytes.
 const PICTURES = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
@@ -153,6 +157,8 @@ function readIndex(body) {
         mods: Array.isArray(requires.mods)
           ? requires.mods.filter(name => NAME.test(name || '')).slice(0, 16) : [],
         era: typeof requires.era === 'string' ? requires.era.slice(0, 20) : '',
+        client: (Array.isArray(requires.client) ? requires.client : [])
+          .filter(c => typeof c === 'string' && /^[A-Za-z0-9]{1,12}$/.test(c)).slice(0, 10),
         app: typeof requires.app === 'string' ? requires.app.slice(0, 20) : '',
       },
       source,
@@ -243,4 +249,26 @@ async function image(name, relative, { url = DEFAULT_INDEX, fetch = download, mo
   return dataUrl;
 }
 
-module.exports = { list, install, image, readIndex, safeRelative, fileUrl, DEFAULT_INDEX, MAX_SCREENSHOTS };
+/**
+ * A mod's CHANGELOG.md in the list, as text, or '' when its entry carries
+ * none. Only that one file is fetched, from the same folder and against the
+ * same digest as an install would, so the notes are as reviewed as the mod.
+ * Cached by digest: a check that finds the same version again fetches nothing.
+ */
+async function changelog(name, { url = DEFAULT_INDEX, fetch = download, mods, cache } = {}) {
+  const listing = mods || await list({ url, fetch });
+  const entry = listing.find(mod => mod.name === name);
+  if (!entry || entry.source) return '';
+  const file = entry.files.find(candidate => candidate.path === CHANGELOG);
+  if (!file) return '';
+  if (cache && cache.has(file.sha256)) return cache.get(file.sha256);
+  const bytes = await fetch(fileUrl(url, entry.name, CHANGELOG), CHANGELOG_LIMIT);
+  if (digest(bytes) !== file.sha256) {
+    throw new Error(`${name}: ${CHANGELOG} does not match the reviewed copy`);
+  }
+  const text = bytes.toString('utf8');
+  if (cache) cache.set(file.sha256, text);
+  return text;
+}
+
+module.exports = { list, install, image, changelog, readIndex, safeRelative, fileUrl, DEFAULT_INDEX, MAX_SCREENSHOTS, CHANGELOG };

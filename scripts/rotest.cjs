@@ -18,9 +18,13 @@ const { spawn, spawnSync } = require('node:child_process');
 
 const repo = path.resolve(__dirname, '..');
 const home = process.env.HOME || process.env.USERPROFILE || '';
-const appData = process.platform === 'darwin' ? path.join(home, 'Library/Application Support/Ragnarok Offline')
-    : process.platform === 'win32' ? path.join(process.env.APPDATA || '', 'Ragnarok Offline')
-        : path.join(process.env.XDG_CONFIG_HOME || path.join(home, '.config'), 'Ragnarok Offline');
+// The installed app's data folder, by the rule in dataRoot() (electron/main.js)
+// and data_root() (stack/src/config.rs). On Linux that is XDG_DATA_HOME, not
+// ~/.config: that one holds only Chromium's userData.
+const appData = process.env.RAGNAROK_OFFLINE_HOME
+    || (process.platform === 'darwin' ? path.join(home, 'Library/Application Support/Ragnarok Offline')
+        : process.platform === 'win32' ? path.join(process.env.APPDATA || path.join(home, 'AppData/Roaming'), 'Ragnarok Offline')
+            : path.join(process.env.XDG_DATA_HOME || path.join(home, '.local/share'), 'Ragnarok Offline'));
 const WORLD = path.resolve(process.env.RO_E2E_WORLD || path.join(repo, 'artifacts/agent-world'));
 const PORT = Number(process.env.ROTEST_PORT || 7480);
 const OUT = path.resolve(process.env.ROTEST_OUT || path.join(repo, 'artifacts/rotest'));

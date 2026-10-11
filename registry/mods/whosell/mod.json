@@ -1,0 +1,11 @@
+{
+  "name": "whosell",
+  "author": "rhewid",
+  "description": "Search for Vendors: a window (and @whosell / @whobuy) to find who sells or buys an item by name, card and zeny range, with price, amount, seller and shop location. Finds real players' shops and, with the population engine, the fake-player market. Follows the active UI skin.",
+  "tags": ["vending", "search", "market", "ui"],
+  "homepage": "https://github.com/rhewid/whosell",
+  "source": {
+    "github": "rhewid/whosell",
+    "asset": "whosell-*.zip"
+  }
+}

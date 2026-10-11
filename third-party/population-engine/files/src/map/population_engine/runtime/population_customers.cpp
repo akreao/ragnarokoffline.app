@@ -109,7 +109,7 @@ static double pop_customers_plain_price(const PopCustomerSettings& cs, t_itemid 
 static PopMarketRef pop_customers_ref(const PopCustomerSettings& cs, const struct item& it) {
 	PopMarketRef ref;
 	PopMarketRow row;
-	ref.price = pop_customers_plain_price(cs, it.nameid, &row);
+	ref.price = pop_customers_plain_price(cs, it.nameid, &row) * pop_item_price_pct(it.nameid) / 100.0;
 	// A refined or carded piece is worth more than the plain one: about what
 	// the safe refines cost and the cards are worth. Forged and signed items
 	// (card[0] special) have no cards to add.

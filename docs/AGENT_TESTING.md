@@ -38,7 +38,10 @@ npm ci && npx playwright install chromium
 
 Then create and boot the world. It defaults to `artifacts/agent-world`, and
 takes the VM runtime and your GRF selection from the installed app's data
-folder (override with `RO_E2E_RUNTIME` and `RO_E2E_CLIENT_JSON`):
+folder — `~/Library/Application Support/Ragnarok Offline` on macOS,
+`$XDG_DATA_HOME/Ragnarok Offline` (`~/.local/share/Ragnarok Offline`) on Linux,
+`%APPDATA%\Ragnarok Offline` on Windows, or `RAGNAROK_OFFLINE_HOME` when set
+(override with `RO_E2E_RUNTIME` and `RO_E2E_CLIENT_JSON`):
 
 ```sh
 scripts/rotest world prepare   # once; refuses an existing folder
@@ -76,11 +79,13 @@ down`:
 | `RAGNAROK_OFFLINE_LOGIN_PORT` | 6900 | rAthena login |
 | `RAGNAROK_OFFLINE_CHAR_PORT` | 6121 | rAthena char |
 | `RAGNAROK_OFFLINE_MAP_PORT` | 5121 | rAthena map |
-| `RAGNAROK_OFFLINE_AGENT_PORT` | 7490 | the shell's AI-agent API, when a test copy of the app is run with `--user-data-dir` |
+| `RAGNAROK_OFFLINE_WEB_PORT` | 8888 | rAthena web (guild emblems); only the asset server talks to it |
+| `RAGNAROK_OFFLINE_AGENT_PORT` | 7490 | the shell's AI-agent API (the game agent's `/mcp` and the map editor's `/mcp/map`), when a test copy of the app is run with `--user-data-dir` |
 
 ```sh
 export RAGNAROK_OFFLINE_ASSET_PORT=13338 RAGNAROK_OFFLINE_LOGIN_PORT=16900 \
        RAGNAROK_OFFLINE_CHAR_PORT=16121 RAGNAROK_OFFLINE_MAP_PORT=15121 \
+       RAGNAROK_OFFLINE_WEB_PORT=18888 \
        RAGNAROK_OFFLINE_AGENT_PORT=17490 ROTEST_PORT=17480
 scripts/rotest world up && scripts/rotest start
 ```
