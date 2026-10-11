@@ -251,6 +251,118 @@ The map-loading worker, over the same run, spent 22.6% of its busy time in
 16.6% and model smooth normals (`calcNormal_SMOOTH`) 9.6%. This is part of why
 map loads take about 1.3 s even from cache.
 
+## Loading over a remote connection
+
+A browser player on another machine loads everything from the host's asset
+server. That is the Rust `robrowser-remoteclient`, which serves the page, the
+files it extracts from the GRFs, and the WebSocket-to-TCP game proxy. On a
+LAN, the browser talks plain HTTP/1.1 to `<host>:3338`. Over the internet
+("friends"), the path is browser → Cloudflare → `cloudflared` → the app's
+Node gateway on `:3339` → the Rust server
+([FRIENDS_SHARING.md](FRIENDS_SHARING.md)). The client is same-origin
+(`remoteClient: '/'`, and the socket proxy is built from `location.host`), so
+it fetches every file by path over HTTP. It never reads a GRF, and makes no
+range requests.
+
+### How it was measured
+
+`scripts/netshape.cjs` is a TCP proxy in front of the asset server. It models
+one bottleneck link: a shared FIFO in each direction, half the RTT each way,
+and one RTT for each new connection's handshake. Because the client is
+same-origin, pointing the browser at the proxy shapes everything: the page,
+the map worker's fetches, BGM and the game socket. A curl check matched the
+model: TTFB 204 ms, and 13.15 MB in 10.5 s at 10 Mbps / 100 ms.
+
+`scripts/perf-load.cjs` runs each profile in a fresh browser profile, so
+nothing is cached at the start. It records every request (`ROTEST_NETLOG=1`)
+and splits them by phase.
+
+```sh
+node scripts/perf-load.cjs --profiles local,50/40,10/100
+```
+
+This measures the LAN/direct path. The friends gateway was not in the loop,
+because it needs an invitation session. What it changes is noted from its
+code below.
+
+### Results (cold; each run logs in to Prontera)
+
+| Phase | Local | 50 Mbps / 40 ms | 10 Mbps / 100 ms |
+|---|---|---|---|
+| Page to login window | 2.0 s | 3.0 s | **7.6 s** |
+| Login to character select | 0.6 s | 0.9 s | 1.5 s |
+| Character select to playable (Prontera) | 6.3 s | 11.0 s | **25.4 s** |
+| Warp to iz_dun05, first visit | 1.9 s | 3.4 s | 9.4 s |
+| Warp to pay_fild02, first visit | 1.6 s | 2.5 s | 5.5 s |
+| Reload, warm HTTP and file cache, to login | 1.4 s | 1.8 s | 2.8 s |
+
+| Phase (10/100) | Requests | Bytes | Max in flight | Median TTFB | Time with one request in flight |
+|---|---|---|---|---|---|
+| Startup | 38 | 5.9 MB | 14 | 201 ms | 71% |
+| Character select to playable | 913 | 14.8 MB | **466** | **1543 ms** | 1% |
+| Warp iz_dun05 | 237 | 9.1 MB | 42 | 125 ms | 16% |
+| Warp pay_fild02 | 83 | 2.6 MB | 7 | 115 ms | 15% |
+
+What the requests show:
+
+- **Entering the game is a burst of about 960 requests (19 MB).** 505 of
+  them are UI textures (`data/texture/유저인터페이스/`): the art for windows
+  the player has not opened, preloaded on entry. That is `basic_interface`
+  122, cash shop 40, navigation 40, menu icons 49, lapine 26, bank 25,
+  refining 19, achievements 17 and so on. Another 167 are Prontera's map
+  textures, 52 are `.lub` tables (4.2 MB, including `itemInfo_client.lub`
+  1.3 MB), and `itemInfo.lua` (0.9 MB) is fetched alongside the `.lub`.
+  `worldmap.jpg` (1.3 MB) comes at entry too. Over HTTP/1.1 the browser opens
+  six connections per origin, so up to 466 requests wait in its queue and the
+  median request waits 1.5 s for its first byte. At 10/100 that phase is 23 s
+  of transfer.
+- **Startup is a serial chain.** The steps are `/` → `api.html` → `api.js` →
+  `Config.js` → `Config.local.js` → `Online.js` → each plugin one after
+  another → `ThreadEventHandler.js` → tables → single UI images. Each waits
+  for the one before, so a request is alone in flight for 71% of the time.
+  `Online.js` alone is 3.3 MB as sent: 2.9 s at 10 Mbps.
+- **`Online.js` is 13.15 MB as built** (the Vite build has `minify: false`).
+  The server gzips it at level 1, on every request, to 3.15 MB. gzip -9 would
+  be 2.58 MB and brotli 1.93 MB. Minified (terser, mangle only) it is 8.1 MB,
+  1.64 MB with brotli. `ThreadEventHandler.js`: 624 KB, 245 KB gzip-1, 153 KB
+  brotli.
+- **BGM competes with startup.** `01.mp3` (730 KB) downloads during startup,
+  and each map's BGM (1.5–1.8 MB) arrives with the map. mp3 is never
+  compressed.
+- **Caching on the direct path works** for repeat loads. GRF files get
+  `public, max-age=86400, immutable` with a content ETag. Client files get
+  `max-age=0` with a weak ETag, so each one is revalidated: 304s, one RTT
+  each, which is the 2.8 s warm reload at 100 ms. The generated
+  `/`, `index.html` and `Config.local.js` are `no-store`.
+- **No range requests anywhere** (the server has no Range support), and no
+  batching. The server has a `POST /batch` endpoint, and the client has a
+  `FileManager.getBatchHTTP` with 16 ms coalescing, but nothing calls it.
+
+### What the friends gateway changes (from its code, not measured)
+
+`electron/sharing/gateway.js` passes on only `accept`, `accept-encoding` and
+`content-type`. It drops `If-None-Match`, `If-Modified-Since` and `Range`.
+On the way back it keeps only `content-type`, `content-encoding` and
+`content-length`, and forces `cache-control: private, no-store`. It also
+opens a new TCP connection to the Rust server for each request
+(`agent: false`). So **for an internet player nothing is cached by the
+browser at all.** Every page load downloads `Online.js` and the rest again,
+cold every time: the 7.6 s column, not the 2.8 s one. Files reach roBrowser's
+own file cache (`saveFiles`, the deprecated WebKit FileSystem API) only where
+that is on. Cloudflare's edge speaks HTTP/2 or 3 to the browser, so the
+6-connection queue goes away there. The Quick Tunnel caps a session at 200
+requests in flight, which the 466-request burst at game entry exceeds.
+
+### Server-side costs per cold file
+
+The Rust server reads, DES-decodes where needed and inflates the whole GRF
+entry, hashes it (MD5, for the ETag), gzips it at level 1 on every response
+(the compressed result is not cached), and copies it once more. With
+`CLIENT_AUTOEXTRACT` it also writes the file to disk. There is no lock around
+GRF reads, so requests do not serialize there. Locally the median TTFB at
+game entry was 32 ms with 387 requests queued, so the server is not the
+bottleneck; the round trips and bytes are.
+
 ## Caveats
 
 - Wolves wander off between windows: entities near fall from 56 to 37 across

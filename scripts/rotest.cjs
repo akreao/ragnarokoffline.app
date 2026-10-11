@@ -91,7 +91,8 @@ function stack(args, stdio = 'pipe', input) {
 // supervisor decides (electron/ports.js), as it does for world.cjs.
 let gameUrl = null;
 function game() {
-    return gameUrl ||= `http://127.0.0.1:${require('../electron/ports').readPorts(STACK, stackEnv()).asset}/`;
+    // ROTEST_GAME_URL: load the game through something else, e.g. scripts/netshape.cjs.
+    return gameUrl ||= process.env.ROTEST_GAME_URL || `http://127.0.0.1:${require('../electron/ports').readPorts(STACK, stackEnv()).asset}/`;
 }
 
 // The play-testing account every world should have: `tester` / `tester123`,
@@ -276,6 +277,24 @@ async function daemon(flags) {
         const kind = m.type() === 'error' ? 'console' : m.type() === 'warning' ? 'warning' : null;
         if (kind) errors.push({ at: Date.now(), kind, text: m.text().slice(0, 2000) });
     });
+    // ROTEST_NETLOG=1: every finished request from the first load on, with its
+    // timing, size and caching headers, for `netlog` (scripts/perf-load.cjs).
+    const netlog = [];
+    if (process.env.ROTEST_NETLOG === '1') {
+        const record = async (req, failed) => {
+            const t = req.timing();
+            const res = failed ? null : await req.response().catch(() => null);
+            const sizes = failed ? null : await req.sizes().catch(() => null);
+            const h = res ? await res.allHeaders().catch(() => ({})) : {};
+            netlog.push({ url: req.url(), method: req.method(), type: req.resourceType(), status: res ? res.status() : 0, failed: Boolean(failed),
+                start: t.startTime, dns: t.domainLookupEnd, connect: t.connectEnd, ttfb: t.responseStart, end: t.responseEnd,
+                bodyBytes: sizes ? sizes.responseBodySize : 0, headerBytes: sizes ? sizes.responseHeadersSize : 0,
+                encoding: h['content-encoding'] || '', cache: h['cache-control'] || '', etag: Boolean(h.etag), lastModified: Boolean(h['last-modified']),
+                range: h['content-range'] || '', length: h['content-length'] || '', fromCache: res ? await res.headerValue('x-from-cache').catch(() => null) : null });
+        };
+        context.on('requestfinished', req => { record(req, false).catch(() => {}); });
+        context.on('requestfailed', req => { record(req, true).catch(() => {}); });
+    }
     page.on('response', r => { if (r.status() >= 400) errors.push({ at: Date.now(), kind: 'http', text: `${r.status()} ${new URL(r.url()).pathname}` }); });
     await page.goto(game(), { waitUntil: 'domcontentloaded' });
     log('browser ready', headed ? '(headed)' : '(headless)');
@@ -498,6 +517,11 @@ async function daemon(flags) {
                 return { ok: true, file: out, bytes, dataLossOccurred: Boolean(dataLossOccurred) };
             }
             throw new Error('trace start | trace stop [file]');
+        },
+        netlog: async ([sub]) => {
+            const out = { ok: true, entries: netlog.slice() };
+            if (sub === 'reset') netlog.length = 0;
+            return out;
         },
         ping: async () => ({ ok: true }),
         status: async () => ({ ok: true, running: true, url: page.url(), inGame: await inGame(), errors: errors.length }),
