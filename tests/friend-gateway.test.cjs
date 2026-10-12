@@ -231,6 +231,8 @@ test('assets pass validators and 304s through, privately; generated pages stay n
   const cold = await f.request('/data/sprite/a.spr', { headers: { cookie } });
   assert.equal(cold.status, 200); assert.equal(cold.text, 'asset'); strict(cold);
   assert.equal(cold.headers['cache-control'], 'private, no-cache'); assert.equal(cold.headers.etag, '"5d41402abc4b2a76"'); assert.equal(cold.headers.vary, 'Accept-Encoding');
+  // Friends always ask the asset server for compact pictures.
+  assert.equal(f.observed.at(-1).headers['x-compact-images'], '1');
   // The second load: the browser revalidates and gets an empty 304, including
   // when Cloudflare handed it a weakened copy of the ETag.
   for (const tag of [cold.headers.etag, 'W/' + cold.headers.etag]) {
