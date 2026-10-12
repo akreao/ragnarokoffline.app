@@ -4,7 +4,7 @@
 // loads over a real connection.
 //
 //   node scripts/netshape.cjs --listen 13400 --target 127.0.0.1:3338 --mbps 50 --rtt 40 [--up-mbps 10]
-//                             [--request-header 'X-Compact-Images: 1']
+//                             [--request-header 'X-Compact-Images: 1'] [--h2]
 //
 // The client is same-origin (Config.local.js: remoteClient '/', the socket
 // proxy on location.host), so pointing the browser at the listen port shapes
@@ -21,13 +21,29 @@
 // the app's friends gateway does (X-Compact-Images). It reads request heads
 // and Content-Length bodies, and passes a connection through untouched once
 // it upgrades to a WebSocket.
+//
+// --h2 serves HTTPS with HTTP/2, as Cloudflare's edge does for invite-link
+// friends: one connection carries every request, so the browser's six
+// connections per host no longer queue them. The certificate is self-signed
+// for 127.0.0.1, made with openssl at start; the browser has to ignore
+// certificate errors (rotest does for an https game URL on 127.0.0.1). The
+// shaping applies to the TLS bytes, so the TLS handshake costs its round trip
+// too. WebSockets arrive over HTTP/1.1 on their own connection.
 'use strict';
 const net = require('node:net');
+const http = require('node:http');
+const http2 = require('node:http2');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const { spawnSync } = require('node:child_process');
 
 const argv = process.argv.slice(2);
 const flag = (name, fallback) => { const i = argv.indexOf(name); return i >= 0 ? argv[i + 1] : fallback; };
 const LISTEN = Number(flag('--listen', 13400));
-const [HOST, PORT] = flag('--target', '127.0.0.1:3338').split(':');
+const [TARGET_HOST, TARGET_PORT] = flag('--target', '127.0.0.1:3338').split(':');
+const H2 = argv.includes('--h2');
+let [HOST, PORT] = [TARGET_HOST, TARGET_PORT];
 const MBPS = Number(flag('--mbps', 50));
 const UP_MBPS = Number(flag('--up-mbps', MBPS));
 const RTT = Number(flag('--rtt', 40));
@@ -50,19 +66,29 @@ const up = link(UP_MBPS);
 const now = () => performance.now();
 
 // Deliver chunks from `from` to `to` through `dir`, in order, after the
-// one-way delay and the link's queue.
+// one-way delay and the link's queue. One timer per direction drains a FIFO:
+// separate timers per chunk can fire out of order when their delays round to
+// the same millisecond, which reorders a stream (TLS rejects it outright).
 function pipe(from, to, dir, opened, transform = data => data) {
-    let last = 0;
+    const queue = [];
+    let last = 0, timer = null, ended = false;
+    const drain = () => {
+        timer = null;
+        while (queue.length && queue[0].at <= now()) { const { piece } = queue.shift(); if (!to.destroyed) to.write(piece); }
+        if (queue.length) timer = setTimeout(drain, Math.max(0, queue[0].at - now()));
+        else if (ended && !to.destroyed) to.end();
+    };
+    const schedule = () => { if (!timer) timer = setTimeout(drain, queue.length ? Math.max(0, queue[0].at - now()) : 0); };
     from.on('data', data => {
         data = transform(data);
         for (let i = 0; i < data.length; i += PIECE) {
             const piece = data.subarray(i, i + PIECE);
-            const at = Math.max(dir(piece.length, Math.max(now(), opened) + RTT / 2), last);
-            last = at;
-            setTimeout(() => { if (!to.destroyed) to.write(piece); }, Math.max(0, at - now()));
+            last = Math.max(dir(piece.length, Math.max(now(), opened) + RTT / 2), last);
+            queue.push({ piece, at: last });
         }
+        schedule();
     });
-    from.on('end', () => setTimeout(() => to.end(), Math.max(0, last - now()) + 1));
+    from.on('end', () => { ended = true; schedule(); });
     from.on('error', () => to.destroy());
 }
 
@@ -92,16 +118,61 @@ function addHeader() {
     };
 }
 
+// --h2: a TLS server terminating HTTP/2 (and HTTP/1.1 for WebSockets) that
+// forwards each request to the target. netshape shapes the bytes in front of it.
+const HOP = new Set(['connection', 'keep-alive', 'proxy-connection', 'transfer-encoding', 'upgrade', 'http2-settings', 'te', 'host']);
+function forwardHeaders(headers) {
+    const out = {};
+    for (const [k, v] of Object.entries(headers)) if (!k.startsWith(':') && !HOP.has(k)) out[k] = v;
+    out.host = headers[':authority'] || headers.host;
+    if (HEADER) { const i = HEADER.indexOf(': '); out[HEADER.slice(0, i).toLowerCase()] = HEADER.slice(i + 2); }
+    return out;
+}
+function frontEnd(ready) {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'netshape-'));
+    const [key, cert] = [path.join(dir, 'key.pem'), path.join(dir, 'cert.pem')];
+    const made = spawnSync('openssl', ['req', '-x509', '-newkey', 'ec', '-pkeyopt', 'ec_paramgen_curve:prime256v1', '-nodes', '-days', '1',
+        '-subj', '/CN=127.0.0.1', '-addext', 'subjectAltName=IP:127.0.0.1', '-keyout', key, '-out', cert], { encoding: 'utf8' });
+    if (made.status !== 0) throw Error('--h2 needs openssl: ' + (made.stderr || made.error));
+    const tls = { key: fs.readFileSync(key), cert: fs.readFileSync(cert) };
+    fs.rmSync(dir, { recursive: true, force: true });
+    const agent = new http.Agent({ keepAlive: true, maxSockets: Infinity });
+    const front = http2.createSecureServer({ ...tls, allowHTTP1: true }, (req, res) => {
+        const up = http.request({ host: TARGET_HOST, port: Number(TARGET_PORT), method: req.method, path: req.url, headers: forwardHeaders(req.headers), agent }, r => {
+            const headers = {};
+            for (const [k, v] of Object.entries(r.headers)) if (!HOP.has(k)) headers[k] = v;
+            res.writeHead(r.statusCode, headers);
+            r.pipe(res);
+        });
+        up.on('error', () => { if (!res.headersSent) res.writeHead(502); res.end(); });
+        req.pipe(up);
+    });
+    front.on('upgrade', (req, socket, head) => {
+        const upstream = net.connect(Number(TARGET_PORT), TARGET_HOST, () => {
+            const headers = forwardHeaders(req.headers);
+            headers.connection = 'Upgrade';
+            headers.upgrade = req.headers.upgrade;
+            upstream.write(`${req.method} ${req.url} HTTP/1.1\r\n${Object.entries(headers).map(([k, v]) => `${k}: ${v}`).join('\r\n')}\r\n\r\n`);
+            upstream.write(head);
+            socket.pipe(upstream).pipe(socket);
+        });
+        upstream.on('error', () => socket.destroy());
+        socket.on('error', () => upstream.destroy());
+    });
+    front.listen(0, '127.0.0.1', () => { [HOST, PORT] = ['127.0.0.1', String(front.address().port)]; ready(); });
+}
+
 const server = net.createServer(client => {
     // The handshake: nothing passes for one round trip.
     const opened = now() + RTT;
     const upstream = net.connect(Number(PORT), HOST);
     client.setNoDelay(true);
     upstream.setNoDelay(true);
-    pipe(client, upstream, up, opened, HEADER ? addHeader() : undefined);
+    pipe(client, upstream, up, opened, HEADER && !H2 ? addHeader() : undefined);
     pipe(upstream, client, down, opened);
     upstream.on('error', () => client.destroy());
     client.on('close', () => upstream.destroy());
 });
-server.listen(LISTEN, '127.0.0.1', () => console.log(`netshape :${LISTEN} -> ${HOST}:${PORT}, ${MBPS} Mbps down / ${UP_MBPS} up, ${RTT} ms RTT`));
+const listen = () => server.listen(LISTEN, '127.0.0.1', () => console.log(`netshape ${H2 ? 'https+h2' : 'http'} :${LISTEN} -> ${TARGET_HOST}:${TARGET_PORT}, ${MBPS} Mbps down / ${UP_MBPS} up, ${RTT} ms RTT`));
+if (H2) frontEnd(listen); else listen();
 for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => process.exit(0));

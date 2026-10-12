@@ -15,6 +15,11 @@
 //
 // A profile is <Mbps down>/<RTT ms>; `local` is the asset server direct. Needs
 // `scripts/rotest world up` and a client build with PerfProbe.
+//
+// NETSHAPE_HEADER='X-Compact-Images: 1' and NETSHAPE_H2=1 pass --request-header
+// and --h2 to netshape, to load the way an invite-link friend does. Chromium
+// keeps nothing in its HTTP cache from a certificate it was told to ignore, so
+// under NETSHAPE_H2 the reload phase has only roBrowser's own file cache.
 'use strict';
 const fs = require('node:fs');
 const path = require('node:path');
@@ -85,15 +90,18 @@ function summarize(entries) {
     };
 }
 
+// NETSHAPE_H2=1: the shaped link is HTTPS with HTTP/2, as Cloudflare serves invite-link friends.
+const H2 = process.env.NETSHAPE_H2 === '1';
+
 async function run(profile) {
     const local = profile === 'local';
     const [mbps, rtt] = local ? [] : profile.split('/').map(Number);
     let shaper = null;
     if (!local) {
-        shaper = spawn(process.execPath, [path.join(repo, 'scripts/netshape.cjs'), '--listen', String(SHAPER_PORT), '--mbps', String(mbps), '--rtt', String(rtt), ...(process.env.NETSHAPE_HEADER ? ['--request-header', process.env.NETSHAPE_HEADER] : [])], { stdio: 'ignore' });
+        shaper = spawn(process.execPath, [path.join(repo, 'scripts/netshape.cjs'), '--listen', String(SHAPER_PORT), '--mbps', String(mbps), '--rtt', String(rtt), ...(process.env.NETSHAPE_HEADER ? ['--request-header', process.env.NETSHAPE_HEADER] : []), ...(H2 ? ['--h2'] : [])], { stdio: 'ignore' });
         await sleep(500);
     }
-    env = { ...process.env, ROTEST_PERF: '1', ROTEST_NETLOG: '1', ...(local ? {} : { ROTEST_GAME_URL: `http://127.0.0.1:${SHAPER_PORT}/` }) };
+    env = { ...process.env, ROTEST_PERF: '1', ROTEST_NETLOG: '1', ...(local ? {} : { ROTEST_GAME_URL: `${H2 ? 'https' : 'http'}://127.0.0.1:${SHAPER_PORT}/` }) };
     rotest('stop');
     await waitFor(() => spawnSync(process.execPath, [path.join(repo, 'scripts/rotest.cjs'), 'status'], { env }).status !== 0, 20000);
     const result = { profile, phases: {} };

@@ -258,7 +258,8 @@ async function daemon(flags) {
     // frame costs rather than the 60 Hz tick (for scripts/perf-bench.cjs).
     const uncapped = process.env.ROTEST_UNCAPPED === '1' ? ['--disable-frame-rate-limit', '--disable-gpu-vsync'] : [];
     const browser = await chromium.launch({ headless: !headed, args: ['--use-gl=angle', '--enable-webgl', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required', ...uncapped] });
-    const context = await browser.newContext({ viewport: { width: vw, height: vh } });
+    // An https game URL on 127.0.0.1 is netshape --h2, with a self-signed certificate.
+    const context = await browser.newContext({ viewport: { width: vw, height: vh }, ignoreHTTPSErrors: /^https:\/\/127\.0\.0\.1[:/]/.test(process.env.ROTEST_GAME_URL || '') });
     await context.addInitScript(() => { try { localStorage.setItem('roAgent', '1'); } catch {} });
     // ROTEST_PERF=1: the client's opt-in perf probe (window.roPerf), from the first load.
     if (process.env.ROTEST_PERF === '1') await context.addInitScript(() => { try { localStorage.setItem('roPerf', '1'); } catch {} });
