@@ -12,7 +12,7 @@ fi
 EXE=''
 case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) EXE='.exe';; esac
 DEST="${1:-$ROOT/bin/robrowser-remoteclient$EXE}"
-REPO=Flux159/roBrowserLegacy-RemoteClient-Rust
+REPO=akreao/roBrowserLegacy-RemoteClient-Rust
 . "$ROOT/scripts/pinned-release.sh"
 case "$(pinned_host)" in
     macos/arm64) ASSET=robrowser-remoteclient-aarch64-apple-darwin ;;
