@@ -90,7 +90,7 @@ async function run(profile) {
     const [mbps, rtt] = local ? [] : profile.split('/').map(Number);
     let shaper = null;
     if (!local) {
-        shaper = spawn(process.execPath, [path.join(repo, 'scripts/netshape.cjs'), '--listen', String(SHAPER_PORT), '--mbps', String(mbps), '--rtt', String(rtt)], { stdio: 'ignore' });
+        shaper = spawn(process.execPath, [path.join(repo, 'scripts/netshape.cjs'), '--listen', String(SHAPER_PORT), '--mbps', String(mbps), '--rtt', String(rtt), ...(process.env.NETSHAPE_HEADER ? ['--request-header', process.env.NETSHAPE_HEADER] : [])], { stdio: 'ignore' });
         await sleep(500);
     }
     env = { ...process.env, ROTEST_PERF: '1', ROTEST_NETLOG: '1', ...(local ? {} : { ROTEST_GAME_URL: `http://127.0.0.1:${SHAPER_PORT}/` }) };

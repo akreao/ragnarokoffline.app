@@ -4,6 +4,7 @@
 // loads over a real connection.
 //
 //   node scripts/netshape.cjs --listen 13400 --target 127.0.0.1:3338 --mbps 50 --rtt 40 [--up-mbps 10]
+//                             [--request-header 'X-Compact-Images: 1']
 //
 // The client is same-origin (Config.local.js: remoteClient '/', the socket
 // proxy on location.host), so pointing the browser at the listen port shapes
@@ -15,6 +16,11 @@
 // connections in that direction. A new connection pays one RTT before its
 // first byte goes through, for the TCP handshake. It does not model loss,
 // slow start or the browser's own connection limits; the browser applies those.
+//
+// --request-header adds a header to every HTTP request on its way up, the way
+// the app's friends gateway does (X-Compact-Images). It reads request heads
+// and Content-Length bodies, and passes a connection through untouched once
+// it upgrades to a WebSocket.
 'use strict';
 const net = require('node:net');
 
@@ -26,6 +32,8 @@ const MBPS = Number(flag('--mbps', 50));
 const UP_MBPS = Number(flag('--up-mbps', MBPS));
 const RTT = Number(flag('--rtt', 40));
 const PIECE = 16 * 1024; // split chunks so connections interleave on the link
+const HEADER = flag('--request-header', '');
+if (HEADER && !/^[!#-'*+.0-9A-Z^-z|~-]+: [\x20-\x7e]*$/.test(HEADER)) throw Error('--request-header wants "Name: value"');
 
 // One direction of the link: a FIFO that frees at `free` (ms, performance time).
 function link(mbps) {
@@ -43,9 +51,10 @@ const now = () => performance.now();
 
 // Deliver chunks from `from` to `to` through `dir`, in order, after the
 // one-way delay and the link's queue.
-function pipe(from, to, dir, opened) {
+function pipe(from, to, dir, opened, transform = data => data) {
     let last = 0;
     from.on('data', data => {
+        data = transform(data);
         for (let i = 0; i < data.length; i += PIECE) {
             const piece = data.subarray(i, i + PIECE);
             const at = Math.max(dir(piece.length, Math.max(now(), opened) + RTT / 2), last);
@@ -57,13 +66,39 @@ function pipe(from, to, dir, opened) {
     from.on('error', () => to.destroy());
 }
 
+// A stream of HTTP requests with HEADER added to each head.
+function addHeader() {
+    let buffered = Buffer.alloc(0), body = 0, raw = false;
+    return data => {
+        if (raw) return data;
+        const out = [];
+        buffered = Buffer.concat([buffered, data]);
+        while (buffered.length) {
+            if (body > 0) {
+                const n = Math.min(body, buffered.length);
+                out.push(buffered.subarray(0, n)); buffered = buffered.subarray(n); body -= n;
+                continue;
+            }
+            const end = buffered.indexOf('\r\n\r\n');
+            if (end < 0) break;
+            const head = buffered.subarray(0, end).toString('latin1');
+            buffered = buffered.subarray(end + 4);
+            const line = head.indexOf('\r\n');
+            out.push(Buffer.from(`${head.slice(0, line)}\r\n${HEADER}${head.slice(line)}\r\n\r\n`, 'latin1'));
+            if (/^upgrade:/im.test(head)) { raw = true; out.push(buffered); buffered = Buffer.alloc(0); break; }
+            body = Number((/^content-length:\s*(\d+)/im.exec(head) || [])[1] || 0);
+        }
+        return Buffer.concat(out);
+    };
+}
+
 const server = net.createServer(client => {
     // The handshake: nothing passes for one round trip.
     const opened = now() + RTT;
     const upstream = net.connect(Number(PORT), HOST);
     client.setNoDelay(true);
     upstream.setNoDelay(true);
-    pipe(client, upstream, up, opened);
+    pipe(client, upstream, up, opened, HEADER ? addHeader() : undefined);
     pipe(upstream, client, down, opened);
     upstream.on('error', () => client.destroy());
     client.on('close', () => upstream.destroy());
