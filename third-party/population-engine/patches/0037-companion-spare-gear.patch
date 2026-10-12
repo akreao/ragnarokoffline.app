@@ -1,0 +1,60 @@
+From 0000000000000000000000000000000000000037
+Subject: [PATCH] @companion spare: a companion carries gear it does not wear
+
+A companion that started unequipped (patch 0036) can carry pieces beside the ones it wears:
+"@companion spare <name> stow <slot>" moves a worn piece into its bag, "wear <#>" puts a carried
+one on, "take <#>" hands one back, "list" shows both. The command is one line here; all of it
+is in population_engine/runtime/population_shell_gear. The Companions window's Gear tab sends
+these. It needs Companion inventory, which is what saves the bag.
+
+"@companion remove" leaves a companion be while it still carries a spare its owner's bag had no
+room for: a piece is handed back or kept, never dropped on the floor.
+
+diff --git a/src/custom/atcommand.inc b/src/custom/atcommand.inc
+--- a/src/custom/atcommand.inc
++++ b/src/custom/atcommand.inc
+@@ -476,6 +476,10 @@
+ 		}
+ 		if (live != nullptr) {
+ 			population_engine_companion_return_gear(sd, live, 0);
++			// RAGNAROKMAC (spare gear): a spare the owner's bag had no room for is not dropped;
++			// it stays with the companion, and so the companion stays.
++			if (population_shell_gear_keeps_spares(sd, live))
++				return -1;
+ 			if (live->status.party_id > 0 && live->status.party_id < 0x70000000)
+ 				population_engine_set_companion_active(sd->status.account_id, index_, false);
+ 			population_engine_shell_release(live);
+@@ -719,6 +723,13 @@
+ 		clif_displaymessage(fd, msg);
+ 		return 0;
+ 	}
++	// RAGNAROKMAC (spare gear): what a companion that started unequipped carries beside what
++	// it wears ("@companion spare <name> list | stow <slot> | wear <#> | take <#>"). All of it
++	// is in population_shell_gear; the Companions window's Gear tab sends these.
++	if (strcmpi(cmd, "spare") == 0) {
++		population_shell_gear_command(sd, param);
++		return 0;
++	}
+ 	// RAGNAROKMAC (rest): when companions sit down to rest between fights
+ 	// ("@companion rest <below%> <until%>"), for the whole party like the healer
+ 	// thresholds, and stored per companion row the same way. 0 below = never.
+@@ -793,7 +804,7 @@
+ 		clif_displaymessage(fd, reply[0] ? reply : "Could not set that companion's homunculus.");
+ 		return 0;
+ 	}
+-	clif_displaymessage(fd, "Usage: @companion list | summon <name> | draft <job> [name] [m|f] | jobs | skills <name> [list|none|auto] | favorite <name> | remove <name> | dismiss <name> | gear <name> [slots] | heal <a%> <b%> | rest <a%> <b%> | homunculus <name> [on|off]");
++	clif_displaymessage(fd, "Usage: @companion list | summon <name> | draft <job> [name] [m|f] | jobs | skills <name> [list|none|auto] | favorite <name> | remove <name> | dismiss <name> | gear <name> [slots] | heal <a%> <b%> | spare <name> list|stow|wear|take | rest <a%> <b%> | homunculus <name> [on|off]");
+ 	return -1;
+ }
+ 
+diff --git a/src/map/atcommand.cpp b/src/map/atcommand.cpp
+--- a/src/map/atcommand.cpp
++++ b/src/map/atcommand.cpp
+@@ -55,6 +55,7 @@
+ #include "population_engine.hpp"
+ #include "population_engine/core/pe_perf.hpp"
+ #include "population_engine/runtime/population_engine_path.hpp"
++#include "population_engine/runtime/population_shell_gear.hpp"
+ #include "quest.hpp"
+ #include "script.hpp"
+ #include "storage.hpp"

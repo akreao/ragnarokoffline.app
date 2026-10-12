@@ -252,6 +252,38 @@ instrument to sing, and Gypsies, Wanderers and Trouveres need a whip to dance.
 Item costs are a separate setting, **Companion inventory**: off, arrows and
 gemstones are never needed; on, they come from its bag (see [Its bag](#its-bag)).
 
+### Starting unequipped
+
+A new companion normally comes dressed for its class, and the engine gives it
+new gear when it changes class. With **Settings → Population → Companions start
+unequipped** on, a companion you draft or hire starts with no weapon, armour or
+headgear, and is never given any: trade it what it should wear and it puts it on.
+Until then it fights bare-handed, and with Weapon rules on its weapon skills wait
+for a weapon. Arrows and potions are not gear; they follow Companion inventory.
+
+A companion keeps the way it started. Turning the setting on changes none you
+already have, and one drafted while it was on stays the way it is when you turn
+it off again.
+
+### Spare gear
+
+A companion that started unequipped can carry pieces beside the ones it wears,
+with **Companion inventory** on (that is what saves its bag). Trading works as
+ever: a traded piece is put on. In the Companions window's **Gear** tab:
+
+- **Carry as spare** on a worn slot moves that piece into its bag;
+- the **Carried** list shows what it holds, with **Wear** (the piece it replaces
+  goes into the bag, not back to you) and **Take back**;
+- **All** takes back everything, worn and carried.
+
+A carried piece your bag has no room for (or that is too heavy) stays with the
+companion: it is never dropped on the ground. A companion that still carries one
+is not removed either; make room and remove it again.
+
+A companion that still wears or carries anything of yours is not removed while it
+is not summoned: summon it and take the gear back first. The same as commands:
+`@companion spare <name> list`, `stow <slot>`, `wear <#>`, `take <#>`.
+
 ## Free or hired
 
 **Settings → Population → Companions** decides what a new companion costs:

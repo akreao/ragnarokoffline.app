@@ -1104,6 +1104,11 @@ const SETTINGS_DEFAULTS = {
 	// Companions window, instead of following. Off: every companion follows, and
 	// the window offers no Roam control.
 	population_companion_roam: false,
+	// Whether a drafted companion starts with nothing on, and is given no gear by
+	// the engine afterwards: it wears what its owner gives it. Off keeps the
+	// engine dressing it from its job's gear set. Kept per companion from its
+	// draft on, so this changes none that already exists.
+	population_companion_start_unequipped: false,
 	// Whether ambient shells pick up the drops of their own kills, the way a
 	// player would, and how (see population-conf.js shellLoot). Off keeps the
 	// historic behaviour: every drop stays on the ground until it expires.

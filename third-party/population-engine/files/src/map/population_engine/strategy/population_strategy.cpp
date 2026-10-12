@@ -49,6 +49,7 @@
 #include "../../population_engine.hpp"
 #include "../expanded_ai/expanded_parser.hpp"
 #include "../runtime/population_shell_runtime.hpp"
+#include "../runtime/population_shell_gear.hpp"
 
 namespace pop_strategy {
 
@@ -208,6 +209,11 @@ struct Rule {
 	/// companion that carries one of them. use_item is the first of the list.
 	t_itemid use_item = 0;
 	std::vector<t_itemid> use_items;
+	/// Equip: a carried piece of gear worn while the rule applies (the first of the list it
+	/// carries or already wears), and with equip_card only a piece holding that card. When no
+	/// Equip rule asks for the slot any more, what was worn before goes back on.
+	std::vector<t_itemid> equip_items;
+	t_itemid equip_card = 0;
 
 	uint32 cooldown_ms = 0;
 	bool one_per_party = false;
@@ -983,7 +989,7 @@ RulePtr StrategyDatabase::parse_rule(const ryml::NodeRef &node, bool &remove)
 		return nullptr;
 	}
 	this->warn_unknown_keys(node, { "Name", "Priority", "Remove", "Requires", "On", "When", "Charges", "Field",
-		"Enemy", "Count", "Reach", "Absent", "Present", "Cast", "Level", "Target", "Aim", "Consume", "UseItem", "Say", "Channel", "Retreat", "Distance", "Hold", "Sit", "KeepDistance", "Kite", "MoveTo", "Leave", "Switch", "Signal", "SetTarget", "Cooldown", "Claim", "InStrategy", "InFight",
+		"Enemy", "Count", "Reach", "Absent", "Present", "Cast", "Level", "Target", "Aim", "Consume", "UseItem", "Equip", "Say", "Channel", "Retreat", "Distance", "Hold", "Sit", "KeepDistance", "Kite", "MoveTo", "Leave", "Switch", "Signal", "SetTarget", "Cooldown", "Claim", "InStrategy", "InFight",
 		"OnePerParty" }, "a rule");
 
 	auto rule = std::make_shared<Rule>();
@@ -1473,6 +1479,43 @@ RulePtr StrategyDatabase::parse_rule(const ryml::NodeRef &node, bool &remove)
 		}
 		rule->aim = true;
 	}
+	if (this->nodeExists(node, "Equip")) {
+		// Equip: Manteau | [Manteau, Muffler] | { Item: Muffler, Card: Raydric_Card }
+		// The names are read through a second handle, never by assigning one node handle to
+		// another: that writes the Item node over the Equip node, and the Card is gone.
+		const ryml::NodeRef e = node["Equip"];
+		const bool keyed = e.is_map();
+		if (keyed) {
+			this->warn_unknown_keys(e, { "Item", "Card" }, "Equip");
+			if (!this->nodeExists(e, "Item")) {
+				this->invalidWarning(e, "Equip needs an Item; the rule is skipped.\n");
+				return nullptr;
+			}
+			if (this->nodeExists(e, "Card")) {
+				std::string card;
+				this->asString(e, "Card", card);
+				if ((rule->equip_card = item_of(card)) == 0) {
+					this->invalidWarning(e["Card"], "Unknown card '%s'; the rule is skipped.\n", card.c_str());
+					return nullptr;
+				}
+			}
+		}
+		for (const std::string &item : keyed ? scalars(e["Item"]) : scalars(e)) {
+			const t_itemid id = item_of(item);
+			const std::shared_ptr<item_data> data = id != 0 ? itemdb_exists(id) : nullptr;
+			// Any piece that is worn: weapons, armour, headgear, accessories, costumes, shadow gear.
+			// Not ammunition, which the engine chooses for the weapon and the target itself.
+			if (data == nullptr || !itemdb_isequip2(data.get()) || (data->equip & EQP_AMMO)) {
+				this->invalidWarning(e, "Equip: '%s' is not a piece of gear (ammunition is chosen by the engine); the rule is skipped.\n", item.c_str());
+				return nullptr;
+			}
+			rule->equip_items.push_back(id);
+		}
+		if (rule->equip_items.empty()) {
+			this->invalidWarning(e, "Equip needs an item or a list of them; the rule is skipped.\n");
+			return nullptr;
+		}
+	}
 	if (this->nodeExists(node, "UseItem")) {
 		for (const std::string &item : scalars(node["UseItem"])) {
 			const t_itemid id = item_of(item);
@@ -1524,13 +1567,14 @@ RulePtr StrategyDatabase::parse_rule(const ryml::NodeRef &node, bool &remove)
 	}
 
 	const int moves = (rule->cast_skill != 0) + (rule->retreat != Retreat::None) + rule->hold + rule->sit
-		+ (rule->keep_distance > 0) + (rule->move != Move::None) + rule->leave + rule->kite + (rule->use_item != 0);
+		+ (rule->keep_distance > 0) + (rule->move != Move::None) + rule->leave + rule->kite + (rule->use_item != 0)
+		+ !rule->equip_items.empty();
 	if (moves == 0 && rule->say.empty() && rule->switch_to.empty() && rule->signal.empty() && !rule->set_target) {
-		this->invalidWarning(node, "A rule needs Cast, UseItem, Retreat, KeepDistance, Kite, MoveTo, Leave, Hold, Sit, Say, Switch, Signal or SetTarget; the rule is skipped.\n");
+		this->invalidWarning(node, "A rule needs Cast, UseItem, Equip, Retreat, KeepDistance, Kite, MoveTo, Leave, Hold, Sit, Say, Switch, Signal or SetTarget; the rule is skipped.\n");
 		return nullptr;
 	}
 	if (moves > 1) {
-		this->invalidWarning(node, "A rule takes only one of Cast, UseItem, Retreat, KeepDistance, Kite, MoveTo, Leave, Hold and Sit; the rule is skipped.\n");
+		this->invalidWarning(node, "A rule takes only one of Cast, UseItem, Equip, Retreat, KeepDistance, Kite, MoveTo, Leave, Hold and Sit; the rule is skipped.\n");
 		return nullptr;
 	}
 	if (rule->move == Move::EventCell && rule->event != Event::Casts) {
@@ -1544,6 +1588,11 @@ RulePtr StrategyDatabase::parse_rule(const ryml::NodeRef &node, bool &remove)
 	if ((rule->target == Target::Event || rule->target == Target::Source) && rule->event == Event::None) {
 		this->invalidWarning(node, "Target event/source needs an On: event; the rule is skipped.\n");
 		return nullptr;
+	}
+	// Gear is worn for as long as its rule applies: a rule that sleeps would take it off again.
+	if (!rule->equip_items.empty() && rule->cooldown_ms != 0) {
+		this->invalidWarning(node, "Equip takes no Cooldown (the piece is worn while the rule applies); the Cooldown is ignored.\n");
+		rule->cooldown_ms = 0;
 	}
 	// An item used on every turn its condition holds would empty the bag before the effect shows.
 	if (rule->use_item != 0 && rule->cooldown_ms == 0)
@@ -2009,8 +2058,17 @@ struct Occurrence {
 	bool boss;                  ///< it was boss-class (read while it was still there)
 };
 
+/// Equip: a piece a rule put on, and what to put back when no rule asks for it any more.
+struct GearSwap {
+	int16 on_index;             ///< where the piece sits in the inventory...
+	t_itemid on_id;             ///< ...and what it is, to know it is still that one
+	std::vector<std::tuple<int16, t_itemid, uint32>> before; ///< (index, item, position) of what it took off
+	t_tick until;               ///< claimed until then; renewed every turn an Equip rule applies
+};
+
 struct ShellState {
 	uint32 char_id = 0;
+	std::vector<GearSwap> swaps; ///< Equip: what rules have changed, to be undone
 	// For encounter_ended / target_lost: what the last turn saw.
 	std::vector<std::pair<uint32, int32>> last_encounters; ///< (mob id, instance)
 	std::unordered_set<int32> last_bosses; ///< the boss-class ones among last_encounters and last_target
@@ -2418,6 +2476,7 @@ struct Turn {
 	ShellState *st;
 	bool target_set = false;    ///< a higher-priority rule already chose the target this turn
 	bool sitting = false;       ///< a Sit rule applied this turn
+	uint32 equip_claimed = 0;   ///< Equip: the positions a rule has spoken for this turn
 	const std::string *claim = nullptr; ///< while a Claim rule picks its target: skip what others hold
 	int32 claim_passed = 0;     ///< the last target a selector passed over for a claim...
 	int32 claim_holder = 0;     ///< ...and who holds it (for the trace)
@@ -3813,6 +3872,31 @@ static bool requires_ok(const map_session_data *sd, const Requirements &req)
 	return true;
 }
 
+/// Equip: where the rule's piece is in the inventory -- the first of its list (with its card,
+/// if it asks for one) that is worn or, with `any`, worn or carried; else the first carried.
+/// -1 with none.
+static int16 equip_piece(const map_session_data *sd, const Rule &rule, bool any, bool worn = true)
+{
+	for (int pass = worn ? 0 : 1; pass < (any || !worn ? 2 : 1); ++pass) {
+		for (const t_itemid want : rule.equip_items) {
+			for (int16 i = 0; i < MAX_INVENTORY; ++i) {
+				const item &it = sd->inventory.u.items_inventory[i];
+				if (it.nameid != want || it.amount <= 0 || (it.equip != 0) != (pass == 0))
+					continue;
+				// A plain loop on purpose: std::none_of over it.card took a worn piece without the
+				// card for one with it (item is a packed struct; the test on the rig caught it).
+				bool carded = rule.equip_card == 0;
+				for (int c = 0; c < MAX_SLOTS && !carded; ++c)
+					carded = it.card[c] == rule.equip_card;
+				if (!carded)
+					continue;
+				return i;
+			}
+		}
+	}
+	return -1;
+}
+
 /// UseItem: the first item of the rule's list that is in the bag; 0 with none of them.
 static t_itemid carried_item(const map_session_data *sd, const Rule &rule)
 {
@@ -3840,6 +3924,9 @@ static bool requires_ok(const map_session_data *sd, const Rule &rule)
 	} else if (rule.cast_skill != 0 && !may_cast(sd, rule.cast_skill)) {
 		return false;
 	}
+	// Equip: only a companion that started unequipped (all it holds is its owner's), with the piece.
+	if (!rule.equip_items.empty() && (!population_shell_gear_can_switch(sd) || equip_piece(sd, rule, true) < 0))
+		return false;
 	// UseItem: only what it carries. Without Companion inventory that is what the engine hands it.
 	if (rule.use_item != 0 && carried_item(sd, rule) == 0)
 		return false;
@@ -3944,6 +4031,95 @@ static bool use_item(Turn &t, t_itemid nameid, block_list *target)
 		}
 	}
 	return true;
+}
+
+/// How long a piece stays on after the last turn a rule asked for it: a boss at the edge of
+/// range would otherwise have the companion change at every step.
+constexpr t_tick kEquipHoldMs = 10000;
+
+/// Equip: the piece is worn while the rule applies. Already on: the claim is renewed. Carried:
+/// it goes on, and what it takes off is noted for put_gear_back.
+static void equip_for(Turn &t, const Rule &rule, const char *name)
+{
+	map_session_data *sd = t.sd;
+	ShellState &st = *t.st;
+	int16 at = equip_piece(sd, rule, false);
+	if (at >= 0) { // already worn
+		const uint32 pos = sd->inventory.u.items_inventory[at].equip;
+		if (t.equip_claimed & pos)
+			return;
+		t.equip_claimed |= pos;
+		for (GearSwap &s : st.swaps)
+			if (s.on_index == at)
+				s.until = t.tick + kEquipHoldMs;
+		return;
+	}
+	at = equip_piece(sd, rule, false, false);
+	if (at < 0)
+		return;
+	const std::shared_ptr<item_data> id = itemdb_exists(sd->inventory.u.items_inventory[at].nameid);
+	if (id == nullptr || (t.equip_claimed & id->equip) == id->equip)
+		return; // a rule above has the slot
+	std::vector<std::tuple<int16, t_itemid, uint32>> worn;
+	for (int16 i = 0; i < MAX_INVENTORY; ++i) {
+		const item &it = sd->inventory.u.items_inventory[i];
+		if (it.nameid != 0 && it.equip != 0 && !(it.equip & EQP_AMMO))
+			worn.emplace_back(i, it.nameid, it.equip);
+	}
+	if (!population_shell_gear_put_on(sd, at, 0)) {
+		trace(sd, st, t.tick, "rule %s: cannot wear %s (its class or level)", name, id->ename.c_str());
+		return;
+	}
+	GearSwap swap{ at, sd->inventory.u.items_inventory[at].nameid, {}, t.tick + kEquipHoldMs };
+	std::string was;
+	for (const auto &w : worn) {
+		if (sd->inventory.u.items_inventory[std::get<0>(w)].equip != 0)
+			continue;
+		// A piece an earlier swap put on is not what the companion wears by itself: that swap's
+		// own "before" is, and it is what comes back.
+		bool handed_on = false;
+		for (auto it = st.swaps.begin(); it != st.swaps.end(); ++it) {
+			if (it->on_index != std::get<0>(w))
+				continue;
+			swap.before.insert(swap.before.end(), it->before.begin(), it->before.end());
+			st.swaps.erase(it);
+			handed_on = true;
+			break;
+		}
+		if (!handed_on)
+			swap.before.push_back(w);
+		was += (was.empty() ? "" : ", ") + std::string(itemdb_ename(std::get<1>(w)));
+	}
+	t.equip_claimed |= sd->inventory.u.items_inventory[at].equip;
+	st.swaps.push_back(std::move(swap));
+	trace(sd, st, t.tick, "rule %s: put on %s (%s)", name, id->ename.c_str(), was.empty() ? "the slot was empty" : ("took off " + was).c_str());
+}
+
+/// Equip: a piece no rule has asked for in kEquipHoldMs comes off, and what it replaced goes
+/// back on. A piece the owner has since moved or taken is left as the owner put it.
+static void put_gear_back(map_session_data *sd, ShellState &st, t_tick tick)
+{
+	for (auto s = st.swaps.begin(); s != st.swaps.end();) {
+		if (DIFF_TICK(s->until, tick) > 0) {
+			++s;
+			continue;
+		}
+		const item &on = sd->inventory.u.items_inventory[s->on_index];
+		if (on.nameid == s->on_id && on.equip != 0) {
+			std::string back;
+			for (const auto &b : s->before) {
+				const item &it = sd->inventory.u.items_inventory[std::get<0>(b)];
+				if (it.nameid == std::get<1>(b) && it.equip == 0 && population_shell_gear_put_on(sd, std::get<0>(b), std::get<2>(b)))
+					back += (back.empty() ? "" : ", ") + std::string(itemdb_ename(it.nameid));
+			}
+			// Nothing was there before, or it is gone: the piece simply comes off.
+			if (sd->inventory.u.items_inventory[s->on_index].equip != 0)
+				population_shell_gear_take_off(sd, s->on_index);
+			trace(sd, st, tick, "gear: %s off, no rule asks for it any more (%s)", itemdb_ename(s->on_id),
+				back.empty() ? "nothing to put back" : ("back on: " + back).c_str());
+		}
+		s = st.swaps.erase(s);
+	}
 }
 
 static Outcome run_rule(Turn &t, const Rule &rule, const Plan &plan, PlanState &ps, bool do_skills, bool attack_only)
@@ -4117,6 +4293,8 @@ static Outcome run_rule(Turn &t, const Rule &rule, const Plan &plan, PlanState &
 			rule.tfield_skill != 0 ? "the field" : target != nullptr ? status_get_name(*target) : target_id != 0 ? "a target now gone" : "self",
 			g_cast_note.c_str(), sd->battle_status.sp, sd->battle_status.max_sp);
 		acted = true;
+	} else if (!rule.equip_items.empty()) {
+		equip_for(t, rule, name); // never the turn's action: gear is worn beside whatever else is done
 	} else if (rule.use_item != 0) {
 		const int32 enemy_id = t.enemy != nullptr ? t.enemy->id : 0;
 		const int32 target_id = target != nullptr ? target->id : 0;
@@ -4503,6 +4681,11 @@ bool population_strategy_turn(map_session_data *sd, t_tick tick, bool do_skills,
 		return false;
 	prune(tick);
 
+	// Equip: what no rule has asked for in a while comes off, whatever plans apply now.
+	if (const auto gs = g_shells.find(sd->id); gs != g_shells.end() && !gs->second.swaps.empty()
+			&& gs->second.char_id == sd->status.char_id)
+		put_gear_back(sd, gs->second, tick);
+
 	block_list *enemy = same_map_bl(sd, sd->pop.target_id);
 	const auto plans = plans_for(sd, enemy);
 	if (plans.empty()) {
@@ -4577,8 +4760,17 @@ bool population_strategy_turn(map_session_data *sd, t_tick tick, bool do_skills,
 			if (c.rule->event != Event::None)
 				poll_event(t, *c.rule, t.st->rules[c.rule->uid]);
 
+		// Equip rules first, each of them, whatever else takes the turn: gear is worn while its
+		// rule applies, and a Hold above it every turn must not let it lapse.
+		t.equip_claimed = 0;
+		for (const Candidate &c : list)
+			if (!c.rule->equip_items.empty())
+				(void)run_rule(t, *c.rule, *c.plan, *c.state, do_skills, attack_only);
+
 		bool switched = false;
 		for (const Candidate &c : list) {
+			if (!c.rule->equip_items.empty())
+				continue;
 			const Outcome o = run_rule(t, *c.rule, *c.plan, *c.state, do_skills, attack_only);
 			if (o == Outcome::Acted)
 				return true;
@@ -4639,6 +4831,27 @@ bool population_strategy_keeps_seated(const map_session_data *sd)
 	return it != g_shells.end() && it->second.char_id == sd->status.char_id && it->second.sat;
 }
 
+uint32 population_strategy_normal_equip(const map_session_data *sd, int16 index)
+{
+	const item &it = sd->inventory.u.items_inventory[index];
+	const auto found = g_shells.find(sd->id);
+	if (found == g_shells.end() || found->second.char_id != sd->status.char_id)
+		return it.equip;
+	for (const GearSwap &s : found->second.swaps) {
+		if (s.on_index == index && it.nameid == s.on_id && it.equip != 0)
+			return 0;
+		// Only while the swap still stands: once the owner has moved either piece, what is
+		// worn is what the owner wants.
+		const item &on = sd->inventory.u.items_inventory[s.on_index];
+		if (on.nameid != s.on_id || on.equip == 0)
+			continue;
+		for (const auto &b : s.before)
+			if (std::get<0>(b) == index && it.nameid == std::get<1>(b) && it.equip == 0)
+				return std::get<2>(b);
+	}
+	return it.equip;
+}
+
 bool population_strategy_wants_turn(const map_session_data *sd, t_tick tick)
 {
 	if (g_db.rule_count == 0 || !takes_part(sd))
@@ -4647,6 +4860,10 @@ bool population_strategy_wants_turn(const map_session_data *sd, t_tick tick)
 	if (it == g_shells.end() || it->second.char_id != sd->status.char_id)
 		return false;
 	const ShellState &st = it->second;
+	// Equip: a piece is due back off. Left to the next fight, a resting companion sat in its boss gear.
+	for (const GearSwap &s : st.swaps)
+		if (DIFF_TICK(s.until, tick) <= 0)
+			return true;
 	// An ending recorded a moment ago, and a rule its event woke that has not acted yet.
 	if (DIFF_TICK(st.answer_until, tick) > 0) {
 		for (const auto &r : st.rules)

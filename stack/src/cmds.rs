@@ -1319,6 +1319,9 @@ const COMPANION_COLUMNS: &[(&str, &str)] = &[
     // v14: the companion roams its owner's map instead of following, chosen in the Companions
     // window. 0 on an existing row: every companion follows, as before.
     ("roam", "TINYINT NOT NULL DEFAULT 0"),
+    // v15: drafted with nothing on (Settings -> Population -> Companions start unequipped).
+    // 0 on an existing row: the engine dressed it, and goes on doing so.
+    ("start_unequipped", "TINYINT NOT NULL DEFAULT 0"),
 ];
 
 /// Indexes added after the table first shipped, as (name, columns).
