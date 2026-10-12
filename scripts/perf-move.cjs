@@ -52,7 +52,7 @@ const RECORDER = `(() => {
   const st = { on: false };
   const reset = () => Object.assign(st, { frames: 0, walkFrames: 0, ratios: [], snaps: { player: [], others: [] },
     reversals: { player: 0, others: 0 }, wobble: { player: 0, others: 0 }, walkFramesBy: { player: 0, others: 0 },
-    clicks: [], seen: new Map(), lastFrame: 0 });
+    clicks: [], seen: new WeakMap(), snapSample: [], lastFrame: 0 });
   reset();
   const origSend = Network.sendPacket.bind(Network);
   Network.sendPacket = function (pkt) {
@@ -69,6 +69,8 @@ const RECORDER = `(() => {
     if (!me || me.__mvWrapped) return;
     const orig = me.walkTo;
     me.walkTo = function () {
+      // predictWalkTo's own call (isPrediction) is not the server's reply.
+      if (arguments[9] === true) return orig.apply(this, arguments);
       const c = st.clicks.length && st.clicks[st.clicks.length - 1];
       if (st.on && c && c.reply == null) c.reply = Date.now() - c.at;
       return orig.apply(this, arguments);
@@ -87,8 +89,8 @@ const RECORDER = `(() => {
       if (!isMe && e.objecttype !== Entity.TYPE_MOB && e.objecttype !== Entity.TYPE_PC) return;
       const who = isMe ? 'player' : 'others';
       const x = e.position[0], y = e.position[1];
-      const prev = st.seen.get(e.GID);
-      st.seen.set(e.GID, { x, y, t: now, dx: prev ? x - prev.x : 0, dy: prev ? y - prev.y : 0 });
+      const prev = st.seen.get(e); // not by GID: entities fading out all share GID -1
+      st.seen.set(e, { x, y, t: now, dx: prev ? x - prev.x : 0, dy: prev ? y - prev.y : 0 });
       if (!prev || now <= prev.t) return;
       const dt = now - prev.t;
       if (dt > 100) return; // a stalled frame says nothing about movement
@@ -96,7 +98,10 @@ const RECORDER = `(() => {
       if (d > 16 || e.isFastMoving) return;
       const speed = e.walk.speed || 150;
       const expected = dt / speed;
-      if (d > 0.3 && d > 2.5 * expected) st.snaps[who].push({ d: Math.round(d * 100) / 100, gid: e.GID, at: now });
+      if (d > 0.3 && d > 2.5 * expected) {
+        st.snaps[who].push({ d: Math.round(d * 100) / 100, gid: e.GID, at: now });
+        if (st.snapSample.length < 20) st.snapSample.push({ who, gid: e.GID, d: Math.round(d * 100) / 100, action: e.action, from: [prev.x, prev.y], to: [x, y] });
+      }
       const walking = e.action === e.ACTION.WALK && e.walk.total > 0;
       if (walking && d > 0.0001) {
         st.walkFramesBy[who]++;
@@ -115,7 +120,8 @@ const RECORDER = `(() => {
   Renderer.renderCallbacks.push(sample);
   const pct = (a, p) => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y); return Math.round(s[Math.min(s.length - 1, Math.floor(p * s.length))] * 100) / 100; };
   window.__mv = {
-    start() { reset(); st.on = true; return true; },
+    // A warp stops the renderer, which drops its render callbacks.
+    start() { reset(); if (!Renderer.renderCallbacks.includes(sample)) Renderer.renderCallbacks.push(sample); st.on = true; return true; },
     stop() { st.on = false; return true; },
     summary() {
       const moved = st.clicks.map(c => c.moved).filter(v => v != null);
@@ -132,6 +138,7 @@ const RECORDER = `(() => {
         clicks: st.clicks.length,
         clickToMotionMs: { p50: pct(moved, 0.5), p90: pct(moved, 0.9), n: moved.length },
         clickToReplyMs: { p50: pct(reply, 0.5), p90: pct(reply, 0.9), n: reply.length },
+        snapSample: st.snapSample,
       };
     },
   };
