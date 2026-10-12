@@ -64,6 +64,11 @@ impl GameText {
     }
 }
 
+/// Served as SystemEN/OngoingQuests.lub when the English quest table is
+/// already System/OngoingQuestInfoList.lub.
+const QUESTS_SERVED_AS_SYSTEM: &str =
+    "-- The English quest table is System/OngoingQuestInfoList.lub.\nQuestInfoList = {}\n";
+
 /// Read the setting, defaulting to the English translation.
 ///
 /// A value nobody wrote is refused rather than read as the default: the only
@@ -439,6 +444,14 @@ pub fn link(cfg: &Config, args: &[String]) -> Result<(), String> {
             )?;
         }
         copy_over(&en.join("SystemEN"), &server_root.join("SystemEN"))?;
+        // The client loads System/OngoingQuestInfoList.lub and then this file
+        // over it. Both are now the English table, so the second is an empty
+        // one: the same quests, without sending the table twice.
+        fs::write(
+            server_root.join("SystemEN/OngoingQuests.lub"),
+            QUESTS_SERVED_AS_SYSTEM,
+        )
+        .map_err(|e| e.to_string())?;
     }
     copy_data_aliased(
         &cfg.root.join("client-assets/data"),
@@ -454,8 +467,9 @@ pub fn link(cfg: &Config, args: &[String]) -> Result<(), String> {
     // (v3: the signboard table's name; v4: the client's item table staged
     // behind the English one; v5: the Compatibility layers stacked by packet
     // version; v6: the translation's hat effect table left out; v7: native
-    // itemInfo filename aliases), so a client holding the old staging drops it.
-    fnv(&mut fingerprint, b"owned-assets-v7");
+    // itemInfo filename aliases; v8: the English quest table sent once), so a
+    // client holding the old staging drops it.
+    fnv(&mut fingerprint, b"owned-assets-v8");
     fnv(&mut fingerprint, text.as_str().as_bytes());
     // Config.local.js carries it, and that file is an ordinary HTTP request
     // the shell only re-fetches when this fingerprint moves. Left out at the
@@ -1022,6 +1036,15 @@ mod tests {
         assert_eq!(
             fs::read_to_string(cfg.state.join("assets/System/itemInfo.lua")).unwrap(),
             "English items"
+        );
+        // The quests go once, under the name the client asks for first.
+        assert_eq!(
+            fs::read_to_string(cfg.state.join("assets/System/OngoingQuestInfoList.lub")).unwrap(),
+            "English quests"
+        );
+        assert_eq!(
+            fs::read_to_string(cfg.state.join("assets/SystemEN/OngoingQuests.lub")).unwrap(),
+            QUESTS_SERVED_AS_SYSTEM
         );
         assert_eq!(
             fs::read_to_string(en.join("Renewal/SystemEN/LuaFiles514/itemInfo.lua")).unwrap(),
