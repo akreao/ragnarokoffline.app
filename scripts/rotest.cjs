@@ -235,11 +235,14 @@ function AUDIO_TAP() {
 }
 
 // An https game URL on 127.0.0.1 is netshape --h2, whose certificate is
-// self-signed; fetch() would refuse it.
+// self-signed; fetch() would refuse it. A 5xx is not ready either: netshape
+// --h2 answers 502 until the asset server behind it is up.
 const selfSigned = url => /^https:\/\/127\.0\.0\.1[:/]/.test(url);
-function reachable(url) {
-    if (!selfSigned(url)) return fetch(url);
-    return new Promise((resolve, reject) => require('node:https').get(url, { rejectUnauthorized: false }, res => { res.resume(); resolve(); }).on('error', reject));
+async function reachable(url) {
+    const status = selfSigned(url)
+        ? await new Promise((resolve, reject) => require('node:https').get(url, { rejectUnauthorized: false }, res => { res.resume(); resolve(res.statusCode); }).on('error', reject))
+        : (await fetch(url)).status;
+    if (status >= 500) throw Error(`${url}: ${status}`);
 }
 
 async function daemon(flags) {
