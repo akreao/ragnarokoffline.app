@@ -255,6 +255,11 @@ class FriendGateway {
       if (tags) headers['if-none-match'] = tags;
       const since = req.headers['if-modified-since'];
       if (typeof since === 'string' && since.length <= 64 && !Number.isNaN(Date.parse(since))) headers['if-modified-since'] = since;
+      // A friend is on the far side of an internet link, where map textures
+      // are most of the wait: the asset server sends them its BMPs and JPEGs
+      // as lossy WebP, about half the bytes. The host's own client keeps the
+      // exact files (RemoteClient src/compact.rs, COMPACT_IMAGE_QUALITY).
+      headers['x-compact-images'] = '1';
     }
     if (bytes) headers['content-length'] = bytes.length;
     const search = req.method === 'POST' && ['/', '/search'].includes(req.url);
