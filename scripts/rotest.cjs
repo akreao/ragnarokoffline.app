@@ -234,6 +234,14 @@ function AUDIO_TAP() {
     };
 }
 
+// An https game URL on 127.0.0.1 is netshape --h2, whose certificate is
+// self-signed; fetch() would refuse it.
+const selfSigned = url => /^https:\/\/127\.0\.0\.1[:/]/.test(url);
+function reachable(url) {
+    if (!selfSigned(url)) return fetch(url);
+    return new Promise((resolve, reject) => require('node:https').get(url, { rejectUnauthorized: false }, res => { res.resume(); resolve(); }).on('error', reject));
+}
+
 async function daemon(flags) {
     const { chromium } = require('@playwright/test');
     const headed = flags.includes('--headed');
@@ -247,7 +255,7 @@ async function daemon(flags) {
     serve.stdout.on('data', d => log('[serve]', String(d).trim()));
     serve.stderr.on('data', d => log('[serve!]', String(d).trim()));
     for (let i = 0; ; i++) {
-        try { await fetch(game()); break; } catch {
+        try { await reachable(game()); break; } catch {
             if (i > 60 || serve.exitCode !== null) throw new Error('asset server did not start (is `rotest world up` done?)');
             await new Promise(r => setTimeout(r, 1000));
         }
@@ -258,8 +266,7 @@ async function daemon(flags) {
     // frame costs rather than the 60 Hz tick (for scripts/perf-bench.cjs).
     const uncapped = process.env.ROTEST_UNCAPPED === '1' ? ['--disable-frame-rate-limit', '--disable-gpu-vsync'] : [];
     const browser = await chromium.launch({ headless: !headed, args: ['--use-gl=angle', '--enable-webgl', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required', ...uncapped] });
-    // An https game URL on 127.0.0.1 is netshape --h2, with a self-signed certificate.
-    const context = await browser.newContext({ viewport: { width: vw, height: vh }, ignoreHTTPSErrors: /^https:\/\/127\.0\.0\.1[:/]/.test(process.env.ROTEST_GAME_URL || '') });
+    const context = await browser.newContext({ viewport: { width: vw, height: vh }, ignoreHTTPSErrors: selfSigned(game()) });
     await context.addInitScript(() => { try { localStorage.setItem('roAgent', '1'); } catch {} });
     // ROTEST_PERF=1: the client's opt-in perf probe (window.roPerf), from the first load.
     if (process.env.ROTEST_PERF === '1') await context.addInitScript(() => { try { localStorage.setItem('roPerf', '1'); } catch {} });
