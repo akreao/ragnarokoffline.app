@@ -256,7 +256,10 @@ async function daemon(flags) {
     serve.stderr.on('data', d => log('[serve!]', String(d).trim()));
     for (let i = 0; ; i++) {
         try { await reachable(game()); break; } catch {
-            if (i > 60 || serve.exitCode !== null) throw new Error('asset server did not start (is `rotest world up` done?)');
+            if (i > 60 || serve.exitCode !== null) {
+                serve.kill(); // world.cjs serve stops its asset server on SIGTERM; left running, it holds the port
+                throw new Error('asset server did not start (is `rotest world up` done?)');
+            }
             await new Promise(r => setTimeout(r, 1000));
         }
     }
