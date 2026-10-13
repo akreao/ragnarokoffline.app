@@ -86,7 +86,7 @@ async function body(req, limit = LIMIT) {
 // bytes. Backpressure is preserved through the two pipes. An attacker cannot
 // ask the Rust endpoint to accumulate an arbitrarily large fragmented message.
 class Frames extends Transform {
-  constructor(masked, inspect) { super(); this.masked = masked; this.inspect = inspect; this.header = Buffer.alloc(0); this.left = 0; this.message = 0; this.fragmented = false; }
+  constructor(masked, inspect) { super(); this.masked = masked; this.inspect = inspect; this.header = Buffer.alloc(0); this.left = 0; this.message = 0; this.fragmented = false; this.closing = false; }
   _flush(done) { done(this.header.length || this.left || this.fragmented ? Error('Incomplete game frame') : undefined); }
   _transform(chunk, encoding, done) {
     try {
@@ -119,6 +119,7 @@ class Frames extends Transform {
           this.fragmented = !final;
           if (final) this.message = 0;
         }
+        if (opcode === 8) this.closing = true;
         this.dataFrame = opcode < 8; this.position = 0;
         if (this.inspect) this.mask = this.header.subarray(-4);
         this.left = bytes; this.push(this.header); this.header = Buffer.alloc(0);
@@ -127,6 +128,8 @@ class Frames extends Transform {
     } catch { done(Error('Invalid or oversized game frame')); }
   }
 }
+// Close a friend's socket from this side, remembering why for the log line.
+function end(socket, reason) { socket.closeReason ||= reason; socket.destroy(); }
 class FriendGateway {
   // `signIn`, when the host has set up Google or Apple sign-in, is
   // { flow: SignInFlow (oidc.js), accounts: { find, create, link, token },
@@ -139,10 +142,10 @@ class FriendGateway {
   // `modHost(name, request, { client, from })` answers a mod's host route
   // (../mod-host/manager.js) with { status, type, body: Buffer }, or null for
   // a mod that has none; without it every /_friend/mod/ path is a 404.
-  constructor({ origin, ports = DEFAULT_PORTS, upstreamPort = ports.asset, register, now = Date.now, lifetime = 8 * 60 * 60 * 1000, maxSessions = 32, invite = null, signIn = null, remember = null, modHost = null }) {
+  constructor({ origin, ports = DEFAULT_PORTS, upstreamPort = ports.asset, register, now = Date.now, lifetime = 8 * 60 * 60 * 1000, maxSessions = 32, invite = null, signIn = null, remember = null, modHost = null, log = () => {} }) {
     const url = new URL(origin);
     if (url.protocol !== 'https:' || url.origin !== origin || url.username || url.password) throw Error('An HTTPS game hostname is required');
-    Object.assign(this, { origin, upstreamPort, register, now, lifetime, maxSessions, signIn, remember, modHost });
+    Object.assign(this, { origin, upstreamPort, register, now, lifetime, maxSessions, signIn, remember, modHost, log });
     this.socketPaths = new Set(gameTargets(ports).map(target => '/ws/' + target));
     this.loginPath = '/ws/127.0.0.1:' + ports.login;
     this.host = url.host; this.sessions = new Map(); this.sockets = new Set(); this.requests = new Set();
@@ -162,7 +165,7 @@ class FriendGateway {
     const value = token(), key = digest(value);
     const entry = { expires: this.now() + 30000, sockets: new Set(), registrations: 1, registering: false, attempts: 5 };
     this.sessions.set(key, entry);
-    return { cookie: COOKIE + '=' + value, close: () => { for (const socket of entry.sockets) socket.destroy(); this.sessions.delete(key); } };
+    return { cookie: COOKIE + '=' + value, close: () => { for (const socket of entry.sockets) end(socket, 'the link check finished'); this.sessions.delete(key); } };
   }
   link() { return this.origin + '/#invite=' + this.invite; }
   sessionKey(req) {
@@ -464,17 +467,36 @@ class FriendGateway {
     const proxy = http.request({ host: '127.0.0.1', port: this.upstreamPort, path: req.url, agent: false, timeout: 10000,
       headers: { host: '127.0.0.1:' + this.upstreamPort, upgrade: 'websocket', connection: 'Upgrade', 'sec-websocket-version': '13', 'sec-websocket-key': key } });
     this.requests.add(proxy); entry.sockets.add(socket);
-    const close = () => { proxy.destroy(); socket.destroy(); entry.sockets.delete(socket); this.requests.delete(proxy); };
-    socket.on('error', close); socket.on('close', close);
-    proxy.on('error', close); proxy.on('timeout', close); proxy.on('response', close);
+    // A friend's game link that ends says which side ended it, so a drop
+    // reads as the friend's connection, the game server or this host
+    // rather than as nothing at all (the asset server only sees us).
+    let link = null;
+    const close = cause => {
+      if (link && !link.done) {
+        link.done = true;
+        const now = Date.now(), ago = time => Math.round((now - time) / 1000) + ' s ago';
+        const why = socket.closeReason || (link.incoming.closing ? 'the friend closed the game' : cause || 'closed');
+        this.log(`friend link ${req.url} ended after ${Math.round((now - link.opened) / 1000)} s: ${why}; ` +
+          `last from friend ${ago(link.fromFriend)}, last to friend ${ago(link.toFriend)}; ${link.in} bytes in, ${link.out} bytes out`);
+      }
+      proxy.destroy(); socket.destroy(); entry.sockets.delete(socket); this.requests.delete(proxy);
+    };
+    socket.on('error', error => close(`the friend's connection failed (${error.code || error.message})`));
+    socket.on('close', () => close(link?.incoming.closing ? 'the friend closed the game' : "the friend's connection closed without a goodbye (their network or Cloudflare dropped it)"));
+    proxy.on('error', () => close()); proxy.on('timeout', () => close()); proxy.on('response', () => close());
     proxy.on('upgrade', (response, upstream, initial) => {
       const accept = crypto.createHash('sha1').update(key + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11').digest('base64');
       if (response.statusCode !== 101 || response.headers['sec-websocket-accept'] !== accept) { upstream.destroy(); return close(); }
       socket.write(`HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ${accept}\r\n\r\n`);
       const login = req.url === this.loginPath ? new LoginPackets(name => this.loginLimits.allow(entry, name)) : null;
       const incoming = new Frames(true, login ? bytes => login.consume(bytes) : undefined), outgoing = new Frames(false);
-      incoming.on('error', close); outgoing.on('error', close); upstream.on('error', close);
-      upstream.on('close', close); socket.once('close', () => upstream.destroy());
+      link = { opened: Date.now(), fromFriend: Date.now(), toFriend: Date.now(), in: 0, out: 0, incoming, done: false };
+      socket.on('data', chunk => { link.fromFriend = Date.now(); link.in += chunk.length; });
+      upstream.on('data', chunk => { link.toFriend = Date.now(); link.out += chunk.length; });
+      incoming.on('error', error => close(`the friend sent ${error.message.toLowerCase()}`));
+      outgoing.on('error', error => close(`the game server sent ${error.message.toLowerCase()}`));
+      upstream.on('error', error => close(`the game server's connection failed (${error.code || error.message})`));
+      upstream.on('close', () => close('the game server closed it')); socket.once('close', () => upstream.destroy());
       if (head.length) incoming.write(head); if (initial.length) outgoing.write(initial);
       socket.pipe(incoming).pipe(upstream); upstream.pipe(outgoing).pipe(socket);
     });
@@ -491,13 +513,13 @@ class FriendGateway {
     await new Promise((resolve, reject) => { this.server.once('error', reject); this.server.listen(port, '127.0.0.1', resolve); });
     this.timer = setInterval(() => {
       for (const [key, entry] of this.sessions) if (entry.expires <= this.now()) {
-        for (const socket of entry.sockets) socket.destroy(); this.sessions.delete(key);
+        for (const socket of entry.sockets) end(socket, 'the invitation expired'); this.sessions.delete(key);
       }
     }, 1000); this.timer.unref();
     return this.server.address().port;
   }
   revoke() {
-    for (const entry of this.sessions.values()) for (const socket of entry.sockets) socket.destroy();
+    for (const entry of this.sessions.values()) for (const socket of entry.sockets) end(socket, this.closed ? 'sharing stopped' : 'the invitation was replaced');
     this.sessions.clear(); this.invite = token(); this.inviteHash = digest(this.invite); this.expires = this.now() + this.lifetime;
     return this.link();
   }

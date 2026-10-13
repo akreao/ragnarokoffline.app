@@ -92,6 +92,23 @@ test('expired invitations and sessions stop HTTP and active WS access', async t 
   assert.equal((await f.request('/data/a.spr', { headers: { cookie } })).status, 401);
   await closed;
 });
+test('an ended friend link logs which side ended it', async t => {
+  const lines = [], f = await fixture(t, { log: line => lines.push(line) }), cookie = await f.login();
+  const ended = async () => { for (let i = 0; i < 100 && lines.length === count; i++) await new Promise(resolve => setTimeout(resolve, 10)); count = lines.length; return lines.at(-1); };
+  let count = 0;
+  // A dropped connection: the socket just goes, with no WebSocket close frame.
+  let socket = await f.socket(cookie); socket.resume(); socket.destroy();
+  assert.match(await ended(), /^friend link \/ws\/127\.0\.0\.1:6900 ended after \d+ s: the friend's connection closed without a goodbye .*bytes out$/);
+  // Leaving the game: a masked, empty close frame first.
+  socket = await f.socket(cookie); socket.resume(); socket.end(Buffer.from([0x88, 0x80, 1, 2, 3, 4]));
+  assert.match(await ended(), /: the friend closed the game;/);
+  // A frame the gateway refuses.
+  socket = await f.socket(cookie); socket.resume(); socket.on('error', () => {}); socket.write(Buffer.from([0x82, 0x01, 0, 0, 0, 0, 0]));
+  assert.match(await ended(), /: the friend sent invalid or oversized game frame;/);
+  // This host ending it.
+  socket = await f.socket(cookie); socket.resume(); f.gateway.revoke();
+  assert.match(await ended(), /: the invitation was replaced;/);
+});
 test('slow concurrent account requests cannot bypass the one-account limit or invitation revocation', async t => {
   const f = await fixture(t), cookie = await f.login();
   async function slow() {
