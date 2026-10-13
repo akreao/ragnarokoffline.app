@@ -3360,6 +3360,8 @@ function clientLogStart() {
 		fs.mkdirSync(dir, { recursive: true });
 		fs.writeFileSync(path.join(dir, 'client.log'),
 			`${new Date().toISOString()} client log started\n`);
+		// The overflow of an earlier run (clientLog) is not this run's.
+		fs.rmSync(path.join(dir, 'client.log.1'), { force: true });
 	} catch {
 		/* logging must never be the thing that breaks the app */
 	}
@@ -3373,8 +3375,21 @@ function clientLog(level, text, line, src) {
 	// roBrowser logs a line per file it loads, and the DB alone is hundreds.
 	// That volume is worth keeping -- comparing the loads that started against
 	// the ones that finished is exactly how a stalled database is spotted --
-	// but not without a ceiling.
-	if (clientLogBytes > 4 * 1024 * 1024) return;
+	// but not without a ceiling. It also logs every packet, so a long session
+	// reaches the ceiling within the hour. Stopping there lost the part a
+	// player complains about, the latest; the full file moves to client.log.1
+	// instead, and client.log starts again.
+	if (clientLogBytes > 4 * 1024 * 1024) {
+		clientLogBytes = 0;
+		try {
+			const file = path.join(stateDir(), 'client.log');
+			fs.renameSync(file, `${file}.1`);
+			fs.writeFileSync(file,
+				`${new Date().toISOString()} client log continued; the lines before are in client.log.1\n`);
+		} catch {
+			/* as below */
+		}
+	}
 	try {
 		const name = typeof level === 'number'
 			? (CLIENT_LOG_LEVELS[level] || String(level))
