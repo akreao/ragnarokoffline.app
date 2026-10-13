@@ -104,7 +104,7 @@ class SharingController {
       // Google/Apple sign-in only on your own hostname: the providers send the
       // browser back to a redirect URI registered in advance, and a temporary
       // trycloudflare.com address is different every time.
-      const gateway = new this.Gateway({ origin, ports: this.ports, register: this.register, lifetime: this.lifetime(), invite: this.invite(), signIn: saved ? this.signIn() : null, remember: this.remember(), modHost: this.modHost });
+      const gateway = new this.Gateway({ origin, ports: this.ports, register: this.register, lifetime: this.lifetime(), invite: this.invite(), signIn: saved ? this.signIn() : null, remember: this.remember(), modHost: this.modHost, log: this.log });
       // Record whatever it ended up using: a reused token, or a fresh one when
       // nothing was stored or the stored value was unusable.
       this.onInvite(gateway.invite);
