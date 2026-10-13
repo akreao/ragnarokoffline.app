@@ -646,6 +646,39 @@
       ]
     },
     {
+      "name": "identified-equipment",
+      "version": "1.0.0",
+      "author": "akreao",
+      "description": "Weapons, armour, pet armour and shadow gear arrive already identified, so you never need a Magnifier. Covers monster drops, Steal, item boxes, quest rewards and items handed out by NPCs.",
+      "homepage": "https://github.com/Flux159/ragnarokoffline.app/tree/main/registry/mods/identified-equipment",
+      "tags": [
+        "drops",
+        "items",
+        "quality-of-life"
+      ],
+      "icon": "",
+      "screenshots": [],
+      "requires": {
+        "mods": [],
+        "era": "any",
+        "app": ">=1.6.1"
+      },
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "1c6fe51381fe6e19e6b852fef61b88ab70061a2b23972bf2f230ec33afd6c30e"
+        },
+        {
+          "path": "db/extension_db.yml",
+          "sha256": "910578460eb62b371accaeb90a02dcfd15da58f2207bdf4bfd0c8f65ee1e86ce"
+        },
+        {
+          "path": "mod.json",
+          "sha256": "7138f9cd07b8e4c9ce71861db82fa68dd47700df122b308677060cdb2074cabf"
+        }
+      ]
+    },
+    {
       "name": "map-spawn-rate",
       "version": "1.0.0",
       "author": "BlaXun",

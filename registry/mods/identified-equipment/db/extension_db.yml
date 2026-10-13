@@ -1,0 +1,17 @@
+# Enable the rAthena extension this mod is made of.
+#
+# identified_equipment makes itemdb_isidentified answer "identified" for
+# every item type, so equipment is created identified wherever the server
+# asks: monster drops, Steal, item groups and boxes, quest rewards and
+# script-created items. Off, those item types arrive unidentified as usual.
+#
+# The build lands this file at db/import/extension_db.yml (stack/src/mods.rs
+# mounts mods' db/ folders at rAthena's db/import), which the base
+# db/extension_db.yml's Footer imports.
+Header:
+  Type: EXTENSION_DB
+  Version: 1
+
+Body:
+  - Id: identified_equipment
+    Enabled: true
