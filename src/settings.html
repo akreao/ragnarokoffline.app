@@ -1203,6 +1203,11 @@
       <input type="checkbox" id="skip_teleport_lv1_menu" style="accent-color: var(--accent); flex: none" />
       <span class="val" style="width:auto; color: var(--dim)">no Random / Cancel menu</span>
     </label>
+    <label style="margin-top:6px">
+      <span>Identified equipment</span>
+      <input type="checkbox" id="identified_equipment" style="accent-color: var(--accent); flex: none" />
+      <span class="val" style="width:auto; color: var(--dim)">no Magnifier needed</span>
+    </label>
     <div class="actions" style="margin-top:10px">
       <button id="save" class="ghost">Apply</button>
     </div>
@@ -3632,6 +3637,7 @@ $('save').onclick = async () => {
   settings.zeny_from_mobs = $('zeny_from_mobs').checked;
   settings.unlimited_arrows = $('unlimited_arrows').checked;
   settings.skip_teleport_lv1_menu = $('skip_teleport_lv1_menu').checked;
+  settings.identified_equipment = $('identified_equipment').checked;
   $('save').disabled = true;
   try { log(await invoke('save_settings', { settings })); }
   catch (e) { log('error: ' + e); }
@@ -3691,6 +3697,7 @@ invoke('get_settings').then(s => {
   $('zeny_from_mobs').checked = !!s.zeny_from_mobs;
   $('unlimited_arrows').checked = !!s.unlimited_arrows;
   $('skip_teleport_lv1_menu').checked = !!s.skip_teleport_lv1_menu;
+  $('identified_equipment').checked = !!s.identified_equipment;
   $('open_settings_first').checked = !!s.open_settings_first;
   $('population_enable').checked = !!s.population_enable;
   $('population_max').value = s.population_max;

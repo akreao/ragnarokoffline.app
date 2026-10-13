@@ -1067,6 +1067,11 @@ const SETTINGS_DEFAULTS = {
 	// Random / Cancel; on, it warps at once, as a Fly Wing does. Maps to
 	// rAthena's skip_teleport_lv1_menu (conf/battle/skill.conf), stock `no`.
 	skip_teleport_lv1_menu: false,
+	// Equipment (weapons, armour, pet armour, shadow gear) arrives identified,
+	// from drops, steals, boxes and quests alike. Maps to unidentified_equipment
+	// (conf/battle/drops.conf), a battle flag on our rAthena fork that
+	// itemdb_isidentified reads; stock `yes`.
+	identified_equipment: false,
 	population_enable: false,
 	// A ceiling, not a target. Demand-driven spawning builds only the maps
 	// somebody is on, and a map holds 20-40 by the spawn tables, so this binds
@@ -1370,6 +1375,7 @@ function toBattleConf(s) {
 		// battle.conf, so an untouched install writes nothing surprising.
 		`arrow_decrement: ${s.unlimited_arrows ? 'no' : 'yes'}\n` +
 		`skip_teleport_lv1_menu: ${s.skip_teleport_lv1_menu ? 'yes' : 'no'}\n` +
+		`unidentified_equipment: ${s.identified_equipment ? 'no' : 'yes'}\n` +
 		// One cap in the UI, several keys here, because rAthena caps third,
 		// baby, extended and summoner classes separately and a player who
 		// raises "the" limit means all of them -- setting only max_parameter
