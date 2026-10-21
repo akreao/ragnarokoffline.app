@@ -32,4 +32,6 @@ test('its emblem table exists before it starts', () => {
 
 test('the asset server is told where to forward emblem requests', () => {
   assert.match(read('electron/main.js'), /WEB_SERVER_TARGET: `127\.0\.0\.1:\$\{gamePorts\(\)\.web\}`/);
+  assert.match(read('tests/e2e/world.cjs'), /WEB_SERVER_TARGET: `127\.0\.0\.1:\$\{ports\(\)\.web\}`/,
+    'the disposable world must forward emblem requests to its own web port too');
 });

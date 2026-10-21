@@ -145,7 +145,8 @@
   .tab[aria-selected="true"] { background: var(--accent); color: #0d0f15; }
   .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   /* How many mods have an update waiting: a small red number on the corner of
-     Mods, and of Mods / Find Mods inside it. Hidden at 0. */
+     Mods, and of Mods / Find Mods inside it. Hidden at 0. General carries the
+     same mark when an update of the app itself is downloaded and ready. */
   .tab { position: relative; }
   .tab .tabcount { position: absolute; top: -6px; right: -6px; min-width: 16px; height: 16px;
     padding: 0 4px; border-radius: 8px; background: var(--bad, #e5534b); color: #fff;
@@ -401,7 +402,7 @@
 </head>
 <body>
   <div class="tabs" role="tablist" aria-label="Settings sections">
-    <button role="tab" class="tab" id="tab-general" aria-controls="panel-general" aria-selected="true" tabindex="0">General</button>
+    <button role="tab" class="tab" id="tab-general" aria-controls="panel-general" aria-selected="true" tabindex="0">General<span class="tabcount" aria-hidden="true" hidden></span></button>
     <button role="tab" class="tab" id="tab-multiplayer" aria-controls="panel-multiplayer" aria-selected="false" tabindex="-1">Multiplayer</button>
     <button role="tab" class="tab" id="tab-accounts" aria-controls="panel-accounts" aria-selected="false" tabindex="-1">Accounts</button>
     <button role="tab" class="tab" id="tab-savedata" aria-controls="panel-savedata" aria-selected="false" tabindex="-1">Save data</button>
@@ -470,6 +471,22 @@
        elsewhere, pick the one most of you live in. Changing this restarts the server.</p>
   </div>
 
+  <h2>Movement</h2>
+  <div class="panel">
+    <label>
+      <span>Walking</span>
+      <input type="checkbox" id="move_prediction" style="accent-color: var(--accent); flex: none" />
+      <span class="val" style="width:auto; color: var(--dim)">start walking before the server answers</span>
+    </label>
+    <p class="note" id="move-prediction-status" hidden style="margin:8px 0 0; color: var(--text)"></p>
+    <p class="note">Your character sets off the moment you click instead of after the server
+       replies, and other characters and monsters glide to where the server puts them rather
+       than jumping there. If the server turns a step down &mdash; right after you are hit,
+       for instance &mdash; you see your character walk back. It applies to your own server;
+       on a friend's, theirs decides. Changing this rebuilds the game files; log in again to
+       use it.</p>
+  </div>
+
   <h2>Startup</h2>
   <div class="panel">
     <label>
@@ -483,6 +500,31 @@
        start on its own, so press <b>Start</b> and then <b>Open game</b> under
        <b>Server</b> when you want to play. Leave it off and launching goes straight
        to the game, which starts the server itself.</p>
+  </div>
+
+  <h2>Updates</h2>
+  <div class="panel" id="updates-panel">
+    <div class="row"><span class="name">This version</span><span class="state" id="s-app-version">—</span></div>
+    <div class="row"><span class="name">Status</span><span class="state" id="s-app-update">—</span></div>
+    <div class="row actions" style="padding-top:10px; justify-content: flex-start">
+      <button id="app-update-install" hidden>Restart to install</button>
+      <button id="app-update-check" class="ghost">Check now</button>
+    </div>
+    <label>
+      <span>Automatic updates</span>
+      <input type="checkbox" id="auto_update" style="accent-color: var(--accent); flex: none" />
+      <span class="val" style="width:auto; color: var(--dim)">check for and download new versions</span>
+    </label>
+    <label>
+      <span>On quit</span>
+      <input type="checkbox" id="install_update_on_quit" style="accent-color: var(--accent); flex: none" />
+      <span class="val" style="width:auto; color: var(--dim)">Automatically install updates on restart of app</span>
+    </label>
+    <p class="note" id="updates-status" hidden style="margin:8px 0 0; color: var(--text)"></p>
+    <p class="note">New versions come out often. A downloaded update waits until you press
+       <b>Restart to install</b>, which stops the server, installs it and opens the app
+       again &mdash; your characters, settings and mods are kept. Tick <b>Automatically
+       install updates on restart of app</b> to have an ordinary quit install it instead.</p>
   </div>
 
   <h2>Server</h2>
@@ -1203,6 +1245,22 @@
       <input type="checkbox" id="skip_teleport_lv1_menu" style="accent-color: var(--accent); flex: none" />
       <span class="val" style="width:auto; color: var(--dim)">no Random / Cancel menu</span>
     </label>
+    <label style="margin-top:6px"><span>Command prefix</span><select id="command_symbol">
+      <option value="@">@ &mdash; @storage, @autoloot</option>
+      <option value="!">! &mdash; !storage, !autoloot</option>
+      <option value=".">. &mdash; .storage, .autoloot</option>
+      <option value="-">- &mdash; -storage, -autoloot</option>
+    </select></label>
+    <p class="note"><b>Command prefix</b> is the character a command starts with:
+       <code>@storage</code> or <code>!storage</code>. <code>@</code> is the stock
+       game; <code>!</code> is what many private servers use. Only these four are
+       offered because the server silently keeps <code>@</code> for anything else,
+       which would look like the setting doing nothing. Typing <code>/</code> still
+       reaches the client's own commands either way, and it applies to your own
+       server only &mdash; a friend's server uses theirs. One NPC changes with it:
+       Derek Shot in Prontera, who clears Christmas and wedding costume effects,
+       asks the server for <code>@changedress</code> by name and goes quiet on any
+       other prefix. Every account can type that command itself.</p>
     <div class="actions" style="margin-top:10px">
       <button id="save" class="ghost">Apply</button>
     </div>
@@ -1489,6 +1547,35 @@ $('game_text').onchange = async () => {
     log(String(e));
   } finally {
     $('game_text').disabled = false;
+    refresh();
+  }
+};
+
+// Applied on change, like the game text above: the client config is
+// regenerated when the game files are rebuilt.
+$('move_prediction').onchange = async () => {
+  const on = $('move_prediction').checked;
+  const status = $('move-prediction-status');
+  $('move_prediction').disabled = true;
+  status.hidden = false;
+  status.innerHTML = '<span class="spinner"></span>Rebuilding the game files…';
+  try {
+    const s = await invoke('get_settings');
+    await invoke('save_settings', { settings: { ...s, move_prediction: on } });
+    const mode = await invoke('get_mode');
+    status.textContent = mode.mode === 'join'
+      ? 'Saved for your own server. It will apply when you next host.'
+      : on
+        ? 'On. Log in again to walk before the server answers.'
+        : 'Off. Log in again to walk as before.';
+    log('move prediction: ' + (on ? 'on' : 'off'));
+  } catch (e) {
+    const saved = await invoke('get_settings').catch(() => ({ move_prediction: !on }));
+    $('move_prediction').checked = !!saved.move_prediction;
+    status.textContent = `Could not rebuild the game files: ${String(e)}. Saved setting: ${saved.move_prediction ? 'on' : 'off'}.`;
+    log(String(e));
+  } finally {
+    $('move_prediction').disabled = false;
     refresh();
   }
 };
@@ -2809,6 +2896,73 @@ $('open_settings_first').onchange = async () => {
   $('startup-status').hidden = false;
 };
 
+// ---- Updates: the app's own (app-update.js). Polled with refresh(); the
+// headless admin page has no such handler, and there the section goes away.
+function paintAppUpdate(u) {
+  $('s-app-version').textContent = u.version || '—';
+  let text;
+  if (!u.enabled) text = `Off — ${u.reason}`;
+  else if (u.phase === 'downloading') text = `Downloading ${u.available || 'an update'}… ${u.percent || 0}%` + (u.ready ? ` (replaces ${u.ready})` : '');
+  else if (u.ready) text = `${u.ready} is ready to install`;
+  else if (u.phase === 'checking') text = 'Checking…';
+  else if (u.phase === 'up-to-date') text = 'Up to date';
+  else if (u.phase === 'error') text = `Could not check: ${u.error}`;
+  else text = u.auto ? 'Checks every few hours' : 'Not checking automatically';
+  paint($('s-app-update'), u.phase !== 'error', text);
+  $('app-update-install').hidden = !u.canInstall;
+  $('app-update-install').textContent = u.ready ? `Restart to install ${u.ready}` : 'Restart to install';
+  $('app-update-check').disabled = !u.enabled || u.phase === 'checking' || u.phase === 'downloading';
+  $('auto_update').checked = !!u.auto;
+  $('install_update_on_quit').checked = !!u.installOnQuit;
+  $('auto_update').disabled = $('install_update_on_quit').disabled = !u.enabled;
+  // The same red mark as Mods' update count, on General.
+  const tab = $('tab-general');
+  const count = tab.querySelector('.tabcount');
+  count.textContent = '1';
+  count.hidden = !u.canInstall;
+  if (u.canInstall) tab.setAttribute('aria-label', `General, app update ${u.ready} ready to install`);
+  else tab.removeAttribute('aria-label');
+}
+async function refreshAppUpdate() {
+  try {
+    paintAppUpdate(await invoke('app_update_status'));
+  } catch {
+    $('updates-panel').hidden = true;
+    $('updates-panel').previousElementSibling.hidden = true;
+  }
+}
+$('app-update-check').onclick = async () => {
+  $('app-update-check').disabled = true;
+  try { paintAppUpdate(await invoke('app_update_check')); }
+  catch (error) { setNote('updates-status', error.message || String(error), 'bad'); $('updates-status').hidden = false; }
+};
+$('app-update-install').onclick = async () => {
+  $('app-update-install').disabled = true;
+  setNote('updates-status', 'Stopping the server, then installing. The app opens again when it is done.');
+  $('updates-status').hidden = false;
+  try { await invoke('app_update_install'); }
+  catch (error) {
+    $('app-update-install').disabled = false;
+    setNote('updates-status', error.message || String(error), 'bad');
+  }
+};
+// Saved at once, like open_settings_first above.
+for (const key of ['auto_update', 'install_update_on_quit']) {
+  $(key).onchange = async () => {
+    const on = $(key).checked;
+    try {
+      await invoke('set_app_preference', { key, value: on });
+      setNote('updates-status', key === 'auto_update'
+        ? (on ? 'The app looks for new versions every few hours.' : 'The app no longer looks for new versions on its own. Check now still works.')
+        : (on ? 'Quitting installs a downloaded update.' : 'Only Restart to install installs an update.'));
+    } catch (error) {
+      $(key).checked = !on;
+      setNote('updates-status', `Could not save that: ${error.message || String(error)}`, 'bad');
+    }
+    $('updates-status').hidden = false;
+  };
+}
+
 // Mod names, descriptions and refusal reasons are written by whoever made the
 // mod, and land in innerHTML. Nothing about a mod folder is trusted markup.
 function esc(s) {
@@ -3618,6 +3772,10 @@ const showViewDistance = () => {
 };
 $('view_distance').addEventListener('change', showViewDistance);
 
+// The window cannot require() electron/command-symbol.js, so it repeats the
+// list; tests/command-symbol.test.cjs checks the two still agree.
+const COMMAND_SYMBOLS = ['@', '!', '.', '-'];
+
 $('save').onclick = async () => {
   const settings = await invoke('get_settings');
   for (const k of RATES) settings[k] = rateOf(k);
@@ -3632,6 +3790,7 @@ $('save').onclick = async () => {
   settings.zeny_from_mobs = $('zeny_from_mobs').checked;
   settings.unlimited_arrows = $('unlimited_arrows').checked;
   settings.skip_teleport_lv1_menu = $('skip_teleport_lv1_menu').checked;
+  settings.command_symbol = $('command_symbol').value;
   $('save').disabled = true;
   try { log(await invoke('save_settings', { settings })); }
   catch (e) { log('error: ' + e); }
@@ -3691,7 +3850,11 @@ invoke('get_settings').then(s => {
   $('zeny_from_mobs').checked = !!s.zeny_from_mobs;
   $('unlimited_arrows').checked = !!s.unlimited_arrows;
   $('skip_teleport_lv1_menu').checked = !!s.skip_teleport_lv1_menu;
+  // A save from before this setting, or one hand-edited to a symbol the server
+  // would refuse, shows '@' -- which is what it is running on.
+  $('command_symbol').value = COMMAND_SYMBOLS.includes(s.command_symbol) ? s.command_symbol : '@';
   $('open_settings_first').checked = !!s.open_settings_first;
+  $('move_prediction').checked = !!s.move_prediction;
   $('population_enable').checked = !!s.population_enable;
   $('population_max').value = s.population_max;
   $('population_density').value = s.population_density;
@@ -3748,6 +3911,8 @@ invoke('host_ram_mib').then(total => {
 refresh();
 refreshMods();
 setInterval(refresh, 4000);
+refreshAppUpdate();
+setInterval(refreshAppUpdate, 2000);
 
 // ---- Tools (#195)
 function paintTools(tools) {

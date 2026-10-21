@@ -431,14 +431,18 @@ load	renewal	npc/re/guides/guides_umbala.txt
 load	renewal	npc/re/guides/guides_veins.txt
 load	renewal	npc/re/guides/guides_woe_te.txt
 load	renewal	npc/re/instances/AirshipAssault.txt
+load	renewal	npc/re/instances/AirshipDestruction.txt
+load	renewal	npc/re/instances/BaggotLaboratory.txt
 load	renewal	npc/re/instances/BakonawaLake.txt
 load	renewal	npc/re/instances/BangungotHospital.txt
 load	renewal	npc/re/instances/BuwayaCave.txt
 load	renewal	npc/re/instances/CentralLaboratory.txt
 load	renewal	npc/re/instances/CharlestonCrisis.txt
+load	renewal	npc/re/instances/ConfusedSnakesNest.txt
 load	renewal	npc/re/instances/CorOperation.txt
 load	renewal	npc/re/instances/DeepForest.txt
 load	renewal	npc/re/instances/DevilTower.txt
+load	renewal	npc/re/instances/DragonsTest.txt
 load	renewal	npc/re/instances/EclageInterior.txt
 load	renewal	npc/re/instances/EddaHalfMoonInTheDaylight.txt
 load	renewal	npc/re/instances/FacewormsNest.txt
@@ -450,6 +454,7 @@ load	renewal	npc/re/instances/HeartHunterWarBase.txt
 load	renewal	npc/re/instances/HiddenGarden.txt
 load	renewal	npc/re/instances/InfiniteSpace.txt
 load	renewal	npc/re/instances/IsleOfBios.txt
+load	renewal	npc/re/instances/IwinPatrol.txt
 load	renewal	npc/re/instances/LastRoom.txt
 load	renewal	npc/re/instances/LostFarm.txt
 load	renewal	npc/re/instances/MalangdoCulvert.txt
@@ -504,6 +509,7 @@ load	renewal	npc/re/merchants/enchan_rockridge.txt
 load	renewal	npc/re/merchants/enchan_sage_legacy_17_2.txt
 load	renewal	npc/re/merchants/enchan_verus.txt
 load	renewal	npc/re/merchants/enchantgrade.txt
+load	renewal	npc/re/merchants/episode_19.txt
 load	renewal	npc/re/merchants/Extended_Ammunition.txt
 load	renewal	npc/re/merchants/Extended_Stylist.txt
 load	renewal	npc/re/merchants/flute.txt
@@ -593,6 +599,7 @@ load	renewal	npc/re/quests/quests_illusion_dungeons.txt
 load	renewal	npc/re/quests/quests_17_1.txt
 load	renewal	npc/re/quests/quests_17_2.txt
 load	renewal	npc/re/quests/quests_18.txt
+load	renewal	npc/re/quests/quests_19.txt
 load	renewal	npc/re/quests/quests_aldebaran.txt
 load	renewal	npc/re/quests/quests_dewata.txt
 load	renewal	npc/re/quests/quests_dicastes.txt
@@ -662,6 +669,7 @@ load	renewal	npc/re/jobs/novice/academy.txt
 load	renewal	npc/re/jobs/novice/supernovice_ex.txt
 load	renewal	npc/re/jobs/repair.txt
 load	renewal	npc/re/jobs/doram/spirit_handler.txt
+load	renewal	npc/re/jobs/4-1/dragon_knight.txt
 load	renewal	npc/re/quests/skills/merchant_skills.txt
 load	renewal	npc/re/quests/skills/swordman_skills.txt
 load	renewal	npc/re/mapflag/nopvp.txt
@@ -720,6 +728,8 @@ load	renewal	npc/re/mobs/dungeons/gon_dun.txt
 load	renewal	npc/re/mobs/dungeons/ice_dun.txt
 load	renewal	npc/re/mobs/dungeons/in_sphinx.txt
 load	renewal	npc/re/mobs/dungeons/iz_dun.txt
+load	renewal	npc/re/mobs/dungeons/jor_ab.txt
+load	renewal	npc/re/mobs/dungeons/jor_dun.txt
 load	renewal	npc/re/mobs/dungeons/juperos.txt
 load	renewal	npc/re/mobs/dungeons/kh_dun.txt
 load	renewal	npc/re/mobs/dungeons/lhz_dun.txt
@@ -768,6 +778,7 @@ load	renewal	npc/re/mobs/fields/geffen.txt
 load	renewal	npc/re/mobs/fields/gonryun.txt
 load	renewal	npc/re/mobs/fields/gw_fild.txt
 load	renewal	npc/re/mobs/fields/hugel.txt
+load	renewal	npc/re/mobs/fields/jor_back.txt
 load	renewal	npc/re/mobs/fields/lighthalzen.txt
 load	renewal	npc/re/mobs/fields/louyang.txt
 load	renewal	npc/re/mobs/fields/lutie.txt
@@ -793,6 +804,7 @@ load	renewal	npc/re/warps/cities/einbech.txt
 load	renewal	npc/re/warps/cities/einbroch.txt
 load	renewal	npc/re/warps/cities/lasagna.txt
 load	renewal	npc/re/warps/cities/lighthalzen.txt
+load	renewal	npc/re/warps/cities/icecastle.txt
 load	renewal	npc/re/warps/cities/izlude.txt
 load	renewal	npc/re/warps/cities/malangdo.txt
 load	renewal	npc/re/warps/cities/malaya.txt
@@ -807,6 +819,7 @@ load	renewal	npc/re/warps/dungeons/ecl_dun.txt
 load	renewal	npc/re/warps/dungeons/ein_dun.txt
 load	renewal	npc/re/warps/dungeons/harboro2.txt
 load	renewal	npc/re/warps/dungeons/iz_dun.txt
+load	renewal	npc/re/warps/dungeons/jor_dun.txt
 load	renewal	npc/re/warps/dungeons/mag_dun.txt
 load	renewal	npc/re/warps/dungeons/moc_pryd.txt
 load	renewal	npc/re/warps/dungeons/nif_dun.txt
@@ -822,6 +835,7 @@ load	renewal	npc/re/warps/fields/dic_fild.txt
 load	renewal	npc/re/warps/fields/geffen_fild.txt
 load	renewal	npc/re/warps/fields/gw_fild.txt
 load	renewal	npc/re/warps/fields/hugel_fild.txt
+load	renewal	npc/re/warps/fields/jor_fild.txt
 load	renewal	npc/re/warps/fields/morroc_fild.txt
 load	renewal	npc/re/warps/fields/payon_fild.txt
 load	renewal	npc/re/warps/fields/prontera_fild.txt
@@ -843,6 +857,11 @@ load	renewal	npc/re/warps/other/TrainingZone123.txt
 load	renewal	npc/re/warps/other/un_myst.txt
 load	renewal	npc/re/warps/other/verus.txt
 load	renewal	npc/re/warps/guildcastles.txt
+load	renewal	npc/re/world_sync/spawns.txt
+load	renewal	npc/re/world_sync/warps.txt
+load	renewal	npc/re/world_sync/transports.txt
+load	renewal	npc/re/world_sync/npcs.txt
+load	renewal	npc/re/world_sync/rune_tablet.txt
 load	renewal	npc/custom/population/arena.txt
 load	renewal	npc/custom/population/recruiter.txt
 load	prerenewal	npc/other/Global_Functions.txt
@@ -2386,6 +2405,7 @@ mob	renewal	2048	W_PINGUICULA_D	99	Plant	Medium	Poison	2	0	Dark Pinguicula
 mob	renewal	2049	W_BRADIUM_GOLEM	99	Formless	Large	Earth	2	0	Bradium Golem
 mob	renewal	2050	W_AQUA_ELEMENTAL	99	Formless	Large	Water	4	0	Aqua Elemental
 mob	renewal	2052	E_DARKLORD	96	Demon	Large	Undead	4	1	Dark Lord
+mob	renewal	2053	NC_DIMIK	77	Formless	Medium	Neutral	2	0	Dimik
 mob	renewal	2057	E_CRAMP	1	Brute	Small	Poison	2	0	Strange Mouse
 mob	renewal	2058	M_MIMIC	51	Formless	Medium	Neutral	3	0	Mimic
 mob	renewal	2059	M_DISGUISE	55	Demon	Medium	Earth	4	0	Disguise
@@ -2704,6 +2724,7 @@ mob	renewal	2409	DUMMY_50	50	Formless	Medium	Neutral	1	0	Dummy 50
 mob	renewal	2410	DUMMY_100	100	Formless	Medium	Neutral	1	0	Dummy 100
 mob	renewal	2411	DUMMY_150	150	Formless	Medium	Neutral	1	0	Dummy 150
 mob	renewal	2413	DUMMY_10_FIRE	10	Formless	Medium	Fire	1	0	Dummy 10
+mob	renewal	2414	RUNAWAY_BOOK	1	Demihuman	Small	Neutral	1	0	Run away Book
 mob	renewal	2415	L_SEYREN	98	Demihuman	Medium	Fire	3	0	Knight Seyren
 mob	renewal	2416	L_EREMES	98	Demihuman	Medium	Poison	4	0	Assassin Eremes
 mob	renewal	2417	L_HARWORD	98	Demihuman	Medium	Water	4	0	Blacksmith Howard
@@ -2773,6 +2794,7 @@ mob	renewal	2481	NG_WRAITH_DEAD	110	Undead	Large	Undead	4	0	Nightmare Wraith Dea
 mob	renewal	2483	NG_BAPHOMET	154	Demon	Large	Dark	3	1	Nightmare Baphomet
 mob	renewal	2484	G_NG_BAPHOMET_	141	Demon	Small	Dark	1	0	Nightmare Baphomet Jr.
 mob	renewal	2485	NG_CHIMERA	140	Brute	Large	Fire	3	0	Nightmare Chimera
+mob	renewal	2495	HIDDEN_MOB2	151	Formless	Small	Ghost	4	0	Hidden Mob2
 mob	renewal	2528	FACEWORM	140	Insect	Large	Poison	1	0	Faceworm
 mob	renewal	2529	FACEWORM_QUEEN	155	Insect	Large	Poison	4	1	Faceworm Queen
 mob	renewal	2530	FACEWORM_DARK	144	Insect	Large	Poison	2	0	Dark Faceworm
@@ -3199,6 +3221,7 @@ mob	renewal	2958	FATAL_DAYS	120	Demon	Medium	Dark	3	0	Fatal Days
 mob	renewal	2959	TORTUROUS_REDEEMER	120	Demihuman	Medium	Earth	3	0	Torturous Redeemer
 mob	renewal	2960	MM_FLAMECROSS	149	Insect	Small	Ghost	4	0	Flamecross
 mob	renewal	2961	E_TORTUROUS_REDEEMER	120	Demihuman	Medium	Earth	3	0	Torturous Redeemer
+mob	renewal	2985	E_MYSTERIOUS_BUG	12	Insect	Large	Fire	2	0	Mysterious bug
 mob	renewal	2987	XM_TREE	148	Demon	Large	Undead	3	0	Decorated Evil Tree
 mob	renewal	2988	XM_ANTONIO	149	Undead	Medium	Dark	3	0	Wicked Vice Plant Manage
 mob	renewal	2989	XM_COOKIE	149	Demon	Small	Dark	3	0	Vicious Cookie
@@ -3302,6 +3325,7 @@ mob	renewal	3178	E1_ACIDUS	130	Dragon	Large	Dark	2	0	Acidus
 mob	renewal	3179	E1_ACIDUS_	130	Dragon	Large	Wind	2	0	Acidus
 mob	renewal	3180	E1_G_S_NYDHOG	117	Dragon	Large	Dark	4	0	Wywern
 mob	renewal	3181	E1_FELOCK	130	Dragon	Large	Dark	2	1	Captain Ferlock
+mob	renewal	3188	E2_FELOCK	130	Dragon	Large	Dark	2	1	Captain Ferlock
 mob	renewal	3190	MM_SARAH	160	Demihuman	Medium	Neutral	1	1	Sarah Irene
 mob	renewal	3191	MM_M_GIGAN1	160	Demon	Medium	Dark	2	0	Gigantes
 mob	renewal	3192	MM_M_GIGAN2	160	Demon	Medium	Dark	2	0	Gigantes
@@ -3531,6 +3555,7 @@ mob	renewal	3666	MD_DRAINLIAR_100	100	Brute	Small	Dark	2	0	Drainliar
 mob	renewal	3667	MD_DRAINLIAR_160	160	Brute	Small	Dark	2	0	Drainliar
 mob	renewal	3669	DIABOLIC2	104	Demon	Small	Dark	2	0	Diabolic2
 mob	renewal	3670	DELETER_2	105	Dragon	Medium	Fire	2	0	Deleter 2
+mob	renewal	3729	QE_POISON_SPORE	26	Plant	Medium	Poison	1	0	Poison Spore
 mob	renewal	3736	COWRAIDERS1	103	Demihuman	Large	Fire	2	0	Buffalo Bandit Sharpsho
 mob	renewal	3737	COWRAIDERS2	101	Demihuman	Large	Fire	2	0	Buffalo Bandit Duelist
 mob	renewal	3738	COWRAIDERS3	107	Demihuman	Large	Fire	2	0	Bowie Buffalo Bandit
@@ -3585,6 +3610,13 @@ mob	renewal	3814	MD_POPORING	36	Formless	Small	Wind	1	0	Enriched Poporing
 mob	renewal	3815	MD_PORING	34	Formless	Small	Earth	1	0	Enriched Poring
 mob	renewal	3816	MD_MARIN	33	Formless	Small	Water	1	0	Enriched Marin
 mob	renewal	3896	G_ILL_ASSULTER	160	Demon	Small	Wind	2	0	Ominous Assaulter
+mob	renewal	3910	E_EMPEL_1	0				0	0	Guardian Stone
+mob	renewal	20118	GOBLIN_KING	255	Demihuman	Medium	Wind	3	0	Goblin King
+mob	renewal	20175	EXTRA_JOKER	255	Demon	Large	Wind	4	0	Extra Joker
+mob	renewal	20176	ERZSEBET	254	Demon	Medium	Dark	1	0	Erzsebet
+mob	renewal	20177	JENIFFER	255	Fish	Medium	Dark	1	0	Jennifer
+mob	renewal	20178	GENERAL_ORC	255	Demihuman	Large	Dark	2	0	General Orc
+mob	renewal	20179	SIEGLOUSE	253	Insect	Small	Earth	2	0	Sieglouse
 mob	renewal	20255	ILL_TEDDY_BEAR_R	155	Formless	Small	Fire	1	0	Red Teddy Bear
 mob	renewal	20256	ILL_TEDDY_BEAR_Y	155	Formless	Small	Wind	1	0	Yellow Teddy Bear
 mob	renewal	20257	ILL_TEDDY_BEAR_G	157	Formless	Small	Poison	1	0	Green Teddy Bear
@@ -3657,6 +3689,8 @@ mob	renewal	20419	MUSPELLSKOLL_H	188	Demon	Medium	Fire	3	1	Rigid Muspellskoll
 mob	renewal	20420	WANDER_MAN_H	187	Demon	Medium	Wind	2	0	Corrupted Wanderer
 mob	renewal	20421	BRINARANEA_H	195	Demon	Large	Dark	3	1	Corrupted Spider Queen
 mob	renewal	20422	DARK_LORD_H	194	Undead	Large	Undead	3	1	Corrupted Dark Lord
+mob	renewal	20507	BONE_FERUS_MJ	206	Undead	Large	Undead	4	0	Bone Ferus
+mob	renewal	20508	BONE_ACIDUS_MJ	207	Undead	Large	Undead	4	0	Bone Acidus
 mob	renewal	20516	G_BONE_FERUS	206	Undead	Large	Undead	4	0	Bone Ferus
 mob	renewal	20517	G_BONE_ACIDUS	207	Undead	Large	Undead	4	0	Bone Acidus
 mob	renewal	20520	ILL_BAPHOMET	178	Demon	Large	Dark	3	0	Chaos Baphomet
@@ -3687,6 +3721,14 @@ mob	renewal	20600	JEWEL	192	Formless	Large	Neutral	4	0	Jewel
 mob	renewal	20601	JUNGOLIANT	197	Insect	Large	Neutral	4	1	Jewel Ungoliant
 mob	renewal	20602	PORCELLIO_W	188	Insect	Small	Earth	4	0	White Porcellio
 mob	renewal	20603	ABYSSMAN	190	Brute	Large	Neutral	4	0	Abyssman
+mob	renewal	20604	ANGELGOLT	196	Angel	Small	Holy	4	0	Angelgolt
+mob	renewal	20605	ANGELGOLT2	196	Angel	Small	Holy	4	0	Angelgolt
+mob	renewal	20606	HOLY_FRUS	201	Angel	Medium	Holy	4	0	Holy Frus
+mob	renewal	20607	HOLY_SKOGUL	202	Angel	Medium	Holy	4	0	Holy Skogul
+mob	renewal	20608	PLASMA_ARCH	198	Formless	Small	Holy	4	0	Arch Plasma
+mob	renewal	20609	PLASMA_SPT	197	Formless	Small	Ghost	4	0	Plasma Spectrum
+mob	renewal	20610	REGINLEIF	207	Angel	Medium	Fire	4	0	Valkyrie Reginleif
+mob	renewal	20611	INGRID	207	Angel	Medium	Water	4	0	Valkyrie Ingrid
 mob	renewal	20612	FERUS_P	202	Dragon	Large	Poison	4	0	Purple Ferus
 mob	renewal	20613	TREASURE_MIMIC	204	Formless	Large	Neutral	4	0	Treasure Mimic
 mob	renewal	20614	ACIDUS_B	205	Dragon	Large	Dark	4	0	Black Acidus
@@ -3774,6 +3816,17 @@ mob	renewal	20697	EP17_2_CHILD_ADMIN2	180	Formless	Small	Neutral	1	0	Child Admin
 mob	renewal	20698	G_ASSISTANT	137	Formless	Medium	Neutral	2	0	Assistant
 mob	renewal	20699	G_BELLARE3	143	Demihuman	Medium	Ghost	1	0	Heart Hunter Commander
 mob	renewal	20700	G_BETA_SCISSORE_NG	135	Formless	Small	Fire	2	0	Broken Gardener Beta
+mob	renewal	20773	EMPATHIZER	200	Angel	Medium	Ghost	4	0	Empathizer
+mob	renewal	20774	HAPPY_GIVER	202	Angel	Small	Wind	4	0	Happiness Giver
+mob	renewal	20775	THA_ANGER	203	Demon	Large	Fire	4	0	Anger of Thanatos
+mob	renewal	20776	THA_HORROR	201	Demon	Small	Poison	4	0	Horror of Thanatos
+mob	renewal	20777	THA_RESENT	205	Undead	Medium	Ghost	4	0	Resentment of Thanatos
+mob	renewal	20778	THA_REGRET	202	Demon	Large	Ghost	4	0	Regret of Thanatos
+mob	renewal	20779	VOID_MIMIC	203	Formless	Medium	Neutral	4	0	Void Mimic
+mob	renewal	20780	BOOK_OF_DEATH	204	Formless	Small	Undead	4	0	Book of Death
+mob	renewal	20781	ELDEST	205	Demihuman	Medium	Dark	4	0	Eldest
+mob	renewal	20782	CROW_DUKE	205	Demon	Medium	Wind	4	0	Crow Duke
+mob	renewal	20783	CROW_BARON	205	Demon	Medium	Neutral	4	0	Crow Baron
 mob	renewal	20801	ILL_SROPHO	147	Fish	Medium	Water	3	0	Deep Sea Sropho
 mob	renewal	20802	ILL_OBEAUNE	149	Fish	Medium	Water	2	0	Deep Sea Obeaune
 mob	renewal	20803	ILL_DEVIACE	150	Fish	Medium	Water	4	0	Deep Sea Deviace
@@ -3790,12 +3843,16 @@ mob	renewal	20835	ABR_DUAL_CANNON	200	Formless	Medium	Neutral	1	0	ABR Duel Canno
 mob	renewal	20836	ABR_MOTHER_NET	200	Formless	Small	Neutral	1	0	ABR Mother Net
 mob	renewal	20837	ABR_INFINITY	200	Formless	Large	Neutral	1	0	ABR Infinity
 mob	renewal	20843	ILL_ABYSMAL_WITCH	205	Demon	Large	Dark	3	1	Deep Sea Witch
+mob	renewal	20844	PRAY_GIVER	203	Angel	Medium	Ghost	3	0	Pray Giver
+mob	renewal	20845	SMILE_GIVER	201	Angel	Medium	Holy	3	0	Smile Giver
 mob	renewal	20846	MD_HIDDEN_GROUND01	170	Demon	Small	Neutral	1	0	Plague of Corruption
 mob	renewal	20847	MD_HIDDEN_GROUND02	170	Formless	Small	Neutral	1	0	Plague of Corruption
 mob	renewal	20848	SUMMON_WOODENWARRIOR	200	Plant	Medium	Earth	4	0	Wooden Warrior
 mob	renewal	20849	SUMMON_WOODEN_FAIRY	200	Plant	Small	Earth	4	0	Wooden Fairy
 mob	renewal	20850	SUMMON_CREEPER	200	Plant	Small	Earth	4	0	Creeper
 mob	renewal	20851	SUMMON_HELLTREE	200	Plant	Large	Neutral	4	0	Hell Tree
+mob	renewal	20875	4JOB_LETICIA	200	Dragon	Large	Dark	3	0	Leticia
+mob	renewal	20876	4JOB_ACIDUS	200	Dragon	Large	Holy	2	0	Spacetime Observer
 mob	renewal	20920	CHIMERA_LAVA	243	Formless	Small	Fire	3	0	Lavaeter
 mob	renewal	20921	CHIMERA_FULGOR	244	Brute	Medium	Water	3	0	Fulgor
 mob	renewal	20922	CHIMERA_NAPEO	244	Plant	Medium	Wind	3	0	Napeo
@@ -3892,11 +3949,178 @@ mob	renewal	21392	ILL_GIEARTH	168	Demon	Small	Dark	3	0	Gutsy Giearth
 mob	renewal	21393	ILL_FARMILIAR	166	Brute	Small	Dark	2	0	Gutsy Familiar
 mob	renewal	21394	ILL_VITATA	169	Insect	Small	Poison	4	0	Diligent Vitata
 mob	renewal	21395	ILL_MAYA	175	Insect	Large	Neutral	4	1	Silent Maya
+mob	renewal	21513	EP19_NPC_IWIN	200	Brute	Medium	Neutral	1	0	Dummy
+mob	renewal	21514	EP19_NPC_IWIN_SN	200	Brute	Medium	Neutral	1	0	Dummy
+mob	renewal	21515	EP19_NPC_IWIN_SY	200	Brute	Medium	Neutral	1	0	Dummy
+mob	renewal	21516	EP19_NPC_IWIN_SB	200	Brute	Medium	Neutral	1	0	Dummy
+mob	renewal	21517	EP19_NPC_IWIN_SG	200	Brute	Medium	Neutral	1	0	Dummy
+mob	renewal	21518	EP19_NPC_IWIN_SR	200	Brute	Medium	Neutral	1	0	Dummy
+mob	renewal	21519	EP19_NPC_LEHAR	200	Brute	Medium	Neutral	1	0	Dummy
+mob	renewal	21520	EP19_LIMACINA	213	Fish	Large	Water	2	0	Limacina
+mob	renewal	21521	EP19_UNFROST_FLOWER	212	Fish	Medium	Water	3	0	Unfrost Flower
+mob	renewal	21522	EP19_CALMARING	209	Plant	Medium	Water	2	0	Calmaring
+mob	renewal	21523	EP19_ICE_STRAW	211	Fish	Small	Water	1	0	Ice Straw
+mob	renewal	21524	EP19_SHINING_SEAWEED	210	Plant	Medium	Neutral	2	0	Shining Seaweed
+mob	renewal	21525	EP19_ICE_GANGU	208	Insect	Small	Water	1	0	Ice Gangu
+mob	renewal	21526	EP19_RGAN_A	210	Formless	Medium	Poison	1	0	Primitive Rgan
+mob	renewal	21527	EP19_RGAN_B	212	Formless	Medium	Earth	2	0	Lowest Rgan
+mob	renewal	21528	EP19_RGAN_C	214	Formless	Medium	Neutral	3	0	Junior Rgan
+mob	renewal	21529	EP19_RGAN_D	215	Formless	Medium	Water	3	0	Intermediate Rgan
+mob	renewal	21530	EP19_RGAN_E	215	Formless	Medium	Wind	2	0	Rgan
+mob	renewal	21531	EP19_MD_AQUILA	210	Formless	Large	Neutral	3	0	Aquila
+mob	renewal	21532	EP19_MD_JUNCEA	215	Demihuman	Large	Poison	4	1	Simulation Juncea
+mob	renewal	21533	EP19_MD_JUNCEA_S	215	Formless	Large	Poison	4	1	Simulation Juncea
+mob	renewal	21534	EP19_MD_RGAN_E	213	Formless	Medium	Earth	1	0	Frightened Rgan
+mob	renewal	21535	EP19_MD_RGAN_D	211	Formless	Medium	Poison	2	0	Split Rgan
+mob	renewal	21536	EP19_MD_HEARTHUNTER_AT	210	Demihuman	Medium	Neutral	1	0	Modified Heart Hunter
+mob	renewal	21537	EP19_LIMACINA_BOSS	245	Fish	Large	Water	3	1	Ultra Limacina
+mob	renewal	21538	EP19_WASTED_RGAN_A	234	Formless	Medium	Poison	3	0	Discarded Primitive Rgan
+mob	renewal	21539	EP19_WASTED_RGAN_C	253	Formless	Medium	Wind	3	0	Intermediate Rgan
+mob	renewal	21540	EP19_CAVE_CALMARING	232	Plant	Medium	Water	3	0	Cave Calmaring
+mob	renewal	21541	EP19_CAVE_FLOWER	233	Fish	Medium	Water	3	0	Cave Flower
+mob	renewal	21542	EP19_HALLUCIGENIA	252	Insect	Medium	Water	3	0	Hallucigenia
+mob	renewal	21543	EP19_HALLUCIGENIA_BABY	234	Insect	Small	Water	2	0	Hallucigenia Baby
+mob	renewal	21544	EP19_ONE_EYE_DOLLOCARIS	251	Fish	Medium	Dark	3	0	One Eye Dollocaris
+mob	renewal	21545	EP19_DOLLOCARIS	253	Fish	Medium	Earth	3	0	Two Eyes Dollocaris
+mob	renewal	21548	ECO_CORNUS	254	Brute	Medium	Holy	3	0	Cornus of Prairie
+mob	renewal	21549	ECO_PINGUICULA	252	Plant	Medium	Earth	1	0	Pinguicula of Prairie
+mob	renewal	21550	ECO_HUNTER_FLY	255	Insect	Small	Wind	2	0	Hunter Fly of Prairie
+mob	renewal	21551	ECO_ROCKER	253	Insect	Medium	Earth	1	0	Rocker of Prairie
+mob	renewal	21552	ECO_SAVAGE	252	Brute	Large	Earth	2	0	Savage of Prairie
+mob	renewal	21553	ECO_FLORA	254	Plant	Large	Earth	1	0	Flora of Prairie
+mob	renewal	21554	ECO_HILL_WIND	252	Brute	Medium	Wind	3	0	Hill Wind of Prairie
+mob	renewal	21555	ECO_MISTRESS	260	Insect	Small	Wind	4	0	Mistress of Prairie
+mob	renewal	21556	ECO_EXPLOSION	252	Brute	Small	Fire	3	0	Explosion of Fire
+mob	renewal	21557	ECO_DELETER	252	Dragon	Medium	Fire	2	0	Deleter of Fire(Sky)
+mob	renewal	21558	ECO_JAKK	252	Formless	Medium	Fire	2	0	Jakk of Fire
+mob	renewal	21559	ECO_LAVA_GOLEM	254	Formless	Large	Fire	4	0	Lava Golem of Fire
+mob	renewal	21560	ECO_MAJORUROS	253	Brute	Large	Fire	2	0	Majoruros of Fire
+mob	renewal	21561	ECO_HYDRO	255	Dragon	Large	Dark	2	0	Hydrolancer of Fire
+mob	renewal	21562	ECO_ACIDUS	254	Dragon	Large	Dark	4	0	Acidus of Fire
+mob	renewal	21563	ECO_DETALE	260	Dragon	Large	Dark	3	0	Ditardeurs of Fire
+mob	renewal	21564	ECO_ICE_TITAN	252	Formless	Large	Water	3	0	Ice Titan of Iceberg
+mob	renewal	21565	ECO_SIROMA	252	Formless	Small	Water	3	0	Siroma of Iceberg
+mob	renewal	21566	ECO_SNOWIER	254	Formless	Large	Water	2	0	Snowier of Iceberg
+mob	renewal	21567	ECO_CENTIPEDE	252	Insect	Medium	Poison	2	0	Centipede of Iceberg
+mob	renewal	21568	ECO_AQUA_ELEMENTAL	253	Formless	Large	Water	4	0	Elemental of Iceberg
+mob	renewal	21569	ECO_ANGELGOLT	254	Angel	Small	Holy	4	0	Angelgolt of Iceberg
+mob	renewal	21570	ECO_RHYNCHO	255	Formless	Medium	Water	3	0	Rhyncho of Prairie
+mob	renewal	21571	ECO_KTULLANUX	260	Brute	Large	Water	4	0	Ktullanux of Iceberg
+mob	renewal	21572	ECO_ANCIENT_MUMMY	253	Undead	Medium	Undead	2	0	Ancient Mummy of Death
+mob	renewal	21573	ECO_LUDE	252	Undead	Small	Undead	1	0	Lude of Death
+mob	renewal	21574	ECO_RAGGED_ZOMBIE	252	Undead	Medium	Undead	3	0	Ragged Zombie of Death
+mob	renewal	21575	ECO_WRAITH	254	Undead	Large	Undead	4	0	Wraith of Death
+mob	renewal	21576	ECO_FLAME_SKULL	252	Demon	Small	Ghost	3	0	Flame Skull of Fire
+mob	renewal	21577	ECO_BANSHEE	254	Demon	Medium	Dark	2	0	Banshee of Death
+mob	renewal	21578	ECO_KNIGHT_OF_ABYSS	255	Demihuman	Large	Dark	4	0	Knight of Abyss
+mob	renewal	21579	ECO_LORD_OF_DEATH	260	Demon	Large	Dark	3	0	Lord of Death
+mob	renewal	21588	EP19_MD_AQUILA_B	210	Formless	Small	Neutral	1	1	Aquila
+mob	renewal	21589	G_EP19_LIMACINA	213	Fish	Large	Water	2	0	Limacina
+mob	renewal	21590	EP19_MD_RGAN_ES	213	Formless	Medium	Earth	2	0	Rgan the furious
+mob	renewal	21599	EP19_HEARTHUNTER_AT	210	Demihuman	Medium	Neutral	1	0	Heart Hunter AT
+mob	renewal	21600	EP19_RE_RGAN_E	234	Formless	Medium	Earth	3	0	Renovated Superior Rgan
+mob	renewal	21601	EP19_ET_RGAN_D	252	Formless	Medium	Poison	2	0	Intermediate Rgan
+mob	renewal	21853	EP19_MD_BOX1	230	Formless	Small	Neutral	1	0	Suspicious Storage Stone
+mob	renewal	21854	EP19_MD_BOX2	230	Formless	Small	Neutral	1	0	Suspicious Storage Stone
+mob	renewal	21860	G_CRAB	43	Fish	Small	Water	1	0	Crab
+mob	renewal	21861	G_SHELLFISH	50	Fish	Small	Water	1	0	Shellfish
 mob	renewal	21866	HEROS_IN_ORB_1	250	Formless	Small	Neutral	1	0	Spring Jewel
 mob	renewal	21867	HEROS_IN_ORB_2	250	Formless	Small	Neutral	1	0	Summer Jewel
 mob	renewal	21868	HEROS_IN_ORB_3	250	Formless	Small	Neutral	1	0	Autumn Jewel
 mob	renewal	21869	HEROS_IN_ORB_4	250	Formless	Small	Neutral	1	0	Winter Jewel
 mob	renewal	21887	HEROS_OUT_ORB	250	Formless	Small	Neutral	1	0	Jewel
+mob	renewal	21889	HEROS_WOLF	253	Brute	Medium	Earth	2	0	Garden Wolf
+mob	renewal	21890	HEROS_GINSENG	252	Plant	Small	Earth	3	0	Gingseng
+mob	renewal	21891	HEROS_CANNON_R	254	Formless	Small	Fire	2	0	Garden Cannon(Red)
+mob	renewal	21892	HEROS_CANNON_Y	254	Formless	Small	Wind	2	0	Garden Cannon(Yellow)
+mob	renewal	21893	HEROS_CANNON_G	254	Formless	Small	Earth	2	0	Garden Cannon(Green)
+mob	renewal	21894	HEROS_CANNON_B	254	Formless	Small	Water	2	0	Garden Cannon(Blue)
+mob	renewal	21895	HEROS_R_PLANT	250	Plant	Small	Earth	1	0	Red grass in the garden
+mob	renewal	21896	HEROS_Y_PLANT	250	Plant	Small	Earth	1	0	Garden Yellow Grass
+mob	renewal	21897	HEROS_B_PLANT	250	Plant	Small	Earth	1	0	Grass in the garden
+mob	renewal	21898	HEROS_W_PLANT	250	Plant	Small	Earth	1	0	Garden White Grass
+mob	renewal	21899	HEROS_R_FERUS	255	Dragon	Large	Fire	3	0	Red Garden Ferrus
+mob	renewal	21900	HEROS_G_FERUS	255	Dragon	Large	Earth	3	0	Green Garden Ferrus
+mob	renewal	21901	HEROS_P_FERUS	255	Dragon	Large	Poison	3	0	Purple Garden Ferrus
+mob	renewal	21902	HEROS_WATCHER	254	Angel	Medium	Dark	3	0	The Garden Patrolman
+mob	renewal	21903	HEROS_KEEPER	254	Plant	Medium	Poison	3	0	Garden Manager
+mob	renewal	21904	HEROS_F_PEGASUS	255	Dragon	Large	Poison	3	0	Garden Floral Pegasus
+mob	renewal	21920	ECO_RUDO	253	Angel	Small	Holy	3	0	Temple Rudo
+mob	renewal	21921	ECO_ARCHANGELING	253	Angel	Medium	Holy	3	0	Temple Arc Angeling
+mob	renewal	21922	ECO_FAKE_ANGEL	253	Angel	Small	Holy	3	0	Temple False Angel
+mob	renewal	21923	ECO_PLASMA_P	254	Formless	Small	Dark	4	0	Temple Plasma
+mob	renewal	21924	ECO_SOLACE	254	Angel	Medium	Holy	3	0	Temple Solace
+mob	renewal	21925	ECO_ANOPHELES	254	Insect	Small	Wind	3	0	Temple Anopheles
+mob	renewal	21926	ECO_GRYPHON	255	Brute	Large	Wind	4	0	Temple Gryphon
+mob	renewal	21927	ECO_RANDGRIS	260	Angel	Large	Holy	4	0	Valkyrie Randgris
+mob	renewal	21928	ECO_COMODO	253	Brute	Medium	Poison	3	0	Venom Comodo
+mob	renewal	21929	ECO_POISON_TOAD	253	Brute	Medium	Poison	2	0	Venom Poison Toad
+mob	renewal	21930	ECO_SIDE_WINDER	253	Brute	Medium	Poison	1	0	Venom Side Winder
+mob	renewal	21931	ECO_CRAMP	254	Brute	Small	Poison	2	0	Venom Cramp
+mob	renewal	21932	ECO_KUKRE	254	Fish	Small	Water	1	0	Venom Kukre
+mob	renewal	21933	ECO_NEPENTHES	254	Plant	Medium	Poison	2	0	Venom Nephentes
+mob	renewal	21934	ECO_ANGRA_MANTIS	255	Insect	Medium	Earth	2	0	Venom Angra Mantis
+mob	renewal	21935	ECO_VENOM_KIMERA	260	Brute	Large	Poison	4	0	Venomous Chimera
+mob	renewal	21936	ECO_NIGHTMARE	253	Brute	Large	Ghost	3	0	Soul Nightmare
+mob	renewal	21937	ECO_WHISPER	253	Demon	Small	Ghost	3	0	Soul Whisper
+mob	renewal	21938	ECO_MARIONETTE	253	Demon	Small	Ghost	3	0	Soul Marionette
+mob	renewal	21939	ECO_NOXIOUS	254	Formless	Medium	Ghost	3	0	Soul Noxious
+mob	renewal	21940	ECO_THE_PAPER	254	Formless	Medium	Neutral	3	0	Soul The Paper
+mob	renewal	21941	ECO_GAJOMART	254	Formless	Small	Fire	4	0	Soul Gajomart
+mob	renewal	21942	ECO_ODIUM	255	Undead	Large	Ghost	4	0	Soul Odium of Thanatos
+mob	renewal	21943	ECO_GLOOMUNDERNIGHT	260	Formless	Large	Ghost	3	0	Soul Gloom Under Night
+mob	renewal	21946	BURNING_KNIGHT	265	Demon	Large	Ghost	2	0	Burning Night
+mob	renewal	21947	DEDSERA	262	Plant	Small	Undead	2	0	Deadsera
+mob	renewal	21948	HARDROCK_TITAN	263	Formless	Large	Earth	1	0	Hardrock Titan
+mob	renewal	21949	DEADWEEN	264	Brute	Medium	Poison	3	0	Deadween
+mob	renewal	21950	GAIA_POL	270	Brute	Large	Earth	4	0	Gaia Pol
+mob	renewal	21951	PUNCH_BUG	262	Insect	Medium	Earth	3	0	Punch Bug
+mob	renewal	21952	AFERDE	264	Insect	Large	Wind	2	0	Aferde
+mob	renewal	21953	DISPOL	263	Brute	Small	Holy	1	0	Dispol
+mob	renewal	21954	TIMBERS	265	Plant	Medium	Neutral	4	0	Timbers
+mob	renewal	21955	RENIRE	270	Insect	Medium	Water	3	0	Renire
+mob	renewal	21965	EP20_COPO	220	Brute	Small	Neutral	1	0	Copo
+mob	renewal	21966	EP20_ICEWIND1	220	Brute	Large	Dark	3	0	Grey Icewind
+mob	renewal	21967	EP20_ICEWIND2	244	Brute	Medium	Wind	3	0	Icewind
+mob	renewal	21968	EP20_EGGCOPO	222	Brute	Small	Wind	1	0	Copo Egg
+mob	renewal	21969	EP20_RABBIT_ICESLUG	220	Formless	Small	Water	1	0	Snow Rabbit Slug
+mob	renewal	21970	EP20_MELIBE_ICESLUG	244	Fish	Medium	Wind	2	0	Melibe Slug
+mob	renewal	21971	EP20_ICEBEAR	243	Insect	Small	Fire	2	0	Icebear
+mob	renewal	21972	EP20_JORMUNGUARD1	222	Demon	Small	Poison	2	0	Jormun Guard-P
+mob	renewal	21973	EP20_JORMUNGUARD2	222	Demon	Small	Ghost	2	0	Jormun Guard-Y
+mob	renewal	21974	EP20_FAKE_IWIN_SN	220	Formless	Medium	Neutral	2	0	Fake Iwin Soldier
+mob	renewal	21975	EP20_FAKE_IWIN_SY	221	Formless	Medium	Earth	2	0	Fake Iwin Soldier
+mob	renewal	21976	EP20_FAKE_IWIN_SB	223	Formless	Medium	Water	2	0	Fake Iwin Soldier
+mob	renewal	21977	EP20_FAKE_IWIN_SG	224	Formless	Medium	Wind	2	0	Fake Iwin Soldier
+mob	renewal	21978	EP20_FAKE_IWIN_SR	225	Formless	Medium	Fire	2	0	Fake Iwin Soldier
+mob	renewal	21980	EP20_BOSS_CLANER	250	Formless	Large	Poison	4	0	Jormund Chief Cleaner
+mob	renewal	21983	EP20_ANGEL_ICESLUG	222	Angel	Medium	Holy	1	0	Angel Slug
+mob	renewal	21984	EP20_ICEEGG	215	Formless	Small	Neutral	1	0	Icewind Egg
+mob	renewal	21985	EP20_RGAN_WARLOCK	223	Formless	Medium	Poison	1	0	Superior Rgan Warlock
+mob	renewal	21986	EP20_RGAN_HEALER	223	Formless	Medium	Neutral	2	0	Superior Rgan Healer
+mob	renewal	21987	EP20_JORGAN_WARLOCK	227	Formless	Medium	Wind	2	0	Jormun Warlock
+mob	renewal	21988	EP20_JORGAN_HEALER	230	Formless	Medium	Holy	2	0	Jormun Bishop
+mob	renewal	21989	EP20_JORGAN_GUARDIAN	225	Formless	Medium	Dark	2	0	Jormun Guardian
+mob	renewal	21990	EP20_JORGAN_CLEANER	244	Formless	Large	Earth	2	0	Jormun Sanc Cleaner
+mob	renewal	21996	EP20_SNOW_ANGEL	235	Angel	Large	Holy	4	0	Snowstorm Angel
+mob	renewal	21997	G_EP20_JORMUNGUARD1	222	Demon	Small	Poison	2	0	Jormun Guard-P
+mob	renewal	21998	G_EP20_JORMUNGUARD2	222	Demon	Small	Ghost	2	0	Jormun Guard-Y
+mob	renewal	22140	BIO_ANOLIAN	263	Fish	Medium	Water	3	0	Abyssal Anolian
+mob	renewal	22141	BIO_SKEL_ARCHER	264	Undead	Medium	Undead	2	0	Abyssal Archer Skeleton
+mob	renewal	22142	BIO_DRAGON_TAIL	264	Insect	Medium	Wind	4	0	Abyssal Dragon Tail
+mob	renewal	22143	BIO_LAVA_TOAD	262	Brute	Medium	Fire	4	0	Abyssal Lava Toad
+mob	renewal	22144	BIO_LITTLE_FATUM	263	Demihuman	Small	Wind	3	0	Abyssal Little Fatum
+mob	renewal	22145	BIO_STING	265	Formless	Medium	Earth	4	0	Abyssal Sting
+mob	renewal	22146	BIO_EMPATHIZER	262	Angel	Medium	Ghost	2	0	Abyssal Empathizer
+mob	renewal	22147	BIO_FIRE_FRILLDORA	265	Brute	Medium	Fire	3	0	Abyssal Fire Frilldora
+mob	renewal	22148	BIO_HOLY_FRUS	263	Angel	Medium	Holy	2	0	Abyssal Holy Frus
+mob	renewal	22149	BIO_HOLY_SKOGUL	265	Angel	Medium	Holy	2	0	Abyssal Holy Skogul
+mob	renewal	22150	BIO_KAPHA	263	Fish	Medium	Water	3	0	Abyssal Kapha
+mob	renewal	22151	BIO_SKEL_SOLDIER	264	Undead	Medium	Undead	3	0	Soldier Skeleton
+mob	renewal	22152	BIO_PINGUICULA_D	264	Plant	Medium	Poison	3	0	Abyssal Pinguicula Dark
+mob	renewal	22153	BIO_POM_SPIDER	265	Insect	Medium	Poison	2	0	Abyssal Pom Spider
+mob	renewal	22154	BIO_PRAY_GIVER	263	Angel	Medium	Ghost	3	0	Abyssal Pray Giver
+mob	renewal	22155	BIO_WOOD_GOBLIN	264	Plant	Medium	Earth	3	0	Abyssal Wood Goblin
 mob	renewal	22177	MD_PRI_DRAGON_1	0				0	0	MD_PRI_DRAGON_1
 mob	renewal	22178	MD_PRI_DRAGON_2	0				0	0	MD_PRI_DRAGON_2
 mob	renewal	22179	MD_PRI_DRAGON_3	0				0	0	MD_PRI_DRAGON_3
@@ -3949,6 +4173,166 @@ mob	renewal	22236	SPIRIT_C_WIND_S	263	Formless	Small	Neutral	2	0	L Tainted Wind 
 mob	renewal	22237	SPIRIT_C_WIND_M	264	Formless	Medium	Neutral	3	0	Tainted Wind Spirit
 mob	renewal	22238	SPIRIT_C_WIND_L	265	Formless	Large	Neutral	4	0	G Tainted Wind Spirit
 mob	renewal	22239	SPIRIT_C_WIND_SL	265	Formless	Large	Neutral	4	0	M Tainted Wind Spirit
+mob	renewal	22252	BIO_DUNEYRR	265	Demihuman	Large	Fire	3	0	Abyssal Duneyrr
+mob	renewal	22253	BIO_NAGA	265	Brute	Large	Earth	2	0	Abyssal Naga
+mob	renewal	22254	BIO_ANCIENT_TREE	265	Plant	Large	Earth	2	0	Abyssal Ancient Tree
+mob	renewal	22255	BIO_DOLLOCARIS	265	Fish	Medium	Earth	3	0	Abyssal Dolomedes
+mob	renewal	22256	BIO_ICE_GARGOYLE	265	Demon	Medium	Water	3	0	Abyssal Frozen Gargoyle
+mob	renewal	22257	BIO_FLAME_GHOST	265	Undead	Medium	Fire	2	0	Abyssal Flame Ghost
+mob	renewal	22258	BIO_ACIDUS_	265	Dragon	Large	Wind	2	0	Abyssal Acidus
+mob	renewal	22259	BIO_MOROCC_1	265	Angel	Large	Dark	1	0	Abyssal Morocc Avatar
+mob	renewal	22260	BIO_SALAMANDER	265	Formless	Large	Fire	2	0	Abyssal Salamander
+mob	renewal	22261	BIO_MOSKILLO	265	Insect	Medium	Wind	3	0	Abyssal Moskillo
+mob	renewal	22313	EP21_SEAWIND	236	Brute	Medium	Wind	2	0	Seawind
+mob	renewal	22314	EP21_SCALLEG	237	Fish	Small	Water	1	0	Scalleg
+mob	renewal	22315	EP21_VELELLING	235	Plant	Medium	Poison	2	0	Velelling
+mob	renewal	22316	EP21_LETTERSTER	236	Brute	Medium	Water	2	0	Letterster
+mob	renewal	22317	EP21_ROCKSTRIKER	237	Insect	Large	Earth	3	0	Rockstriker
+mob	renewal	22318	EP21_ICESEAHORSE	240	Brute	Medium	Water	3	0	Ice Seahorse
+mob	renewal	22319	EP21_SKIPSKIPPER	238	Fish	Medium	Poison	2	0	Skipskipper
+mob	renewal	22320	EP21_CLIOLIMA	238	Fish	Small	Water	2	0	Cliolima
+mob	renewal	22321	EP21_YORKER_A	236	Demihuman	Medium	Neutral	1	0	Yorker Worker
+mob	renewal	22322	EP21_YORKER_B	235	Demihuman	Medium	Neutral	1	0	Yorker Religious Worker
+mob	renewal	22323	EP21_YOSTER_A	241	Demihuman	Medium	Fire	2	0	Yoster Cleaner
+mob	renewal	22324	EP21_YOSTER_B	242	Demihuman	Medium	Wind	2	0	Yoster Fixer
+mob	renewal	22325	EP21_YOSTER_C	242	Demihuman	Medium	Earth	2	0	Yoster Collector
+mob	renewal	22326	EP21_YOSTER_D	241	Demon	Medium	Water	2	0	Yoster Negotiator
+mob	renewal	22327	EP21_YOSTER_E	241	Demon	Medium	Dark	2	0	Yoster Cooker
+mob	renewal	22353	EP21_YORMI_A	241	Demihuman	Medium	Dark	2	0	Yormi
+mob	renewal	22354	EP21_YORMI_B	242	Demihuman	Medium	Neutral	2	0	Yormi Evangelist
+mob	renewal	22355	EP21_YORDOS_A	243	Demon	Medium	Neutral	2	0	Yordos Interrogator
+mob	renewal	22356	EP21_YORDOS_B	243	Demon	Medium	Dark	2	0	Yordos Judge
+mob	renewal	22357	EP21_YORDOS_C	243	Demon	Medium	Earth	2	0	Yordos Executor
+mob	renewal	22358	EP21_YOSCOPUS_A	244	Demihuman	Medium	Wind	2	0	Yoscopus Guardian
+mob	renewal	22359	EP21_YOSCOPUS_B	244	Demihuman	Medium	Ghost	1	0	Yoscopus Shaman
+mob	renewal	22360	EP21_YORTUS_A	245	Demon	Medium	Dark	2	0	Yortus Bishop
+mob	renewal	22361	EP21_YORTUS_B	245	Demon	Medium	Ghost	1	0	Yortus Shaman
+mob	renewal	22362	EP21_ICEHORN	265	Brute	Large	Water	3	0	Ice Horn
+mob	renewal	22363	EP21_B_YORTUS_A	265	Demon	Medium	Dark	2	0	Yortus Judge
+mob	renewal	22364	EP21_B_YORTUS_B	265	Demon	Medium	Ghost	2	0	Yortus Executor
+mob	renewal	22383	VIOLEN	273	Demihuman	Medium	Neutral	3	0	Violen
+mob	renewal	22384	CP_VIOLEN	273	Demihuman	Medium	Neutral	3	0	Strong Violen
+mob	renewal	22385	SPIDING	273	Insect	Medium	Dark	2	0	Spiding
+mob	renewal	22386	CP_SPIDING	273	Insect	Medium	Dark	2	0	Strong Spiding
+mob	renewal	22387	GARLING	274	Plant	Small	Fire	3	0	Garling
+mob	renewal	22388	CP_GARLING	274	Plant	Small	Fire	3	0	Strong Garling
+mob	renewal	22389	JACKONETTE	274	Demon	Small	Ghost	2	0	Jackonette
+mob	renewal	22390	CP_JACKONETTE	274	Demon	Small	Ghost	2	0	Strong Jackonette
+mob	renewal	22391	LIAMETTE	275	Demihuman	Medium	Earth	3	0	Liamette
+mob	renewal	22392	CP_LIAMETTE	275	Demihuman	Medium	Earth	3	0	Strong Liamette
+mob	renewal	22394	NIGHTMARE_PIAMETTE	275	Demihuman	Large	Neutral	3	0	Nightmare Piamette
+mob	renewal	22395	MEDJED	272	Angel	Small	Ghost	2	0	Medjed
+mob	renewal	22396	CP_MEDJED	272	Angel	Small	Ghost	2	0	Strong Medjed
+mob	renewal	22397	MEDJAY	274	Demihuman	Medium	Fire	3	0	Medjay
+mob	renewal	22398	CP_MEDJAY	274	Demihuman	Medium	Fire	3	0	Strong Medjay
+mob	renewal	22399	OPHOIS	275	Undead	Large	Dark	2	0	Ophois
+mob	renewal	22400	CP_OPHOIS	275	Undead	Large	Dark	2	0	Strong Ophois
+mob	renewal	22401	HEKA	273	Demon	Large	Wind	3	0	Heka
+mob	renewal	22402	CP_HEKA	273	Demon	Large	Wind	3	0	Strong Heka
+mob	renewal	22404	GUIDE_OF_DEAD	275	Undead	Large	Dark	3	0	Guide of Dead
+mob	renewal	22412	EP21_YORTUS_A_H	265	Demon	Medium	Dark	2	0	Awakened Yortus Bishop
+mob	renewal	22413	EP21_YORTUS_B_H	265	Demon	Medium	Ghost	1	0	Awakened Yortus Shaman
+mob	renewal	22414	EP21_YORDOS_C_H	253	Demon	Medium	Earth	2	0	Yordos Executor
+mob	renewal	22415	EP21_YORDOS_B_H	253	Demon	Medium	Dark	2	0	Awakened Yordos Judge
+mob	renewal	22416	EP21_YORDOS_A_H	253	Demon	Medium	Neutral	2	0	Yordos Interrogator
+mob	renewal	22417	EP21_YORMI_A_H	245	Demihuman	Medium	Dark	2	0	Awakened Yormi
+mob	renewal	22418	EP21_YORMI_B_H	246	Demihuman	Medium	Neutral	2	0	Yormi Evangelist
+mob	renewal	22419	EP21_YOSCOPUS_A_H	264	Demihuman	Medium	Wind	2	0	Yoscopus Guardian
+mob	renewal	22420	EP21_YOSCOPUS_B_H	264	Demihuman	Medium	Ghost	1	0	Yoscopus Shaman
+mob	renewal	22421	EP21_B_YORTUS_A_H	275	Demon	Medium	Dark	2	0	Awakened Yortus Judge
+mob	renewal	22422	EP21_B_YORTUS_B_H	275	Demon	Medium	Ghost	2	0	Yortus Executor
+mob	renewal	22431	TATSI	274	Fish	Medium	Water	2	0	Tatsi
+mob	renewal	22433	CP_TATSI	274	Fish	Medium	Water	2	0	Strong Tatsi
+mob	renewal	22434	GUERRERO	275	Demihuman	Large	Neutral	2	0	Guerrero
+mob	renewal	22435	HANOM	272	Plant	Large	Holy	1	0	Hanom
+mob	renewal	22436	SIRENA	273	Fish	Small	Poison	2	0	Sirena
+mob	renewal	22437	DIOSA	274	Demihuman	Large	Wind	2	0	Diosa
+mob	renewal	22438	PESKA	275	Fish	Large	Water	3	0	Peska
+mob	renewal	22439	CP_GUERRERO	275	Demihuman	Large	Neutral	2	0	Strong Guerrero
+mob	renewal	22440	CP_HANOM	272	Plant	Large	Holy	1	0	Strong Hanom
+mob	renewal	22441	CP_SIRENA	273	Fish	Small	Poison	2	0	Strong Sirena
+mob	renewal	22442	CP_DIOSA	274	Demihuman	Large	Wind	2	0	Strong Diosa
+mob	renewal	22443	CH1_YGGRING	205	Plant	Medium	Water	1	0	Eggring
+mob	renewal	22444	CH1_LEAFEING	205	Plant	Medium	Earth	1	0	Iparing
+mob	renewal	22445	CH1_CHARCOARING	209	Formless	Medium	Neutral	2	0	Charcoalring
+mob	renewal	22446	CH1_VULRING	210	Formless	Medium	Fire	2	0	Bullring
+mob	renewal	22447	CH1_FIRELOOP	211	Insect	Large	Fire	3	0	Ring of Fire
+mob	renewal	22448	CH1_FIRAFFLESIA	210	Plant	Medium	Poison	3	0	Firecracker
+mob	renewal	22449	CH1_VOLIMPET	209	Fish	Medium	Poison	2	0	Volcanic Clam
+mob	renewal	22450	CH1_FIRE_FLOWER	212	Plant	Medium	Fire	2	0	Blaze
+mob	renewal	22451	CH1_PEEPING	213	Formless	Medium	Poison	3	0	King's Eye
+mob	renewal	22452	CH1_SILK_FROG	212	Fish	Large	Water	2	0	Contaminated Silk Frog
+mob	renewal	22453	CH1_SILK_SNAIL	213	Insect	Large	Water	2	0	Contaminated Silk Snail
+mob	renewal	22454	CH1_EX_ROBOT	215	Formless	Medium	Dark	2	0	Exploration Robot
+mob	renewal	22455	CH1_REPAIR_ROBOT	214	Formless	Medium	Neutral	2	0	Encroached Repair Robot
+mob	renewal	22456	CH1_DIMIC_1	213	Formless	Medium	Wind	2	0	Encroached Dimik
+mob	renewal	22457	CH1_DIMIC_2	213	Formless	Medium	Water	2	0	Encroached Dimik
+mob	renewal	22458	CH1_DIMIC_3	213	Formless	Medium	Earth	2	0	Encroached Dimik
+mob	renewal	22459	CH1_DIMIC_4	213	Formless	Medium	Fire	2	0	Encroached Dimik
+mob	renewal	22460	CH1_IMMORTAL_CORPS1	214	Demon	Medium	Undead	4	0	Meat Cleaver Soldier
+mob	renewal	22461	CH1_IMMORTAL_CORPS2	214	Demon	Medium	Undead	4	0	Hatred Scythe Soldier
+mob	renewal	22462	CH1_IMMORTAL_CORPS3	214	Demon	Medium	Undead	4	0	Immortal Plow Soldier
+mob	renewal	22463	CH1_NYAISE	222	Formless	Small	Ghost	3	0	Nyaze
+mob	renewal	22464	CH1_SHADOW_JAILER	224	Formless	Medium	Ghost	3	0	Shadow Warden
+mob	renewal	22465	CH1_TULIP	223	Plant	Medium	Dark	2	0	Tulip
+mob	renewal	22466	CH1_CALENDULA	221	Plant	Medium	Fire	2	0	Calendula
+mob	renewal	22467	CH1_SCABIOSA	220	Plant	Medium	Holy	2	0	Scabiosa
+mob	renewal	22468	CH1_LOBELIA	244	Plant	Medium	Earth	2	0	Lobelia
+mob	renewal	22469	CH1_MYOSOTIS	245	Plant	Medium	Dark	2	0	Myosotis
+mob	renewal	22470	CH1_ANEMONE	242	Plant	Medium	Poison	2	0	Anemone
+mob	renewal	22471	CH1_SKOGL	245	Demon	Medium	Dark	3	0	Bizarre Scogle
+mob	renewal	22472	CH1_FRUS	245	Demon	Medium	Dark	3	0	Bizarre Prus
+mob	renewal	22473	CH1_LISTENER	245	Undead	Large	Poison	3	0	Ghost Hunter
+mob	renewal	22474	CH1_IMMORTAL_OFFICER1	243	Demon	Medium	Undead	4	0	Immortal Legion Officer
+mob	renewal	22475	CH1_IMMORTAL_OFFICER2	244	Demon	Medium	Undead	4	0	Immortal Legion Officer
+mob	renewal	22476	CH1_TOXIT	274	Demon	Medium	Poison	4	0	Toxit
+mob	renewal	22477	CP_CH1_TOXIT	274	Demon	Medium	Poison	4	0	Strong Toxit
+mob	renewal	22478	CH1_LUNARINA	275	Demon	Large	Dark	3	0	Lunarina
+mob	renewal	22479	CP_CH1_LUNARINA	275	Demon	Large	Dark	3	0	Strong Lunarina
+mob	renewal	22480	CH1_BLOODY_SLASHER	273	Demihuman	Small	Neutral	3	0	Bloody Slasher
+mob	renewal	22481	CP_CH1_BLOODY_SLASHER	273	Demihuman	Small	Neutral	3	0	Strong Bloody Slasher
+mob	renewal	22482	CH1_SHADIEST	274	Formless	Small	Undead	3	0	Shadyist
+mob	renewal	22483	CP_CH1_SHADIEST	274	Formless	Small	Undead	3	0	Strong Shadyist
+mob	renewal	22484	CH1_SUCCUBUS	275	Demon	Medium	Dark	4	0	High Succubus
+mob	renewal	22485	CP_CH1_SUCCUBUS	275	Demon	Medium	Dark	4	0	Strong High Succubus
+mob	renewal	22486	CH1_INCCUBUS	276	Demon	Medium	Dark	4	0	High Incubus
+mob	renewal	22487	CP_CH1_INCCUBUS	276	Demon	Medium	Dark	4	0	Strong High Incubus
+mob	renewal	22488	CH1_ABYSS_KNIGHT	278	Demihuman	Large	Dark	4	0	Abyss Knight Commander
+mob	renewal	22489	CP_CH1_ABYSS_KNIGHT	278	Demihuman	Large	Dark	4	0	Abyss Knight Commander
+mob	renewal	22494	CH1_BULGASARI	250	Formless	Medium	Neutral	4	0	Starfish
+mob	renewal	22495	CH1_GLUTTO	265	Brute	Medium	Dark	2	0	Glutton
+mob	renewal	22507	CH1_RK	272	Demihuman	Medium	Fire	2	0	M.RK-4480
+mob	renewal	22508	CH1_MC_M	271	Demihuman	Medium	Water	3	0	M.MC.M-5407
+mob	renewal	22509	CH1_SC	270	Demon	Medium	Poison	4	0	M.SC-3941
+mob	renewal	22510	CH1_RA	271	Demihuman	Medium	Wind	4	0	M.RA-4152
+mob	renewal	22511	CH1_SO	272	Formless	Medium	Ghost	2	0	M.SO-4206
+mob	renewal	22512	CH1_AB	272	Demihuman	Medium	Holy	3	0	M.AB-4084
+mob	renewal	22513	CH1_MI_D	270	Demihuman	Medium	Earth	4	0	M.MI.D-5794
+mob	renewal	22514	CH1_GC_D	272	Demon	Medium	Dark	4	0	M.GC.D-4402
+mob	renewal	22516	CH1_RG	272	Demihuman	Medium	Holy	2	0	M.RG-5520
+mob	renewal	22517	CH1_MC	272	Demihuman	Medium	Dark	3	0	M.MC-4593
+mob	renewal	22518	CH1_GN	271	Demihuman	Medium	Fire	4	0	M.GN-6059
+mob	renewal	22519	CH1_GC	272	Demon	Medium	Poison	4	0	M.GC-5848
+mob	renewal	22520	CH1_MI	270	Demihuman	Medium	Wind	2	0	M.MI-4419
+mob	renewal	22521	CH1_SR	271	Demihuman	Medium	Water	3	0	M.SR-5916
+mob	renewal	22522	CH1_WL	272	Formless	Medium	Ghost	3	0	M.WL-5581
+mob	renewal	22523	CH1_WA	270	Demihuman	Medium	Wind	3	0	M.WA-5598
+mob	renewal	22525	CH1_RK_1	283	Demihuman	Medium	Fire	3	0	M.RK-0001
+mob	renewal	22526	CH1_MC_M_1	282	Demihuman	Medium	Water	4	0	M.MC.M-0001
+mob	renewal	22527	CH1_SC_1	281	Demon	Medium	Poison	4	0	M.SC-0001
+mob	renewal	22528	CH1_RA_1	282	Demihuman	Medium	Wind	4	0	M.RA-0001
+mob	renewal	22529	CH1_SO_1	283	Formless	Medium	Ghost	3	0	M.SO-0001
+mob	renewal	22530	CH1_AB_1	283	Demihuman	Medium	Holy	4	0	M.AB-0001
+mob	renewal	22531	CH1_MI_D_1	281	Demihuman	Medium	Earth	4	0	M.MI.D-0001
+mob	renewal	22532	CH1_GC_D_1	283	Demon	Medium	Dark	4	0	M.GC.D-0001
+mob	renewal	22542	CH1_RG_1	283	Demihuman	Medium	Holy	3	0	M.RG-0001
+mob	renewal	22543	CH1_MC_1	283	Demihuman	Medium	Dark	4	0	M.MC-0001
+mob	renewal	22544	CH1_GN_1	282	Demihuman	Medium	Fire	4	0	M.GN-0001
+mob	renewal	22545	CH1_GC_1	283	Demon	Medium	Poison	4	0	M.GC-0001
+mob	renewal	22546	CH1_MI_1	281	Demihuman	Medium	Wind	3	0	M.MI-0001
+mob	renewal	22547	CH1_SR_1	282	Demihuman	Medium	Water	4	0	M.SR-0001
+mob	renewal	22548	CH1_WL_1	283	Formless	Medium	Ghost	4	0	M.WL-0001
+mob	renewal	22549	CH1_WA_1	281	Demihuman	Medium	Wind	4	0	M.WA-0001
 mob	renewal	22551	S_DUMMY_SMALL_R10	100	Formless	Small	Neutral	1	0	Dummy (Small)
 mob	renewal	22552	S_DUMMY_MEDIUM_R10	100	Formless	Medium	Neutral	1	0	Dummy (Medium)
 mob	renewal	22553	S_DUMMY_LARGE_R10	100	Formless	Large	Neutral	1	0	Dummy (Large)
@@ -4067,6 +4451,146 @@ mob	renewal	22665	S_DUMMY3_DARKNESS	100	Formless	Medium	Dark	1	0	Dummy (Dark)
 mob	renewal	22666	S_DUMMY3_TELEKINESIS	100	Formless	Medium	Ghost	1	0	Dummy (Ghost)
 mob	renewal	22667	S_DUMMY3_UNDEAD2	100	Formless	Medium	Undead	1	0	Dummy (Undead)
 mob	renewal	22668	S_DUMMY_LARGE_R30	100	Formless	Large	Neutral	1	0	Dummy (Large)
+mob	renewal	22669	G_CH1_RK_ER	272	Demihuman	Medium	Fire	2	0	M.RK-ERROR
+mob	renewal	22670	G_CH1_GC_ER	272	Demon	Medium	Poison	4	0	M.GC-ERROR
+mob	renewal	22671	G_CH1_GC_D_ER	272	Demon	Medium	Dark	4	0	M.GC.D-ERROR
+mob	renewal	22685	CH2_FLAMEBULL	231	Brute	Large	Fire	3	0	Flamebull
+mob	renewal	22686	CH2_UROCHS	255	Brute	Large	Fire	4	0	Urochs
+mob	renewal	22687	CH2_LOGIDOGI	232	Brute	Medium	Fire	1	0	Logidogi
+mob	renewal	22688	CH2_FIRECOTTON	231	Plant	Medium	Fire	1	0	Firecotton
+mob	renewal	22689	CH2_NAMUNSE	232	Formless	Medium	Ghost	1	0	Namunse
+mob	renewal	22690	CH2_NAMUNI	234	Formless	Medium	Ghost	2	0	Namuni
+mob	renewal	22691	CH2_DUDULSON	233	Formless	Medium	Fire	2	0	Dudulson
+mob	renewal	22692	CH2_GARAKSON	235	Formless	Medium	Fire	1	0	Garakson
+mob	renewal	22693	CH2_TUKTAKSON	235	Formless	Medium	Fire	3	0	Tuktakson
+mob	renewal	22694	CH2_PARUSON	237	Formless	Medium	Fire	2	0	Paruson
+mob	renewal	22695	CH2_MORBANG	239	Formless	Large	Fire	3	0	Morbang
+mob	renewal	22696	CH2_FIRECLAW	239	Formless	Small	Fire	2	0	Fireclaw
+mob	renewal	22697	CH2_FLAMEANIMA	260	Formless	Large	Fire	4	0	Flameanima
+mob	renewal	22698	CH2_FROST_MORBANG	255	Formless	Large	Water	4	0	Frost Morbang
+mob	renewal	22699	CH2_ALPURING	229	Plant	Medium	Water	2	0	Alpuring
+mob	renewal	22700	CH2_ICYBLAST	231	Formless	Medium	Water	3	0	Icyblast
+mob	renewal	22701	CH2_ICENEEDLE	232	Formless	Medium	Water	2	0	Iceneedle
+mob	renewal	22702	CH2_FOLNIR_NILF	240	Formless	Medium	Dark	2	0	Folnir Nilf
+mob	renewal	22703	CH2_FOLNIR_MYRK	240	Formless	Medium	Dark	3	0	Folnir Myrk
+mob	renewal	22704	CH2_FOLNIR_HRE	240	Undead	Medium	Dark	2	0	Folnir Hre
+mob	renewal	22705	CH2_FEEOS	260	Undead	Large	Dark	4	0	Feeos
+mob	renewal	22714	ABI_FLAMEBULL	278	Brute	Large	Fire	2	0	Flamebull
+mob	renewal	22715	CP_ABI_FLAMEBULL	278	Brute	Large	Fire	2	0	Flamebull
+mob	renewal	22716	ABI_FIRELOOP	276	Insect	Large	Fire	2	0	Fireloop
+mob	renewal	22717	CP_ABI_FIRELOOP	276	Insect	Large	Fire	2	0	Fireloop
+mob	renewal	22718	ABI_FULBUK	277	Insect	Small	Fire	1	0	Fulbuk
+mob	renewal	22719	CP_ABI_FULBUK	277	Insect	Small	Fire	1	0	Fulbuk
+mob	renewal	22720	ABI_LOGIDOGI	280	Brute	Medium	Fire	1	0	Logidogi
+mob	renewal	22721	CP_ABI_LOGIDOGI	280	Brute	Medium	Fire	1	0	Logidogi
+mob	renewal	22724	ABI_HODE	277	Brute	Medium	Earth	1	0	Hode
+mob	renewal	22725	CP_ABI_HODE	277	Brute	Medium	Earth	1	0	Hode
+mob	renewal	22728	ABI_RAKEHAND	276	Plant	Small	Earth	1	0	Rakehand
+mob	renewal	22729	CP_ABI_RAKEHAND	276	Plant	Small	Earth	1	0	Rakehand
+mob	renewal	22730	ABI_GOAT	279	Brute	Large	Earth	2	0	Goat
+mob	renewal	22731	CP_ABI_GOAT	279	Brute	Large	Earth	2	0	Goat
+mob	renewal	22732	ABI_LETTERSTER	278	Brute	Medium	Earth	1	0	Letterster
+mob	renewal	22733	CP_ABI_LETTERSTER	278	Brute	Medium	Earth	1	0	Letterster
+mob	renewal	22739	ABI_VENENUM2	278	Demihuman	Medium	Poison	2	0	Venenum2
+mob	renewal	22740	CP_ABI_VENENUM2	278	Demihuman	Medium	Poison	2	0	Venenum2
+mob	renewal	22741	ABI_DOLORIAN	277	Demihuman	Medium	Poison	2	0	Dolorian
+mob	renewal	22742	CP_ABI_DOLORIAN	277	Demihuman	Medium	Poison	2	0	Dolorian
+mob	renewal	22743	ABI_LISTENER	279	Undead	Large	Poison	2	0	Listener
+mob	renewal	22744	CP_ABI_LISTENER	279	Undead	Large	Poison	2	0	Listener
+mob	renewal	22745	ABI_GASTER	276	Formless	Small	Poison	1	0	Gaster
+mob	renewal	22746	CP_ABI_GASTER	276	Formless	Small	Poison	1	0	Gaster
+mob	renewal	22747	ABI_FROZENWOLF	276	Brute	Medium	Water	1	0	Frozenwolf
+mob	renewal	22748	CP_ABI_FROZENWOLF	276	Brute	Medium	Water	1	0	Frozenwolf
+mob	renewal	22749	ABI_ICE_GHOST	279	Demon	Medium	Water	2	0	Ice Ghost
+mob	renewal	22750	CP_ABI_ICE_GHOST	279	Demon	Medium	Water	2	0	Ice Ghost
+mob	renewal	22751	ABI_ICEWIND1	278	Brute	Large	Water	2	0	Icewind1
+mob	renewal	22752	CP_ABI_ICEWIND1	278	Brute	Large	Water	2	0	Icewind1
+mob	renewal	22753	ABI_ICYBLAST	277	Formless	Medium	Water	2	0	Icyblast
+mob	renewal	22754	CP_ABI_ICYBLAST	277	Formless	Medium	Water	2	0	Icyblast
+mob	renewal	22771	VR_COPO	220	Brute	Small	Neutral	1	0	Vr Copo
+mob	renewal	22772	VR_ICEEGG	220	Formless	Small	Neutral	3	0	Vr Iceegg
+mob	renewal	22773	VR_ICEWIND2	224	Brute	Medium	Wind	3	0	Vr Icewind2
+mob	renewal	22774	VR_ICEWIND1	224	Brute	Large	Dark	3	0	Vr Icewind1
+mob	renewal	22775	VR_RABBIT_ICESLUG	222	Formless	Small	Water	1	0	Vr Rabbit Iceslug
+mob	renewal	22776	VR_ANGEL_ICESLUG	222	Angel	Medium	Holy	1	0	Vr Angel Iceslug
+mob	renewal	22777	VR_MELIBE_ICESLUG	223	Fish	Medium	Wind	2	0	Vr Melibe Iceslug
+mob	renewal	22778	VR_UNF_FLOWER	224	Fish	Medium	Water	3	0	Vr Unf Flower
+mob	renewal	22779	VR_CALMARING	224	Plant	Medium	Water	2	0	Vr Calmaring
+mob	renewal	22780	VR_LIMACINA	224	Fish	Large	Water	2	0	Vr Limacina
+mob	renewal	22781	VR_ICE_STRAW	221	Fish	Small	Water	1	0	Vr Ice Straw
+mob	renewal	22782	VR_ICE_GANGU	221	Insect	Small	Water	1	0	Vr Ice Gangu
+mob	renewal	22783	VR_ICEBEAR	223	Insect	Small	Fire	2	0	Vr Icebear
+mob	renewal	22784	VR_S_SEAWEED	222	Plant	Medium	Neutral	2	0	Vr S Seaweed
+mob	renewal	22785	VR_CST_PORING	251	Plant	Medium	Water	1	0	Vr Cst Poring
+mob	renewal	22786	VR_CST_MANDRA	251	Plant	Medium	Earth	3	0	Vr Cst Mandra
+mob	renewal	22787	VR_CST_MIMIC	252	Formless	Medium	Neutral	3	0	Vr Cst Mimic
+mob	renewal	22789	VR_CST_WOLF	254	Brute	Medium	Earth	1	0	Vr Cst Wolf
+mob	renewal	22790	VR_CST_KOBOLD	253	Demihuman	Small	Fire	1	0	Vr Cst Kobold
+mob	renewal	22791	VR_CST_G_SPIDER	253	Insect	Large	Poison	1	0	Vr Cst G Spider
+mob	renewal	22793	VR_CST_GARGOYLE	254	Demon	Medium	Wind	3	0	Vr Cst Gargoyle
+mob	renewal	22794	VR_CST_BEHOLDER	254	Formless	Small	Wind	2	0	Vr Cst Beholder
+mob	renewal	22795	VR_CST_MINOROUS	255	Brute	Large	Fire	2	0	Vr Cst Minorous
+mob	renewal	22797	ABI_WRAITH_DEAD	278	Undead	Large	Ghost	2	0	Wraith Dead
+mob	renewal	22798	CP_ABI_WRAITH_DEAD	278	Undead	Large	Ghost	2	0	Wraith Dead
+mob	renewal	22799	ABI_EVIL_DRUID	279	Undead	Large	Ghost	2	0	Evil Druid
+mob	renewal	22800	CP_ABI_EVIL_DRUID	279	Undead	Large	Ghost	2	0	Evil Druid
+mob	renewal	22801	ABI_BURNING_KNIGHT	276	Demon	Large	Ghost	2	0	Burning Knight
+mob	renewal	22802	CP_ABI_BURNING_KNIGHT	276	Demon	Large	Ghost	2	0	Burning Knight
+mob	renewal	22803	ABI_DARK_FRAME	277	Demon	Medium	Ghost	1	0	Dark Frame
+mob	renewal	22804	CP_ABI_DARK_FRAME	277	Demon	Medium	Ghost	1	0	Dark Frame
+mob	renewal	22805	ABI_PLASMA_ARCH	276	Formless	Small	Holy	2	0	Plasma Arch
+mob	renewal	22806	CP_ABI_PLASMA_ARCH	276	Formless	Small	Holy	2	0	Plasma Arch
+mob	renewal	22807	ABI_SANARE1	278	Demihuman	Medium	Holy	1	0	Sanare1
+mob	renewal	22808	CP_ABI_SANARE1	278	Demihuman	Medium	Holy	1	0	Sanare1
+mob	renewal	22809	ABI_HAPPY_GIVER	277	Angel	Small	Holy	1	0	Happy Giver
+mob	renewal	22810	CP_ABI_HAPPY_GIVER	277	Angel	Small	Holy	2	0	Happy Giver
+mob	renewal	22811	ABI_ACIDUS	277	Dragon	Large	Holy	1	0	Acidus
+mob	renewal	22812	CP_ABI_ACIDUS	277	Dragon	Large	Holy	1	0	Acidus
+mob	renewal	22813	ABI_HELL_POODLE	278	Demon	Small	Undead	2	0	Hell Poodle
+mob	renewal	22814	CP_ABI_HELL_POODLE	278	Demon	Small	Undead	2	0	Hell Poodle
+mob	renewal	22815	ABI_ZOMBIE_SLAUGHTER	277	Undead	Large	Undead	2	0	Zombie Slaughter
+mob	renewal	22816	CP_ABI_ZOMBIE_SLAUGHTER	277	Undead	Large	Undead	2	0	Zombie Slaughter
+mob	renewal	22817	ABI_DARK_PRIEST	276	Demon	Medium	Undead	2	0	Dark Priest
+mob	renewal	22818	CP_ABI_DARK_PRIEST	276	Demon	Medium	Undead	2	0	Dark Priest
+mob	renewal	22819	ABI_NECROMANCER	279	Undead	Medium	Undead	2	0	Necromancer
+mob	renewal	22820	CP_ABI_NECROMANCER	279	Undead	Medium	Undead	2	0	Necromancer
+mob	renewal	22824	VR_BLOODY_KNIGHT	263	Formless	Large	Dark	4	0	Vr Bloody Knight
+mob	renewal	22825	VR_CHIMERA	263	Brute	Large	Fire	3	0	Vr Chimera
+mob	renewal	22826	VR_GARGOYLE	262	Demon	Medium	Wind	3	0	Vr Gargoyle
+mob	renewal	22827	VR_KHALITZBURG	262	Undead	Large	Undead	1	0	Vr Khalitzburg
+mob	renewal	22828	VR_KNIGHT_OF_ABYSS	264	Demihuman	Large	Dark	4	0	Vr Knight Of Abyss
+mob	renewal	22829	VR_RAYDRIC	262	Demihuman	Large	Dark	2	0	Vr Raydric
+mob	renewal	22830	VR_RAYDRIC_ARCHER	262	Demon	Medium	Dark	2	0	Vr Raydric Archer
+mob	renewal	22831	VR_ANCIENT_WORM	263	Insect	Large	Poison	1	0	Vr Ancient Worm
+mob	renewal	22832	VR_CATERPILLAR	263	Insect	Small	Earth	1	0	Vr Caterpillar
+mob	renewal	22833	VR_CREMY_FEAR	262	Insect	Small	Wind	1	0	Vr Cremy Fear
+mob	renewal	22834	VR_GIANT_HONET	263	Insect	Small	Wind	1	0	Vr Giant Honet
+mob	renewal	22835	VR_GIANT_SPIDER	263	Insect	Large	Poison	1	0	Vr Giant Spider
+mob	renewal	22836	ABI_ALIOT	279	Demon	Medium	Neutral	2	0	Aliot
+mob	renewal	22837	CP_ABI_ALIOT	279	Demon	Medium	Neutral	2	0	Aliot
+mob	renewal	22838	ABI_ARCHDAM	277	Demihuman	Large	Neutral	2	0	Archdam
+mob	renewal	22839	CP_ABI_ARCHDAM	277	Demihuman	Large	Neutral	2	0	Archdam
+mob	renewal	22840	ABI_ALARM	276	Formless	Medium	Neutral	1	0	Alarm
+mob	renewal	22841	CP_ABI_ALARM	276	Formless	Medium	Neutral	1	0	Alarm
+mob	renewal	22842	ABI_DIMIK	278	Formless	Medium	Neutral	1	0	Dimik
+mob	renewal	22843	CP_ABI_DIMIK	278	Formless	Medium	Neutral	1	0	Dimik
+mob	renewal	22844	ABI_HARPY	276	Demon	Medium	Wind	2	0	Harpy
+mob	renewal	22845	CP_ABI_HARPY	276	Demon	Medium	Wind	2	0	Harpy
+mob	renewal	22846	ABI_MENBLATT	278	Insect	Medium	Wind	1	0	Menblatt
+mob	renewal	22847	CP_ABI_MENBLATT	278	Insect	Medium	Wind	1	0	Menblatt
+mob	renewal	22848	ABI_LUCIOLA_VESPA	279	Insect	Large	Wind	1	0	Luciola Vespa
+mob	renewal	22849	CP_ABI_LUCIOLA_VESPA	279	Insect	Large	Wind	1	0	Luciola Vespa
+mob	renewal	22850	ABI_WOOTAN_SHOOTER	277	Demihuman	Large	Wind	1	0	Wootan Shooter
+mob	renewal	22851	CP_ABI_WOOTAN_SHOOTER	277	Demihuman	Large	Wind	1	0	Wootan Shooter
+mob	renewal	22852	ABI_TIYANAK	277	Demon	Small	Dark	1	0	Tiyanak
+mob	renewal	22853	CP_ABI_TIYANAK	277	Demon	Small	Dark	1	0	Tiyanak
+mob	renewal	22854	ABI_ZENORC	278	Demihuman	Medium	Dark	1	0	Zenorc
+mob	renewal	22855	CP_ABI_ZENORC	278	Demihuman	Medium	Dark	1	0	Zenorc
+mob	renewal	22856	ABI_TWIN_CAPUT1	276	Demihuman	Medium	Dark	2	0	Twin Caput1
+mob	renewal	22857	CP_ABI_TWIN_CAPUT1	276	Demihuman	Medium	Dark	2	0	Twin Caput1
+mob	renewal	22858	ABI_WAKWAK	279	Demon	Medium	Dark	2	0	Wakwak
+mob	renewal	22859	CP_ABI_WAKWAK	279	Demon	Medium	Dark	2	0	Wakwak
+mob	renewal	23060	EP20_ARMOERDCOPO	243	Brute	Small	Water	1	0	Armored Copo
 mob	prerenewal	1001	SCORPION	24	Insect	Small	Fire	1	0	Scorpion
 mob	prerenewal	1002	PORING	1	Plant	Medium	Water	1	0	Poring
 mob	prerenewal	1004	HORNET	8	Insect	Small	Wind	1	0	Hornet
@@ -13332,6 +13856,28 @@ spawn	iz_d05_i	20807	45	0	Deep Sea Swordfish
 spawn	iz_d05_i	20809	45	0	Deep Sea Phen
 spawn	iz_d05_i	20806	45	0	Deep Sea Sedora
 spawn	iz_d05_i	20810	45	0	Deep Sea King Dramoh
+file	npc/re/mobs/dungeons/jor_ab.txt
+spawn	jor_ab01	21538	65	0	
+spawn	jor_ab01	21540	65	0	
+spawn	jor_ab01	21541	35	0	
+spawn	jor_ab01	21543	35	0	
+spawn	jor_ab01	21600	10	0	
+spawn	jor_ab02	21539	55	0	
+spawn	jor_ab02	21542	55	0	
+spawn	jor_ab02	21544	40	0	
+spawn	jor_ab02	21545	40	0	
+spawn	jor_ab02	21601	10	0	
+file	npc/re/mobs/dungeons/jor_dun.txt
+spawn	jor_dun01	21526	80	0	
+spawn	jor_dun01	21527	50	0	
+spawn	jor_dun01	21528	20	0	
+spawn	jor_dun01	21599	10	0	
+spawn	jor_dun02	21527	60	0	
+spawn	jor_dun02	21528	50	0	
+spawn	jor_dun02	21529	15	0	
+spawn	jor_dun02	21599	10	0	
+spawn	jor_que	21534	3	0	
+spawn	jor_que	21535	5	0	
 file	npc/re/mobs/dungeons/juperos.txt
 spawn	juperos_01	1676	70	0	Venatu
 spawn	juperos_01	1677	70	0	Venatu
@@ -14659,6 +15205,20 @@ spawn	hu_fild06	1073	35	0	Crab
 spawn	hu_fild06	1266	35	0	Aster
 spawn	hu_fild06	1080	10	0	Green Plant
 spawn	hu_fild06	1081	10	0	Yellow Plant
+file	npc/re/mobs/fields/jor_back.txt
+spawn	jor_back1	21524	60	0	
+spawn	jor_back1	21525	60	0	
+spawn	jor_back1	21523	80	0	
+spawn	jor_back2	21521	70	0	
+spawn	jor_back2	21525	25	0	
+spawn	jor_back2	21523	35	0	
+spawn	jor_back2	21520	70	0	
+spawn	jor_back3	21526	30	0	
+spawn	jor_back3	21527	15	0	
+spawn	jor_back3	21525	20	0	
+spawn	jor_back3	21522	70	0	
+spawn	jor_back3	21520	70	0	
+spawn	jor_back3	21537	1	0	
 file	npc/re/mobs/fields/lighthalzen.txt
 spawn	lhz_fild01	1162	170	0	Rafflesia
 spawn	lhz_fild01	1215	45	0	Stem Worm
@@ -15651,3 +16211,496 @@ spawn	un_bunker	3252	14	0	DR815
 spawn	un_bunker	3251	10	0	GC109
 spawn	un_bunker	1084	1	0	Black Mushroom
 spawn	un_bunker	1011	2	0	Chonchon
+file	npc/re/world_sync/spawns.txt
+spawn	ab_death1	22813	100	0	
+spawn	ab_death1	22814	25	0	
+spawn	ab_death1	22815	110	0	
+spawn	ab_death1	22816	25	0	
+spawn	ab_death1	22817	90	0	
+spawn	ab_death1	22818	25	0	
+spawn	ab_death1	22819	85	0	
+spawn	ab_death1	22820	25	0	
+spawn	ab_factory1	22836	90	0	
+spawn	ab_factory1	22837	25	0	
+spawn	ab_factory1	22838	90	0	
+spawn	ab_factory1	22839	25	0	
+spawn	ab_factory1	22840	110	0	
+spawn	ab_factory1	22841	25	0	
+spawn	ab_factory1	22842	120	0	
+spawn	ab_factory1	22843	25	0	
+spawn	ab_ground1	22724	135	0	
+spawn	ab_ground1	22725	25	0	
+spawn	ab_ground1	22728	115	0	
+spawn	ab_ground1	22729	25	0	
+spawn	ab_ground1	22730	170	0	
+spawn	ab_ground1	22731	25	0	
+spawn	ab_ground1	22732	160	0	
+spawn	ab_ground1	22733	25	0	
+spawn	ab_ice1	22747	115	0	
+spawn	ab_ice1	22748	25	0	
+spawn	ab_ice1	22749	95	0	
+spawn	ab_ice1	22750	25	0	
+spawn	ab_ice1	22751	100	0	
+spawn	ab_ice1	22752	25	0	
+spawn	ab_ice1	22753	85	0	
+spawn	ab_ice1	22754	25	0	
+spawn	ab_jungle1	22852	100	0	
+spawn	ab_jungle1	22853	25	0	
+spawn	ab_jungle1	22854	105	0	
+spawn	ab_jungle1	22855	25	0	
+spawn	ab_jungle1	22856	95	0	
+spawn	ab_jungle1	22857	25	0	
+spawn	ab_jungle1	22858	105	0	
+spawn	ab_jungle1	22859	25	0	
+spawn	ab_lava1	22714	135	0	
+spawn	ab_lava1	22715	25	0	
+spawn	ab_lava1	22716	150	0	
+spawn	ab_lava1	22717	25	0	
+spawn	ab_lava1	22718	125	0	
+spawn	ab_lava1	22719	25	0	
+spawn	ab_lava1	22720	95	0	
+spawn	ab_lava1	22721	25	0	
+spawn	ab_soul1	22797	95	0	
+spawn	ab_soul1	22798	25	0	
+spawn	ab_soul1	22799	95	0	
+spawn	ab_soul1	22800	25	0	
+spawn	ab_soul1	22801	95	0	
+spawn	ab_soul1	22802	25	0	
+spawn	ab_soul1	22803	90	0	
+spawn	ab_soul1	22804	25	0	
+spawn	ab_temple1	22805	100	0	
+spawn	ab_temple1	22806	25	0	
+spawn	ab_temple1	22807	105	0	
+spawn	ab_temple1	22808	25	0	
+spawn	ab_temple1	22809	100	0	
+spawn	ab_temple1	22810	25	0	
+spawn	ab_temple1	22811	95	0	
+spawn	ab_temple1	22812	25	0	
+spawn	ab_valley1	22844	100	0	
+spawn	ab_valley1	22845	25	0	
+spawn	ab_valley1	22846	95	0	
+spawn	ab_valley1	22847	25	0	
+spawn	ab_valley1	22848	105	0	
+spawn	ab_valley1	22849	25	0	
+spawn	ab_valley1	22850	100	0	
+spawn	ab_valley1	22851	25	0	
+spawn	ab_venom1	22739	110	0	
+spawn	ab_venom1	22740	25	0	
+spawn	ab_venom1	22741	90	0	
+spawn	ab_venom1	22742	25	0	
+spawn	ab_venom1	22743	100	0	
+spawn	ab_venom1	22744	25	0	
+spawn	ab_venom1	22745	85	0	
+spawn	ab_venom1	22746	25	0	
+spawn	bl_death	21572	30	0	
+spawn	bl_death	21573	35	0	
+spawn	bl_death	21574	30	0	
+spawn	bl_death	21575	35	0	
+spawn	bl_death	21576	35	0	
+spawn	bl_death	21577	45	0	
+spawn	bl_death	21578	15	0	
+spawn	bl_death	21579	1	0	
+spawn	bl_depth1	22140	3	0	
+spawn	bl_depth1	22141	3	0	
+spawn	bl_depth1	22142	3	0	
+spawn	bl_depth1	22143	3	0	
+spawn	bl_depth1	22144	3	0	
+spawn	bl_depth1	22145	3	0	
+spawn	bl_depth1	22146	3	0	
+spawn	bl_depth1	22147	3	0	
+spawn	bl_depth1	22148	3	0	
+spawn	bl_depth1	22149	3	0	
+spawn	bl_depth1	22150	3	0	
+spawn	bl_depth1	22151	3	0	
+spawn	bl_depth1	22152	3	0	
+spawn	bl_depth1	22153	3	0	
+spawn	bl_depth1	22154	3	0	
+spawn	bl_depth1	22155	3	0	
+spawn	bl_depth2	22252	3	0	
+spawn	bl_depth2	22253	3	0	
+spawn	bl_depth2	22254	3	0	
+spawn	bl_depth2	22255	3	0	
+spawn	bl_depth2	22256	3	0	
+spawn	bl_depth2	22257	3	0	
+spawn	bl_depth2	22258	3	0	
+spawn	bl_depth2	22259	3	0	
+spawn	bl_depth2	22260	3	0	
+spawn	bl_depth2	22261	3	0	
+spawn	bl_grass	21548	40	0	
+spawn	bl_grass	21549	45	0	
+spawn	bl_grass	21550	25	0	
+spawn	bl_grass	21551	40	0	
+spawn	bl_grass	21552	40	0	
+spawn	bl_grass	21553	25	0	
+spawn	bl_grass	21554	45	0	
+spawn	bl_grass	21555	1	0	
+spawn	bl_ice	21564	35	0	
+spawn	bl_ice	21565	35	0	
+spawn	bl_ice	21566	35	0	
+spawn	bl_ice	21567	35	0	
+spawn	bl_ice	21568	45	0	
+spawn	bl_ice	21569	25	0	
+spawn	bl_ice	21570	15	0	
+spawn	bl_ice	21571	1	0	
+spawn	bl_lava	21556	40	0	
+spawn	bl_lava	21557	40	0	
+spawn	bl_lava	21558	30	0	
+spawn	bl_lava	21559	35	0	
+spawn	bl_lava	21560	30	0	
+spawn	bl_lava	21561	15	0	
+spawn	bl_lava	21562	35	0	
+spawn	bl_lava	21563	1	0	
+spawn	bl_soul	21936	35	0	
+spawn	bl_soul	21937	35	0	
+spawn	bl_soul	21938	35	0	
+spawn	bl_soul	21939	10	0	
+spawn	bl_soul	21940	25	0	
+spawn	bl_soul	21941	35	0	
+spawn	bl_soul	21942	35	0	
+spawn	bl_soul	21943	1	0	
+spawn	bl_temple	21920	35	0	
+spawn	bl_temple	21921	40	0	
+spawn	bl_temple	21922	40	0	
+spawn	bl_temple	21923	25	0	
+spawn	bl_temple	21924	40	0	
+spawn	bl_temple	21925	10	0	
+spawn	bl_temple	21926	20	0	
+spawn	bl_temple	21927	1	0	
+spawn	bl_venom	21928	30	0	
+spawn	bl_venom	21929	30	0	
+spawn	bl_venom	21930	20	0	
+spawn	bl_venom	21931	30	0	
+spawn	bl_venom	21932	30	0	
+spawn	bl_venom	21933	40	0	
+spawn	bl_venom	21934	30	0	
+spawn	bl_venom	21935	1	0	
+spawn	ch1_gfn01	22476	40	0	
+spawn	ch1_gfn01	22477	8	0	
+spawn	ch1_gfn01	22478	40	0	
+spawn	ch1_gfn01	22479	8	0	
+spawn	ch1_gfn01	22480	40	0	
+spawn	ch1_gfn01	22481	8	0	
+spawn	ch1_gfn01	22482	40	0	
+spawn	ch1_gfn01	22483	8	0	
+spawn	ch1_gfn01	22484	25	0	
+spawn	ch1_gfn01	22485	5	0	
+spawn	ch1_gfn01	22486	25	0	
+spawn	ch1_gfn01	22487	5	0	
+spawn	ch1_gfn01	22488	25	0	
+spawn	ch1_gfn01	22489	5	0	
+spawn	ch1_gfn03	22476	40	0	
+spawn	ch1_gfn03	22477	8	0	
+spawn	ch1_gfn03	22478	40	0	
+spawn	ch1_gfn03	22479	8	0	
+spawn	ch1_gfn03	22480	40	0	
+spawn	ch1_gfn03	22481	8	0	
+spawn	ch1_gfn03	22482	40	0	
+spawn	ch1_gfn03	22483	8	0	
+spawn	ch1_gfn03	22484	25	0	
+spawn	ch1_gfn03	22485	5	0	
+spawn	ch1_gfn03	22486	25	0	
+spawn	ch1_gfn03	22487	5	0	
+spawn	ch1_gfn03	22488	25	0	
+spawn	ch1_gfn03	22489	5	0	
+spawn	ch1_que01	22460	5	0	
+spawn	ch1_que01	22461	5	0	
+spawn	ch1_que01	22462	5	0	
+spawn	ch1zero1	22507	60	0	
+spawn	ch1zero1	22508	60	0	
+spawn	ch1zero1	22509	60	0	
+spawn	ch1zero1	22510	40	0	
+spawn	ch1zero1	22511	40	0	
+spawn	ch1zero1	22512	40	0	
+spawn	ch1zero1	22513	60	0	
+spawn	ch1zero1	22514	60	0	
+spawn	ch1zero2	22516	90	0	
+spawn	ch1zero2	22517	90	0	
+spawn	ch1zero2	22518	90	0	
+spawn	ch1zero2	22519	70	0	
+spawn	ch1zero2	22520	70	0	
+spawn	ch1zero2	22521	70	0	
+spawn	ch1zero2	22522	90	0	
+spawn	ch1zero2	22523	90	0	
+spawn	ch1zero3	22525	65	0	
+spawn	ch1zero3	22526	65	0	
+spawn	ch1zero3	22527	65	0	
+spawn	ch1zero3	22528	45	0	
+spawn	ch1zero3	22529	45	0	
+spawn	ch1zero3	22530	45	0	
+spawn	ch1zero3	22531	65	0	
+spawn	ch1zero3	22532	65	0	
+spawn	ch1zero4	22542	65	0	
+spawn	ch1zero4	22543	65	0	
+spawn	ch1zero4	22544	45	0	
+spawn	ch1zero4	22545	65	0	
+spawn	ch1zero4	22546	45	0	
+spawn	ch1zero4	22547	65	0	
+spawn	ch1zero4	22548	45	0	
+spawn	ch1zero4	22549	65	0	
+spawn	clock_01	20118	1	0	
+spawn	clock_01	20175	60	0	
+spawn	clock_01	20176	75	0	
+spawn	clock_01	20177	65	0	
+spawn	clock_01	20178	75	0	
+spawn	clock_01	20179	70	0	
+spawn	cmd_bhole	22431	100	0	
+spawn	cmd_bhole	22433	17	0	
+spawn	cmd_bhole	22434	100	0	
+spawn	cmd_bhole	22435	90	0	
+spawn	cmd_bhole	22436	60	0	
+spawn	cmd_bhole	22437	100	0	
+spawn	cmd_bhole	22438	1	0	
+spawn	cmd_bhole	22439	17	0	
+spawn	cmd_bhole	22440	15	0	
+spawn	cmd_bhole	22441	10	0	
+spawn	cmd_bhole	22442	16	0	
+spawn	deadroot	22698	1	0	
+spawn	deadroot	22699	90	0	
+spawn	deadroot	22700	90	0	
+spawn	deadroot	22701	90	0	
+spawn	hem_dun01	22454	60	0	
+spawn	hem_dun01	22455	60	0	
+spawn	hem_dun01	22456	20	0	
+spawn	hem_dun01	22457	20	0	
+spawn	hem_dun01	22458	20	0	
+spawn	hem_dun01	22459	20	0	
+spawn	hem_dun01	22460	15	0	
+spawn	hem_dun01	22461	15	0	
+spawn	hem_dun01	22462	15	0	
+spawn	hem_dun02	22471	60	0	
+spawn	hem_dun02	22472	60	0	
+spawn	hem_dun02	22473	60	0	
+spawn	hem_dun02	22474	35	0	
+spawn	hem_dun02	22475	35	0	
+spawn	hem_fild	22451	60	0	
+spawn	hem_fild	22452	50	0	
+spawn	hem_fild	22453	50	0	
+spawn	hem_fild	22460	30	0	
+spawn	hem_fild	22461	30	0	
+spawn	hem_fild	22462	30	0	
+spawn	hero_dun1	21889	35	0	
+spawn	hero_dun1	21890	35	0	
+spawn	hero_dun1	21891	25	0	
+spawn	hero_dun1	21892	25	0	
+spawn	hero_dun1	21893	25	0	
+spawn	hero_dun1	21894	25	0	
+spawn	hero_dun1	21895	15	0	
+spawn	hero_dun1	21896	15	0	
+spawn	hero_dun1	21897	15	0	
+spawn	hero_dun1	21898	15	0	
+spawn	hero_dun1	21899	40	0	
+spawn	hero_dun1	21900	40	0	
+spawn	hero_dun1	21901	40	0	
+spawn	hero_dun1	21902	30	0	
+spawn	hero_dun1	21903	30	0	
+spawn	hero_dun1	21904	1	0	
+spawn	iz_dun00t	1084	5	0	
+spawn	iz_dun01t	1084	10	0	
+spawn	iz_dun02t	1084	15	0	
+spawn	jor_back4	21522	10	0	
+spawn	jor_back4	21523	10	0	
+spawn	jor_back4	21969	50	0	
+spawn	jor_back4	21976	30	0	
+spawn	jor_back4	21977	30	0	
+spawn	jor_back4	21978	20	0	
+spawn	jor_back4	21983	50	0	
+spawn	jor_back4	21996	1	0	
+spawn	jor_back5	21524	10	0	
+spawn	jor_back5	21965	40	0	
+spawn	jor_back5	21966	60	0	
+spawn	jor_back5	21968	40	0	
+spawn	jor_back5	21974	20	0	
+spawn	jor_back5	21975	20	0	
+spawn	jor_back5	21984	10	0	
+spawn	jor_back6	21524	10	0	
+spawn	jor_back6	21967	100	0	
+spawn	jor_back6	21971	75	0	
+spawn	jor_back6	21978	20	0	
+spawn	jor_back6	23060	55	0	
+spawn	jor_base	22313	50	0	
+spawn	jor_base	22321	230	0	
+spawn	jor_base	22322	230	0	
+spawn	jor_base	22324	30	0	
+spawn	jor_base	22326	30	0	
+spawn	jor_maze	21972	35	0	
+spawn	jor_maze	21973	35	0	
+spawn	jor_maze	21989	30	0	
+spawn	jor_raise1	22313	70	0	
+spawn	jor_raise1	22314	70	0	
+spawn	jor_raise1	22315	70	0	
+spawn	jor_raise1	22316	70	0	
+spawn	jor_raise1	22317	70	0	
+spawn	jor_raise1	22323	30	0	
+spawn	jor_raise1	22325	30	0	
+spawn	jor_raise1	22327	30	0	
+spawn	jor_raise2	22313	100	0	
+spawn	jor_raise2	22318	130	0	
+spawn	jor_raise2	22319	130	0	
+spawn	jor_raise2	22320	100	0	
+spawn	jor_raise2	22362	1	0	
+spawn	jor_root1	21972	25	0	
+spawn	jor_root1	21973	15	0	
+spawn	jor_root1	21985	80	0	
+spawn	jor_root1	21986	70	0	
+spawn	jor_root1	21989	30	0	
+spawn	jor_root2	21972	10	0	
+spawn	jor_root2	21973	30	0	
+spawn	jor_root2	21987	60	0	
+spawn	jor_root2	21988	60	0	
+spawn	jor_root2	21989	80	0	
+spawn	jor_root3	21970	150	0	
+spawn	jor_root3	21971	100	0	
+spawn	jor_root3	21980	1	0	
+spawn	jor_root3	21990	200	0	
+spawn	jor_sklf1	22414	100	0	
+spawn	jor_sklf1	22415	100	0	
+spawn	jor_sklf1	22416	100	0	
+spawn	jor_sklf1	22417	100	0	
+spawn	jor_sklf1	22418	100	0	
+spawn	jor_sklf1	22421	1	0	
+spawn	jor_sklf2	22412	100	0	
+spawn	jor_sklf2	22413	100	0	
+spawn	jor_sklf2	22414	35	0	
+spawn	jor_sklf2	22415	35	0	
+spawn	jor_sklf2	22416	35	0	
+spawn	jor_sklf2	22419	100	0	
+spawn	jor_sklf2	22420	100	0	
+spawn	jor_sklf2	22422	1	0	
+spawn	jor_tmple1	22323	70	0	
+spawn	jor_tmple1	22324	70	0	
+spawn	jor_tmple1	22325	70	0	
+spawn	jor_tmple1	22326	70	0	
+spawn	jor_tmple1	22327	70	0	
+spawn	jor_tmple1	22353	75	0	
+spawn	jor_tmple1	22354	75	0	
+spawn	jor_tmple1	22355	20	0	
+spawn	jor_tmple1	22356	20	0	
+spawn	jor_tmple1	22357	20	0	
+spawn	jor_tmple1	22363	1	0	
+spawn	jor_tmple2	22355	80	0	
+spawn	jor_tmple2	22356	80	0	
+spawn	jor_tmple2	22357	80	0	
+spawn	jor_tmple2	22358	70	0	
+spawn	jor_tmple2	22359	70	0	
+spawn	jor_tmple2	22360	60	0	
+spawn	jor_tmple2	22361	60	0	
+spawn	jor_tmple2	22364	1	0	
+spawn	jor_twice	21969	60	0	
+spawn	jor_twice	21972	20	0	
+spawn	jor_twice	21973	20	0	
+spawn	jor_twice	21983	60	0	
+spawn	jor_twice	21987	40	0	
+spawn	mjo_wst01	21951	160	0	
+spawn	mjo_wst01	21952	160	0	
+spawn	mjo_wst01	21953	160	0	
+spawn	mjo_wst01	21954	160	0	
+spawn	mjo_wst01	21955	1	0	
+spawn	moc_akhet	22395	120	0	
+spawn	moc_akhet	22396	23	0	
+spawn	moc_akhet	22397	120	0	
+spawn	moc_akhet	22398	23	0	
+spawn	moc_akhet	22399	105	0	
+spawn	moc_akhet	22400	20	0	
+spawn	moc_akhet	22401	75	0	
+spawn	moc_akhet	22402	14	0	
+spawn	moc_akhet	22404	1	0	
+spawn	mu_dun01	22690	70	0	
+spawn	mu_dun01	22691	70	0	
+spawn	mu_dun01	22692	70	0	
+spawn	mu_dun01	22693	50	0	
+spawn	mu_dun02	22693	55	0	
+spawn	mu_dun02	22694	75	0	
+spawn	mu_dun02	22695	75	0	
+spawn	mu_dun02	22696	75	0	
+spawn	mu_dun02	22697	1	0	
+spawn	mu_fild01	22445	35	0	
+spawn	mu_fild01	22446	35	0	
+spawn	mu_fild01	22447	50	0	
+spawn	mu_fild01	22448	50	0	
+spawn	mu_fild01	22449	50	0	
+spawn	mu_fild01	22450	25	0	
+spawn	mu_fild01	22494	1	0	
+spawn	mu_fild02	22685	90	0	
+spawn	mu_fild02	22687	75	0	
+spawn	mu_fild03	22686	1	0	
+spawn	mu_fild03	22687	70	0	
+spawn	mu_fild03	22688	85	0	
+spawn	mu_fild03	22689	85	0	
+spawn	nif_fild03	22383	60	0	
+spawn	nif_fild03	22384	10	0	
+spawn	nif_fild03	22385	105	0	
+spawn	nif_fild03	22386	17	0	
+spawn	nif_fild03	22387	75	0	
+spawn	nif_fild03	22388	14	0	
+spawn	nif_fild03	22389	105	0	
+spawn	nif_fild03	22390	17	0	
+spawn	nif_fild03	22391	105	0	
+spawn	nif_fild03	22392	17	0	
+spawn	nif_fild03	22394	1	0	
+spawn	odin_past	1079	5	0	
+spawn	odin_past	1083	2	0	
+spawn	odin_past	20604	70	0	
+spawn	odin_past	20605	80	0	
+spawn	odin_past	20606	80	0	
+spawn	odin_past	20607	80	0	
+spawn	odin_past	20608	10	0	
+spawn	odin_past	20609	10	0	
+spawn	odin_past	20610	1	0	
+spawn	odin_past	20611	1	0	
+spawn	ra_pol01	21946	130	0	
+spawn	ra_pol01	21947	130	0	
+spawn	ra_pol01	21948	130	0	
+spawn	ra_pol01	21949	130	0	
+spawn	ra_pol01	21950	1	0	
+spawn	rgs_dun1	22702	105	0	
+spawn	rgs_dun1	22703	90	0	
+spawn	rgs_dun1	22704	105	0	
+spawn	rgs_dun1	22705	1	0	
+spawn	uknw_ruin	22463	35	0	
+spawn	uknw_ruin	22464	35	0	
+spawn	uknw_ruin	22465	75	0	
+spawn	uknw_ruin	22466	75	0	
+spawn	uknw_ruin	22467	45	0	
+spawn	uknw_ruin2	22463	35	0	
+spawn	uknw_ruin2	22464	35	0	
+spawn	uknw_ruin2	22468	45	0	
+spawn	uknw_ruin2	22469	75	0	
+spawn	uknw_ruin2	22470	75	0	
+spawn	uknw_ruin2	22495	1	0	
+spawn	vr_hero01	22785	90	0	
+spawn	vr_hero01	22786	40	0	
+spawn	vr_hero01	22787	70	0	
+spawn	vr_hero02	22789	170	0	
+spawn	vr_hero02	22790	75	0	
+spawn	vr_hero02	22791	120	0	
+spawn	vr_hero03	22793	40	0	
+spawn	vr_hero03	22794	70	0	
+spawn	vr_hero03	22795	90	0	
+spawn	vr_prtd03	22831	95	0	
+spawn	vr_prtd03	22832	95	0	
+spawn	vr_prtd03	22833	80	0	
+spawn	vr_prtd03	22834	95	0	
+spawn	vr_prtd03	22835	95	0	
+spawn	vr_prtg03	22824	50	0	
+spawn	vr_prtg03	22825	50	0	
+spawn	vr_prtg03	22826	50	0	
+spawn	vr_prtg03	22827	50	0	
+spawn	vr_prtg03	22828	50	0	
+spawn	vr_prtg03	22829	50	0	
+spawn	vr_prtg03	22830	50	0	
+spawn	vr_zrr02	22775	90	0	
+spawn	vr_zrr02	22776	80	0	
+spawn	vr_zrr02	22777	80	0	
+spawn	vr_zrr02	22778	90	0	
+spawn	vr_zrr02	22779	90	0	
+spawn	vr_zrr02	22782	80	0	
+spawn	vr_zrr02	22784	90	0	
+spawn	vr_zrr03	22771	95	0	
+spawn	vr_zrr03	22772	45	0	
+spawn	vr_zrr03	22773	95	0	
+spawn	vr_zrr03	22774	95	0	
+spawn	vr_zrr03	22780	80	0	
+spawn	vr_zrr03	22781	95	0	
+spawn	vr_zrr03	22783	95	0	
+spawn	ygg_roots	22443	10	0	
+spawn	ygg_roots	22444	10	0	

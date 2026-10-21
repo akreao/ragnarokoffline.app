@@ -1,0 +1,23 @@
+{
+  "name": "mega-booster",
+  "author": "akreao",
+  "description": "kRO's Mega Booster promotion. New characters get a Booster Box from the Booster Guide in Izlude (Lasagna for Doram), and the Booster Call summons Lime Evenor wherever you are: booster coin and mission shops, Lv 1-80 hunts, Booster Missions from Lv 80, enchants, Level Up Tickets, milestone rewards and the Premium Booster upgrade. Adds the Job Agent, Reset Service and Booster Exchanger in Prontera's Convenience Center and the two Booster Enchanters, with English quest text. Renewal only.",
+  "tags": [
+    "quest",
+    "booster",
+    "leveling",
+    "npc",
+    "shop",
+    "kro",
+    "renewal"
+  ],
+  "icon": "images/icon.png",
+  "homepage": "https://github.com/akreao/mega-booster",
+  "requires": {
+    "era": "renewal"
+  },
+  "source": {
+    "github": "akreao/mega-booster",
+    "asset": "mega-booster-*.zip"
+  }
+}

@@ -38,7 +38,8 @@ RUN ./configure --enable-packetver=${PACKETVER} --enable-manager=no \
     && cp login-server char-server map-server web-server /out/re/ \
     && make clean \
     && ./configure --enable-packetver=${PACKETVER} --enable-manager=no --enable-prere \
-    && make -j"$BUILD_JOBS" char map \
+    && make -j"$BUILD_JOBS" char \
+    && make -j"$BUILD_JOBS" map \
     && mkdir -p /out/pre-re \
     && cp char-server map-server /out/pre-re/
 RUN set -e; \

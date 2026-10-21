@@ -1,6 +1,8 @@
 # player-commands
 
 `@autoloot` and `@showexp` for everybody, not just the account the app made.
+(`@` is the stock prefix; Settings → Rates → *Command prefix* can make it `!`,
+in which case every command below is spelled that way too.)
 
 **It ships switched off.** Settings → Mods → tick it → Apply, then relog.
 
@@ -84,6 +86,33 @@ What stays closed for a player who is not a GM (`ACMD_FUNC(mapmove)` in
 It is `conf/when/allow_warp/groups.yml`, and it grants `mapmove` rather than
 `warp` because `warp` is only an alias, and rAthena records a grant under the
 command's own name.
+
+## `@storage`, as a third option
+
+**Settings → Mods → player-commands → Also give everyone @storage**, then
+Apply. Independent of the other two.
+
+`@storage` opens your Kafra storage where you stand: no walk to a Kafra, and no
+fee even with *Free Kafra services* off. Guild storage (`@gstorage`) is not
+included.
+
+rAthena grants it to nobody below Admin. The only storage command in the stock
+`conf/groups.yml` is `storagelist` on group 10, which is a GM reading somebody
+*else's* storage — a different thing.
+
+It asks no more of a player than a Kafra does.
+`ACMD_FUNC(storage)` (`src/map/atcommand.cpp`) refuses only while an NPC
+dialogue, a vend, a buying store, a trade or another storage is open, and
+`storage_storageopen` (`src/map/storage.cpp`) checks `pc_can_give_items` — the
+`can_trade` permission, which group 0 holds already. There is no Basic Skill
+requirement and no level gate, so nothing here can leave a player with a
+command that fails when they type it.
+
+It is a tick rather than part of the list above for the same reason `@go` and
+`@warp` are: it changes how the game is played instead of telling you about it.
+Carrying a full bag to town is a real part of the game, and this removes it.
+
+Its file is `conf/when/allow_storage/groups.yml`.
 
 Also left out: `@autotrade`, `@request`, `@breakguild`, `@channel`, `@langtype`,
 `@whereis`, `@jailtime`, `@hominfo`, `@homstats`. Nothing is wrong with them;

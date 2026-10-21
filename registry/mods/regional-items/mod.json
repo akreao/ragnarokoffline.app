@@ -1,0 +1,10 @@
+{
+  "name": "regional-items",
+  "version": "2.0.1",
+  "author": "Lil Art",
+  "description": "English names and descriptions for the regional items the server learned in 1.6.4: the kRO-only ones, iRO's wording for the 8 iRO-ability items, and names instead of \"Unknown Item\" for 3,582 server items no client table describes.",
+  "requires": {
+    "app": ">=1.6.4",
+    "era": "renewal"
+  }
+}

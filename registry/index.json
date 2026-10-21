@@ -187,6 +187,38 @@
       ]
     },
     {
+      "name": "black-sun",
+      "version": "",
+      "author": "Lil Art",
+      "description": "Black Sun: a solo or party instance on Mt. Mjolnir. James Wolf was bitten by a werewolf in the mountains, and the Black Sun is rising. Talk to his older brother John Wolf in Prontera (113, 190), break the Pack with your cousin-guide Nightwing, climb to the summit and face James, the Black Sun. Every party gets its own copy of the mountain. Base level 200, Renewal.",
+      "homepage": "https://github.com/LilArt420/blacksun",
+      "tags": [
+        "instance",
+        "mvp",
+        "npc",
+        "party",
+        "story",
+        "werewolf"
+      ],
+      "icon": "images/icon.png",
+      "screenshots": [],
+      "requires": {
+        "mods": [],
+        "era": "",
+        "app": ""
+      },
+      "source": {
+        "github": "LilArt420/blacksun",
+        "asset": "black-sun-*.zip"
+      },
+      "files": [
+        {
+          "path": "images/icon.png",
+          "sha256": "c09636b6a419dfdbfa540bb2df7496cf5213eb252c10aa67923c1eebb6546d72"
+        }
+      ]
+    },
+    {
       "name": "blaze-shield",
       "version": "1.0.0",
       "author": "BlaXun, Ragnarok Offline",
@@ -697,6 +729,38 @@
       ]
     },
     {
+      "name": "halloween-town",
+      "version": "",
+      "author": "Lil Art",
+      "description": "A Halloween instance in a haunted, night-time Niflheim, solo or with your party. Talk to Casper in Niflheim (185, 190), pick a moon (Blue Moon for 90+, Blood Moon for 100-199, Eclipse for 200+), and stop Blair the witch across three hordes and four bosses within 90 minutes. Every kill pays Halloween Coins, which Jakk (180, 191) trades for costumes, boxes and a Sealed Card Album; Blair's tickets trade for Cash Points. Blue Moon works on Pre-renewal too.",
+      "homepage": "https://github.com/LilArt420/halloweentown",
+      "tags": [
+        "halloween",
+        "instance",
+        "mvp",
+        "npc",
+        "party",
+        "seasonal"
+      ],
+      "icon": "images/icon.png",
+      "screenshots": [],
+      "requires": {
+        "mods": [],
+        "era": "",
+        "app": ""
+      },
+      "source": {
+        "github": "LilArt420/halloweentown",
+        "asset": "halloween-town-*.zip"
+      },
+      "files": [
+        {
+          "path": "images/icon.png",
+          "sha256": "783ea154637c9f9096654e23fcd71338e13b66a77152b7e828a979fab6347967"
+        }
+      ]
+    },
+    {
       "name": "map-spawn-rate",
       "version": "1.0.0",
       "author": "BlaXun",
@@ -748,6 +812,39 @@
         {
           "path": "settings/maps.json",
           "sha256": "59a8c09cdbcf23e8f870a484f010087644384cb0fc5be73438cb9969dd9071fc"
+        }
+      ]
+    },
+    {
+      "name": "mega-booster",
+      "version": "",
+      "author": "akreao",
+      "description": "kRO's Mega Booster promotion. New characters get a Booster Box from the Booster Guide in Izlude (Lasagna for Doram), and the Booster Call summons Lime Evenor wherever you are: booster coin and mission shops, Lv 1-80 hunts, Booster Missions from Lv 80, enchants, Level Up Tickets, milestone rewards and the Premium Booster upgrade. Adds the Job Agent, Reset Service and Booster Exchanger in Prontera's Convenience Center and the two Booster Enchanters, with English quest text. Renewal only.",
+      "homepage": "https://github.com/akreao/mega-booster",
+      "tags": [
+        "booster",
+        "kro",
+        "leveling",
+        "npc",
+        "quest",
+        "renewal",
+        "shop"
+      ],
+      "icon": "images/icon.png",
+      "screenshots": [],
+      "requires": {
+        "mods": [],
+        "era": "renewal",
+        "app": ""
+      },
+      "source": {
+        "github": "akreao/mega-booster",
+        "asset": "mega-booster-*.zip"
+      },
+      "files": [
+        {
+          "path": "images/icon.png",
+          "sha256": "73892040edb5145bf08ffd79e8282afdcf43b3040d4d71af57920d14085913e8"
         }
       ]
     },
@@ -1029,6 +1126,47 @@
       ]
     },
     {
+      "name": "regional-items",
+      "version": "2.0.1",
+      "author": "Lil Art",
+      "description": "English names and descriptions for the regional items the server learned in 1.6.4: the kRO-only ones, iRO's wording for the 8 iRO-ability items, and names instead of \"Unknown Item\" for 3,582 server items no client table describes.",
+      "homepage": "",
+      "tags": [],
+      "icon": "",
+      "screenshots": [],
+      "requires": {
+        "mods": [],
+        "era": "renewal",
+        "app": ">=1.6.4"
+      },
+      "files": [
+        {
+          "path": "CHANGELOG.md",
+          "sha256": "c9ae7f5e9e55f1ce5ba964f25b2ee6e60b3d8c98636f77ba237b527f8a0490b0"
+        },
+        {
+          "path": "README.md",
+          "sha256": "940851df9531cf88a3b6a1231c1750c3cbd403a7ff0c453412720441d60bee5d"
+        },
+        {
+          "path": "System/itemInfo-regional-items-fill.lua",
+          "sha256": "107d0f5dd2ebe8c4dbf84576ef89c95deb50e3beea0f75fd3705ea55882f5aef"
+        },
+        {
+          "path": "System/itemInfo-regional-items-iro.lua",
+          "sha256": "0b2428297073196d0c267934aefd497c50fbb7e90a13e3ca7bcaf76d99fe15b4"
+        },
+        {
+          "path": "System/itemInfo-regional-items.lua",
+          "sha256": "184a7d73ca3a3a55eec564d70832efe6b73bd9c26d6e52dcde47abbd33a76ebb"
+        },
+        {
+          "path": "mod.json",
+          "sha256": "692108d3dda8e7d723f3d454638e0dd7cf61af8cf2726cb4a65d852f39318f5d"
+        }
+      ]
+    },
+    {
       "name": "renewal-world",
       "version": "0.1.0",
       "author": "BlaXun",
@@ -1103,6 +1241,37 @@
         {
           "path": "images/icon.png",
           "sha256": "680a9d2920038ab63a2e11ce9f7c3c2c2458b327a7b47a5ce0e1ab0d2d15fab1"
+        }
+      ]
+    },
+    {
+      "name": "rune-tablet",
+      "version": "",
+      "author": "Lil Art",
+      "description": "kRO's Rune Tablet in its official window: register runes in the Encyclopedia, build their sets on the Tablet and upgrade them to +15 at the official rates, and break items down into rune materials, for Episodes 17-21, Chapter 1 and the events. Talk to the Rune Tablet in Prontera (193, 189). Runs on the server's own Rune Tablet (1.6.6+), so registered runes and sets carry over. Renewal.",
+      "homepage": "https://github.com/LilArt420/rune-tablet",
+      "tags": [
+        "crafting",
+        "interface",
+        "npc",
+        "quality-of-life",
+        "rune"
+      ],
+      "icon": "images/icon.png",
+      "screenshots": [],
+      "requires": {
+        "mods": [],
+        "era": "",
+        "app": ""
+      },
+      "source": {
+        "github": "LilArt420/rune-tablet",
+        "asset": "rune-tablet-*.zip"
+      },
+      "files": [
+        {
+          "path": "images/icon.png",
+          "sha256": "6a8132bc61ba71bdaa56400947c2a86ed9587a7208afea98771a79b124d7b20a"
         }
       ]
     },
@@ -1312,6 +1481,32 @@
       "source": {
         "github": "rhewid/whosell",
         "asset": "whosell-*.zip"
+      },
+      "files": []
+    },
+    {
+      "name": "world-sync-extras",
+      "version": "",
+      "author": "Lil Art",
+      "description": "Optional extras for the World Sync content (1.6.6): entrances from rAthena's towns and fields into the maps World Sync fills (off by default; needs those maps in your client), 740 official NPCs whose logic no server data has yet, placed with their own sprite, name and spot, and @npcplace, a GM command to move any NPC and keep it there. Renewal.",
+      "homepage": "https://github.com/LilArt420/world-sync-extras",
+      "tags": [
+        "gm-tools",
+        "maps",
+        "npc",
+        "travel",
+        "world"
+      ],
+      "icon": "",
+      "screenshots": [],
+      "requires": {
+        "mods": [],
+        "era": "",
+        "app": ""
+      },
+      "source": {
+        "github": "LilArt420/world-sync-extras",
+        "asset": "world-sync-extras-*.zip"
       },
       "files": []
     }

@@ -7,6 +7,11 @@ name: Deploy Documentation
 # diagnostics, sanitizer investigation, hosting policy. The site only bundles
 # what is explicitly under docs-site/docs/ and wired into the sidebar, so a new
 # internal note can never publish itself by being added to docs/.
+#
+# The build also writes /download/<platform>/, pages that redirect to the newest
+# release's installer by its versioned name (docs-site/download-pages.ts). That
+# name is read when the site is built, so build.yml dispatches this workflow
+# with the tag once a release is published.
 
 on:
   push:
@@ -15,6 +20,11 @@ on:
       - "docs-site/**"
       - ".github/workflows/deploy-docs.yml"
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release the download pages point at (e.g. v1.6.4); empty means the latest release"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -36,6 +46,9 @@ jobs:
         run: bun install
       - name: Build site
         working-directory: docs-site
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: bun run build
       - uses: actions/configure-pages@v4
         # Pages has never been turned on for this repository, so let the first

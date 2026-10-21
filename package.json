@@ -1,7 +1,7 @@
 {
   "name": "ragnarokoffline",
   "productName": "Ragnarok Offline",
-  "version": "1.6.2",
+  "version": "1.6.7",
   "description": "Ragnarok Online, offline, in one app",
   "license": "GPL-3.0",
   "private": true,
@@ -33,7 +33,7 @@
       "tools/**/*.css",
       "tools/**/*.md",
       "tools/**/package.json",
-      "!**/node_modules/**",
+      "!{electron,src,tools}/**/node_modules/**",
       "!electron/vc_redist.x64.exe",
       "!electron/installer.nsh",
       "!electron/sign-win.js"
@@ -44,10 +44,25 @@
         "to": "payload"
       }
     ],
+    "artifactName": "Ragnarok.Offline-${version}-${arch}.${ext}",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Flux159",
+        "repo": "ragnarokoffline.app",
+        "releaseType": "release"
+      }
+    ],
     "mac": {
       "target": [
         {
           "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
           "arch": [
             "arm64"
           ]
@@ -90,8 +105,7 @@
         }
       ],
       "category": "Game",
-      "icon": "assets/icon.png",
-      "artifactName": "${productName}-${version}-${arch}.${ext}"
+      "icon": "assets/icon.png"
     },
     "win": {
       "target": [
@@ -103,7 +117,6 @@
         }
       ],
       "icon": "assets/icon.png",
-      "artifactName": "${productName}-${version}-${arch}.${ext}",
       "signtoolOptions": {
         "sign": "electron/sign-win.js",
         "signingHashAlgorithms": [
@@ -117,5 +130,8 @@
       "include": "electron/installer.nsh"
     },
     "afterPack": "electron/afterPack.js"
+  },
+  "dependencies": {
+    "electron-updater": "6.3.9"
   }
 }

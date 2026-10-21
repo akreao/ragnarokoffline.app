@@ -1,0 +1,11 @@
+{
+  "name": "world-sync-extras",
+  "author": "Lil Art",
+  "description": "Optional extras for the World Sync content (1.6.6): entrances from rAthena's towns and fields into the maps World Sync fills (off by default; needs those maps in your client), 740 official NPCs whose logic no server data has yet, placed with their own sprite, name and spot, and @npcplace, a GM command to move any NPC and keep it there. Renewal.",
+  "tags": ["world", "maps", "npc", "travel", "gm-tools"],
+  "homepage": "https://github.com/LilArt420/world-sync-extras",
+  "source": {
+    "github": "LilArt420/world-sync-extras",
+    "asset": "world-sync-extras-*.zip"
+  }
+}

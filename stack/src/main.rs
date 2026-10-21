@@ -13,6 +13,7 @@
 mod archive;
 mod assets;
 mod accounts;
+mod readiness;
 mod agent;
 mod tools;
 mod world;

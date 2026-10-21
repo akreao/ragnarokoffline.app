@@ -55,12 +55,17 @@ function parseKey(spec) {
 class AgentDriver {
 	/**
 	 * @param {Electron.WebContents} wc the agent's game page
-	 * @param {object} opts { shotsDir, credentials: () => Promise<{user, pass}> }
+	 * @param {object} opts { shotsDir, credentials: () => Promise<{user, pass}>,
+	 *   commandPrefix?: () => string }
 	 */
 	constructor(wc, opts) {
 		this.wc = wc;
 		this.shotsDir = opts.shotsDir;
 		this.credentials = opts.credentials;
+		// Which character a server command starts with, for `state` to report.
+		// A thunk so a change while an agent plays is picked up, and '@' when
+		// nobody said -- what rAthena runs on unless the player chose otherwise.
+		this.commandPrefix = opts.commandPrefix || (() => '@');
 		this.errors = [];
 		this.errorsSeen = 0;
 		wc.on('console-message', (...a) => {
@@ -205,6 +210,10 @@ class AgentDriver {
 		return true;
 	}
 	newErrors() { const e = this.errors.slice(this.errorsSeen); this.errorsSeen = this.errors.length; return e; }
+
+	// Guarded: a settings.json the store refuses must not take `state` down
+	// with it, and '@' is what the server falls back to in that case anyway.
+	prefix() { try { return this.commandPrefix() || '@'; } catch { return '@'; } }
 	async until(test, ms = 15000, step = 200) {
 		const end = Date.now() + ms;
 		while (Date.now() < end) { if (await test().catch(() => false)) return true; await sleep(step); }
@@ -479,6 +488,7 @@ class AgentDriver {
 				return { ok: true, box, answered: box.kind === 'message' ? 'ok' : yes ? 'yes' : 'no', chat: await this.newChat(), errors: this.newErrors() };
 			},
 			state: async ([radius = '15']) => ({
+				commandPrefix: this.prefix(),
 				player: await this.player().catch(e => ({ error: e.message })),
 				entities: await this.agent('entities', [{ radius: Number(radius) }]).catch(e => ({ error: e.message })),
 				chat: await this.newChat(),
@@ -654,7 +664,13 @@ const COMMANDS = {
 	create: { description: 'Make a character in an empty slot on character select.', args: [['slot', 'number', 'Slot number, from 0'], ['name', 'string', 'Character name']] },
 	char: { description: 'Enter the game with the character in a slot.', args: [['slot', 'number', 'Slot number, from 0']] },
 	state: { description: 'The player, what is nearby, recent chat, any NPC dialog, and new client errors.', args: [['radius', 'number', 'Cells around the player to list (default 15)', true]] },
-	say: { description: 'Say something in local chat. Slash commands go here too (/organize <party name>, /invite <name>, /leave), and the travel commands (@warp, @go, @load), which you should use only when you need to.', args: [['text', 'string', 'What to say']] },
+	// The travel commands are named without their prefix on purpose. It is a
+	// player setting (Settings -> Rates -> Command prefix, atcommand_symbol),
+	// and a command typed with the wrong one is not refused -- rAthena does not
+	// recognise it as a command at all and says it in local chat, so an agent
+	// told to type "@warp" on a server running on "!" would announce its plans
+	// and never move. The prefix `state` reports is the one to use.
+	say: { description: 'Say something in local chat. Slash commands go here too (/organize <party name>, /invite <name>, /leave), and the travel commands warp, go and load, which you should use only when you need to. Those three are server commands and need the server\'s command prefix in front, which `state` gives as commandPrefix (usually @, so "@warp prontera"); without it they are only spoken aloud.', args: [['text', 'string', 'What to say']] },
 	chat: { description: 'Chat you have not seen yet: channel (local, party, guild, whisper, broadcast, npc, system, client: the game\'s own notices and errors), who said it, and the text. "all" for the last 50.', args: [['which', 'string', '"all" for recent history instead of only new lines', true]] },
 	whisper: { description: 'Send a private message to one character by name.', args: [['to', 'string', 'Character name'], ['text', 'string', 'What to say']] },
 	party: { description: 'Say something in party chat.', args: [['text', 'string', 'What to say']] },

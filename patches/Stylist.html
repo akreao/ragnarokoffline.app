@@ -19,31 +19,47 @@
 		<div class="clear"></div>
 	</div>
 
-	<div class="panel">
-		<div class="row" data-look="head">
-			<span class="label">Hair style</span>
-			<button class="arrow prev" type="button">&#9664;</button>
-			<span class="value">0</span>
-			<button class="arrow next" type="button">&#9654;</button>
-		</div>
-		<div class="row" data-look="headpalette">
-			<span class="label">Hair colour</span>
-			<button class="arrow prev" type="button">&#9664;</button>
-			<span class="value">0</span>
-			<button class="arrow next" type="button">&#9654;</button>
-		</div>
-		<div class="row" data-look="bodypalette">
-			<span class="label">Clothes</span>
-			<button class="arrow prev" type="button">&#9664;</button>
-			<span class="value">0</span>
-			<button class="arrow next" type="button">&#9654;</button>
+	<div class="main">
+		<div class="preview">
+			<div class="stage"><canvas class="model" width="80" height="120"></canvas></div>
+			<div class="rotate">
+				<button class="turn left" type="button" title="Turn left">&#9664;</button>
+				<span>Turn</span>
+				<button class="turn right" type="button" title="Turn right">&#9654;</button>
+			</div>
 		</div>
 
-		<div class="note">Your character shows each change as you make it. Nothing is
-			bought until you press Apply.</div>
+		<div class="looks">
+			<div class="tabs">
+				<div class="tab" data-look="head">Hair style<span class="dot"></span></div>
+				<div class="tab" data-look="headpalette">Hair colour<span class="dot"></span></div>
+				<div class="tab" data-look="bodypalette">Clothes colour<span class="dot"></span></div>
+				<div class="tab hidden" data-look="body">Outfit<span class="dot"></span></div>
+			</div>
+			<div class="pane"></div>
+		</div>
+	</div>
 
+	<div class="order">
+		<table class="lines"></table>
+		<div class="pay">
+			<div class="option" data-pay="0">
+				<b>Pay with Zeny</b>
+				<span class="total"></span>
+				<span class="have"></span>
+			</div>
+			<div class="option" data-pay="1">
+				<b>Pay with coupons</b>
+				<span class="total"></span>
+				<span class="have"></span>
+			</div>
+		</div>
+	</div>
+
+	<div class="foot">
+		<button class="undo" type="button">Undo all changes</button>
 		<div class="buttons">
-			<button class="apply" type="button">Apply</button>
+			<button class="buy" type="button">Buy</button>
 			<button class="cancel" type="button">Cancel</button>
 		</div>
 	</div>

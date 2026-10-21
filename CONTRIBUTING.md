@@ -210,8 +210,17 @@ Then build for your platform:
 | Platform | Command | Result, under `dist/electron/` |
 |---|---|---|
 | macOS | `npx electron-builder --mac --arm64 --publish never` | `mac-arm64/Ragnarok Offline.app` and a `.dmg` |
-| Windows | `npx electron-builder --win --x64 --publish never` | `Ragnarok Offline-<version>-x64.exe` |
-| Linux | `npx electron-builder --linux --x64 --publish never` | `Ragnarok Offline-<version>-x64.AppImage` |
+| Windows | `npx electron-builder --win --x64 --publish never` | `Ragnarok.Offline-<version>-x64.exe` |
+| Linux | `npx electron-builder --linux --x64 --publish never` | `Ragnarok.Offline-<version>-x86_64.AppImage` |
+
+Each also writes the files the app updates itself from (`electron/app-update.js`):
+`latest-mac.yml`, `latest.yml` or `latest-linux.yml`, a `.blockmap` per installer for
+differential downloads, and on macOS a `.zip` of the app, which is what Squirrel.Mac
+installs. `build.yml` attaches all of them to the release. The `.yml` files hash the
+installers *after* signing and notarisation, so never re-sign or re-zip an artifact
+after electron-builder has written them. The file names carry no spaces on purpose:
+GitHub turns a space in an asset name into a dot, and the `.yml` would then name a
+file the release does not have.
 
 On macOS, the app's microVM helpers need a Developer ID signature with the
 virtualization entitlement; `electron/afterPack.js` signs them when a "Developer

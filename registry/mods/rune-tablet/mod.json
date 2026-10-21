@@ -1,0 +1,12 @@
+{
+  "name": "rune-tablet",
+  "author": "Lil Art",
+  "description": "kRO's Rune Tablet in its official window: register runes in the Encyclopedia, build their sets on the Tablet and upgrade them to +15 at the official rates, and break items down into rune materials, for Episodes 17-21, Chapter 1 and the events. Talk to the Rune Tablet in Prontera (193, 189). Runs on the server's own Rune Tablet (1.6.6+), so registered runes and sets carry over. Renewal.",
+  "tags": ["rune", "crafting", "interface", "quality-of-life", "npc"],
+  "icon": "images/icon.png",
+  "homepage": "https://github.com/LilArt420/rune-tablet",
+  "source": {
+    "github": "LilArt420/rune-tablet",
+    "asset": "rune-tablet-*.zip"
+  }
+}

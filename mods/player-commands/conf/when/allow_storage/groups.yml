@@ -1,0 +1,27 @@
+# Group 0 gets @storage -- only while "Also give everyone @storage" is ticked.
+#
+# Part of the mod only when that setting is on; see conf/when/allow_go for how
+# these fragments work.
+#
+# rAthena grants @storage to nobody below Admin: stock groups.yml gives group 10
+# `storagelist`, which is a GM reading somebody else's storage, and that is the
+# only storage command in the file.
+#
+# The command itself asks no more of a player than the Kafra does.
+# ACMD_FUNC(storage) (src/map/atcommand.cpp) refuses only while an NPC dialogue,
+# a vend, a buying store, a trade or another storage is open, and
+# storage_storageopen (src/map/storage.cpp) checks pc_can_give_items -- the
+# can_trade permission, which group 0 already has. No Basic Skill level, no
+# level gate.
+#
+# It is a tick rather than part of the mod's own list because it changes the
+# game instead of informing you about it: storage from anywhere, no walk to a
+# Kafra and no fee. Same reason @go and @warp are ticks.
+Header:
+  Type: PLAYER_GROUP_DB
+  Version: 1
+
+Body:
+  - Id: 0
+    Commands:
+      storage: true
