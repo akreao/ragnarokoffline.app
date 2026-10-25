@@ -7,8 +7,9 @@
 //   - frame time (avg/p50/p95/p99/max), CPU work per frame and draw calls per
 //     frame on fixed scenes, with the occluder fade off, dither and alpha.
 //
-// It needs the client's opt-in probe (window.roPerf, src/Core/PerfProbe.js in
-// the roBrowserLegacy fork) in the world's client build, and a world that is up
+// It needs the client's opt-in probe (src/Core/PerfProbe.js in the
+// roBrowserLegacy fork, read through scripts/perf-probe.cjs) in the world's
+// client build, and a world that is up
 // (`scripts/rotest world up`). It restarts the rotest daemon itself, with the
 // probe on and, unless --capped, no vsync or frame cap, so a frame's time is
 // what it costs rather than the 60 Hz tick.
@@ -25,6 +26,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
+const { PERF, withPerf } = require('./perf-probe.cjs');
 
 const repo = path.resolve(__dirname, '..');
 const argv = process.argv.slice(2);
@@ -78,36 +80,39 @@ async function restart() {
     let probe = false;
     for (let i = 0; i < 120; i++) {
         try {
-            const login = evaluate('window.roPerf ? window.roPerf.marks.login : -1');
+            const login = evaluate(withPerf('perf ? perf.marks.login : -1'));
             probe ||= login !== -1;
             if (login !== -1 && login !== null) return login;
         } catch { /* the page is still loading */ }
         await sleep(500);
     }
     throw new Error(probe ? 'the login window never appeared'
-        : 'window.roPerf never appeared: the world\'s client has no PerfProbe, or ROTEST_PERF did not reach it');
+        : 'the perf probe never started: the world\'s client has no PerfProbe, or ROTEST_PERF did not reach it');
 }
 
 // One measured window, entirely in the page so the CLI round trips do not
 // land in it.
 const measure = (fade, secs) => evaluate(`(async () => {
+    const perf = ${PERF};
     const g = roAgent.modules.GraphicsSettings;
     g.occluderFade = ${JSON.stringify(fade)};
     g.fpslimit = ${FPS};
     await new Promise(r => setTimeout(r, 1500));
-    roPerf.reset();
+    perf.reset();
     await new Promise(r => setTimeout(r, ${secs * 1000}));
-    const s = roPerf.stats();
+    const s = perf.stats();
     delete s.marks;
     s.entitiesNear = roAgent.entities({ radius: 20 }).length;
-    s.slowFrames = roPerf.slowFrames();
+    // The probe's own count includes frames past its 1000-entry log
+    s.slowFrameCount = typeof s.slowFrames === 'number' ? s.slowFrames : null;
+    s.slowFrames = perf.slowFrames();
     return s;
 })()`);
 
 // The newest map mark, once it is the expected map and its first frame is drawn.
 async function lastMap(map) {
     for (let i = 0; i < 60; i++) {
-        const m = evaluate('roPerf.marks.maps').at(-1);
+        const m = (evaluate(withPerf('perf ? perf.marks.maps : []')) || []).at(-1);
         if (m && (!map || m.map.replace(/\.gat$/, '') === map) && m.firstFrameMs !== null) return m;
         await sleep(250);
     }

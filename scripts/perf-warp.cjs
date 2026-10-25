@@ -12,6 +12,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
+const { withPerf } = require('./perf-probe.cjs');
 
 const repo = path.resolve(__dirname, '..');
 const argv = process.argv.slice(2);
@@ -31,7 +32,7 @@ async function main() {
     rotest('stop');
     for (let i = 0; i < 40 && node('status').status === 0; i++) await sleep(500);
     rotest('start', '--size', '1920x1080', ...(HEADED ? ['--headed'] : []));
-    for (let i = 0; i < 120 && !(evaluate('window.roPerf && window.roPerf.marks.login') > 0); i++) await sleep(500);
+    for (let i = 0; i < 120 && !(evaluate(withPerf('perf && perf.marks.login')) > 0); i++) await sleep(500);
     rotest('login');
     rotest('char', '0');
     rotest('gm', '@alive');
@@ -43,16 +44,16 @@ async function main() {
     const warps = [];
     for (let round = 0; round < ROUNDS; round++) {
         for (const [map, x, y] of MAPS) {
-            evaluate('roPerf.reset()');
+            evaluate(withPerf('perf.reset()'));
             rotest('gm', `@warp ${map} ${x} ${y}`);
             let mark = null;
             for (let i = 0; i < 120 && !mark; i++) {
-                const m = (evaluate('roPerf.marks.maps') || []).at(-1);
+                const m = (evaluate(withPerf('perf.marks.maps')) || []).at(-1);
                 if (m && m.map.startsWith(map) && m.firstFrameMs) mark = m;
                 else await sleep(250);
             }
             await sleep(2000);
-            const s = evaluate('(() => { const s = roPerf.stats(); return { max: s.frameMs.max, p99: s.frameMs.p99, slow: roPerf.slowFrames() }; })()');
+            const s = evaluate(withPerf('(() => { const s = perf.stats(); return { max: s.frameMs.max, p99: s.frameMs.p99, slow: perf.slowFrames() }; })()'));
             warps.push({ round, map, loadMs: mark && mark.loadMs, firstFrameGapMs: mark && Math.round((mark.firstFrameMs - mark.loadMs) * 10) / 10,
                 worstFrameMs: s.max, slowFrames: s.slow.map(f => f.frameMs) });
             console.error(JSON.stringify(warps.at(-1)));

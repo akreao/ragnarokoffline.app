@@ -274,8 +274,20 @@ async function daemon(flags) {
     const browser = await chromium.launch({ headless: !headed, args: ['--use-gl=angle', '--enable-webgl', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required', ...uncapped] });
     const context = await browser.newContext({ viewport: { width: vw, height: vh }, ignoreHTTPSErrors: selfSigned(game()) });
     await context.addInitScript(() => { try { localStorage.setItem('roAgent', '1'); } catch {} });
-    // ROTEST_PERF=1: the client's opt-in perf probe (window.roPerf), from the first load.
-    if (process.env.ROTEST_PERF === '1') await context.addInitScript(() => { try { localStorage.setItem('roPerf', '1'); } catch {} });
+    // ROTEST_PERF=1: the client's opt-in perf probe (Core/PerfProbe.js), from
+    // the first load. The probe runs when the configuration has
+    // `perfProbe: true`, so every ROConfig the page sets (play.html's through
+    // api.js, or the one a frame receives by postMessage) gets it. Scripts read
+    // it as roAgent.perf. Builds from before the switch (roBrowserLegacy #78)
+    // read localStorage.roPerf instead and publish window.roPerf.
+    if (process.env.ROTEST_PERF === '1') await context.addInitScript(() => {
+        try { localStorage.setItem('roPerf', '1'); } catch {}
+        let config;
+        try {
+            Object.defineProperty(window, 'ROConfig', { configurable: true, get: () => config,
+                set: value => { try { if (value && typeof value === 'object') value.perfProbe = true; } catch {} config = value; } });
+        } catch {}
+    });
     await context.addInitScript(AUDIO_TAP);
     const page = await context.newPage();
     // ROTEST_CPU_THROTTLE=4: the page's main thread runs 4x slower, a stand-in
