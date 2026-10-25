@@ -1,0 +1,26 @@
+{
+  "name": "transcendent-third-classes",
+  "author": "BlaXun",
+  "description": "Renewal's thirteen third classes in pre-renewal, as the step after the classes you know. A transcendent class at base level 99 and job level 70 advances to its third class: it keeps every skill it has, its job level starts again at 1 and runs to 70, and its base level runs to 175. Guillotine Cross, Shadow Chaser, Arch Bishop, Rune Knight (with a Dragon Breeder), Royal Guard, Warlock (with a Spellbook Seller), Sura, Ranger, Minstrel and Wanderer, Genetic, Mechanic (with a Madogear from Einbroch) and Sorcerer (with elemental spirits). Every class has its own gear, dropped by monsters, the shops its skills need, measured damage and skill descriptions. Needs level175-core; the expanded advancements are the expanded-classes mod.",
+  "tags": [
+    "jobs",
+    "third-class",
+    "transcendent",
+    "equipment",
+    "pre-renewal",
+    "lua",
+    "level-175"
+  ],
+  "homepage": "https://github.com/BlaXun/ro-endgame-classes/tree/main/mods/transcendent-third-classes",
+  "requires": {
+    "app": ">=1.6.7",
+    "era": "pre-renewal",
+    "mods": [
+      "level175-core"
+    ]
+  },
+  "source": {
+    "github": "BlaXun/ro-endgame-classes",
+    "asset": "transcendent-third-classes-*.zip"
+  }
+}

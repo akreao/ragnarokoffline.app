@@ -1,0 +1,24 @@
+{
+  "name": "renewal-world-gear",
+  "author": "BlaXun",
+  "description": "Renewal's equipment from the monsters of renewal's new lands, converted for pre-renewal: weapons and armour held to pre-renewal's best of their kind, single-skill bonuses at a third, and renewal's sets of them at a third. Each drops from the monster renewal gives it, at renewal's rate. A boss's items drop only while renewal-world-mvps is on. Needs renewal-world-monsters.",
+  "tags": [
+    "equipment",
+    "items",
+    "drops",
+    "level-175",
+    "pre-renewal"
+  ],
+  "homepage": "https://github.com/BlaXun/ro-endgame-world/tree/main/mods/renewal-world-gear",
+  "requires": {
+    "app": ">=1.5.4",
+    "era": "pre-renewal",
+    "mods": [
+      "renewal-world-monsters"
+    ]
+  },
+  "source": {
+    "github": "BlaXun/ro-endgame-world",
+    "asset": "renewal-world-gear-*.zip"
+  }
+}

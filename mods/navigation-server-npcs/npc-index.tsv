@@ -1788,6 +1788,7 @@ load	renewal	npc/re/instances/SealedOs.txt
 load	renewal	npc/re/instances/SkyFortress.txt
 load	renewal	npc/re/instances/TempleOfDemonGod.txt
 load	renewal	npc/re/instances/ThorGunsuBase.txt
+load	renewal	npc/re/instances/TourneyHallOfTrials.txt
 load	renewal	npc/re/instances/TwilightGarden.txt
 load	renewal	npc/re/instances/VillaofDeception.txt
 load	renewal	npc/re/instances/VillaofHighPriest.txt
@@ -1984,6 +1985,7 @@ load	renewal	npc/re/jobs/novice/supernovice_ex.txt
 load	renewal	npc/re/jobs/repair.txt
 load	renewal	npc/re/jobs/doram/spirit_handler.txt
 load	renewal	npc/re/jobs/4-1/dragon_knight.txt
+load	renewal	npc/re/jobs/4-2/imperial_guard.txt
 load	renewal	npc/re/quests/skills/merchant_skills.txt
 load	renewal	npc/re/quests/skills/swordman_skills.txt
 load	renewal	npc/re/mapflag/nopvp.txt
@@ -8815,6 +8817,10 @@ npc	xmas	154	129	0	797	Spectator
 file	npc/re/jobs/4-1/dragon_knight.txt
 npc	gef_fild08	54	101	0	10307	Oscar
 npc	gef_fild08	57	104	0	10368	Leticia
+file	npc/re/jobs/4-2/imperial_guard.txt
+npc	prt_cas	181	10	0	470	King's Knight
+npc	prontera	58	364	0	20825	Knight of Devotion
+npc	prontera	276	355	0	20826	Knight of Armament
 file	npc/re/jobs/doram/spirit_handler.txt
 npc	payon	165	116	0	857	Request Board
 npc	payon	252	297	0	741	Woodworker

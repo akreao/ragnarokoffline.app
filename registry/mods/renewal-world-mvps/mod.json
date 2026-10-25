@@ -1,0 +1,27 @@
+{
+  "name": "renewal-world-mvps",
+  "author": "BlaXun",
+  "description": "The MVPs of renewal's new lands, for pre-renewal: Leak, Kraken, the Scaraba Queens, Spider Chariot, Nightmare Amon Ra and the others, with the monsters only they summon, their MVP rewards and their spawns. Converted like the ordinary monsters and set at the level step of their region. Needs renewal-world, renewal-world-monsters and renewal-world-minibosses (the Gold Queen Scaraba summons the gold Scarabas).",
+  "tags": [
+    "monsters",
+    "bosses",
+    "mvp",
+    "world",
+    "level-175",
+    "pre-renewal"
+  ],
+  "homepage": "https://github.com/BlaXun/ro-endgame-world/tree/main/mods/renewal-world-mvps",
+  "requires": {
+    "app": ">=1.6.8",
+    "era": "pre-renewal",
+    "mods": [
+      "renewal-world",
+      "renewal-world-monsters",
+      "renewal-world-minibosses"
+    ]
+  },
+  "source": {
+    "github": "BlaXun/ro-endgame-world",
+    "asset": "renewal-world-mvps-*.zip"
+  }
+}

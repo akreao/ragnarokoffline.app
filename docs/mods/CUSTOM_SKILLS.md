@@ -61,6 +61,20 @@ id is the same skill: its entry is merged over yours, and Settings → Mods does
 not report it the way it reports a clashing item or monster id. The fork has
 room for 1,000 skills from mods on top of rAthena's own.
 
+**Status icons** of a mod's own take numbers from **20000–22999**, which our
+rAthena fork keeps for mods (its own icons stop below 2000): see
+[A status icon of your own](#a-status-icon-of-your-own). The range is kept
+small for now and can grow if mods need more, so take a block no bigger than
+your mod needs.
+
+Blocks taken so far. Add yours here in the same pull request as your mod, so
+the next mod picks a free one:
+
+| Mod | Skill ids | Status icons |
+|---|---|---|
+| [third-class-sampler](../../examples/mods/third-class-sampler) (example) | 3290–3299 | — |
+| [transcendent-third-classes](https://github.com/BlaXun/ro-endgame-classes) | 3400–3499 | 20000–20099 |
+
 The name is the skill's AegisName. `skill_tree.yml`, Lua, NPC scripts
 (`skill "GCR_VENOM_BURST", 5;`) and the client's `SKID` table all use it.
 Give yours a prefix of your own (`GCR_`, for "Guillotine Cross rework"), so it
@@ -284,7 +298,7 @@ status("GCR_TOXIN", {
 
 | Field | Means | Default |
 |---|---|---|
-| `icon` | the icon a player sees while it lasts: one the client has, by its `EFST_` name | none |
+| `icon` | the icon a player sees while it lasts: one the client has, by its `EFST_` name, or a number of your own from 20000–22999 ([below](#a-status-icon-of-your-own)) | none |
 | `duration` | how long it lasts, in ms | 0: until it is taken off |
 | `refresh` | a new application starts the duration again | `true` |
 | `max_stacks` | the most stacks it holds | 1 |
@@ -331,6 +345,84 @@ restart, and with the unit's death unless `end_on_death = false`. With
 `persist = true`, a player keeps it over a logout and a restart: it is kept in
 the mod's [char store](../MOD_STORE.md) with its stacks and the time it had
 left, and goes on when they are back.
+
+### A status icon of your own
+
+A stock icon brings its picture and its tooltip with it, and a status that
+borrows one takes over that icon on the player's screen: if the stock status
+that owns it is up too, one of them hides the other. A mod can have icons of
+its own instead. Take a number from your block of 20000–22999 for the status,
+and tell the client what it is called, what it looks like and what its
+tooltip says, in three tables of `data/luafiles514/lua files/stateicon/`.
+Like the skill tables, a mod's copies are added to the client's: ship your
+rows only.
+
+```lua
+-- lua/statuses.lua
+status("GCX_FLURRY", { icon = 20002, duration = 4000, max_stacks = 10 })
+```
+
+```lua
+-- efstids.lub: the names, which the other two tables use
+EFST_IDs = {
+	EFST_GCX_FLURRY = 20002,
+}
+```
+
+```lua
+-- stateiconimginfo.lub: the picture, a file in data/texture/effect/
+StateIconImgList = {
+	[PRIORITY_GREEN] = {
+		[EFST_IDs.EFST_GCX_FLURRY] = "gcx_flurry.tga",
+	},
+}
+```
+
+```lua
+-- stateiconinfo.lub: the tooltip
+StateIconList = {}
+StateIconList[EFST_IDs.EFST_GCX_FLURRY] = {
+	haveTimeLimit = 1,
+	posTimeLimitStr = 2,
+	descript = {
+		{ "Flurry", COLOR_TITLE_BUFF },
+		{ "%s", COLOR_TIME },
+		{ "Attack speed and ATK up, more with each stack" },
+	},
+}
+```
+
+- **The picture** is any file under `data/texture/effect/`: one the client has
+  (name it as the client's own tables do; the stock pictures have Korean
+  names, so write that file in the client's codepage, CP949), or a 24x24 TGA
+  your mod ships there.
+- **`haveTimeLimit` and `posTimeLimitStr`** say whether the tooltip shows the
+  time left, and on which of its lines (the `"%s"` one).
+  `COLOR_TITLE_BUFF`, `COLOR_TITLE_DEBUFF` and `COLOR_TIME` are the client's.
+- **A stock icon can get a new picture or tooltip** the same way, from its own
+  name; every status that wears it then shows the new one.
+- **The server sends your number as it is**, to the players around, for a
+  player's status and a monster's alike. The client draws status icons only
+  for your own character, so a monster's (a Toxin on it) shows nothing yet.
+- **The client's names are read first, then every mod's**, then the client's
+  pictures and tooltips, then the mods', in mod order: a later mod wins. A
+  mod's names are taken only for new icons in 20000–22999; a name the client
+  already has keeps its number. A mod file with a Lua error is left out on its
+  own.
+
+An app too old for this loads a `status()` with a number from 20000 up as an
+error, and the mod's whole Lua file with it. A mod that must also run on older
+apps tries its own icon and falls back to a stock one:
+
+```lua
+local function with_icon(name, def, own, stock)
+  def.icon = own
+  if not pcall(status, name, def) then
+    def.icon = stock
+    status(name, def)
+  end
+end
+```
 
 ### The server's own statuses
 
@@ -829,8 +921,9 @@ The client keeps what it has downloaded. After changing a table, see
 - **A new skill has no animation of its own.** The client draws a skill's
   effect from its own code, by the stock skills' ids. A new skill shows its
   cast bar, its damage and the status icons, and nothing more.
-- **A status icon is one the client already has.** It takes the stock status's
-  tooltip with it.
+- **A status icon of your own needs its three client tables**: without them
+  the client shows nothing for it. A stock icon takes the stock status's
+  picture and tooltip with it.
 - **A mod's statuses end with a logout or a restart**, unless `persist = true`
   keeps a player's.
 - **Passives and `cost`/`can_cast` are for players.** A monster that uses a

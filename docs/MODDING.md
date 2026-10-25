@@ -150,6 +150,30 @@ for the file in a script, rather than assuming a date.
 An app from before `clientFolders` ignores it and reads only the mod's own
 folders; `requires.client` makes such an app refuse the mod by name.
 
+#### Asking from a script: F_ClientInfo
+
+`clientFolders` and `requires.client` go by the main client only. The
+[fallback GRF](TROUBLESHOOTING.md#druid-karnos-or-alitea-is-invisible-or-their-skills-show-nothing)
+supplies files but not tables, so it can't choose a mod's tables. A script
+that has to know whether some art is there, such as a job changer that offers
+Druid only when kRO's sprites are, can ask about both:
+
+```c
+.@main$     = callfunc("F_ClientInfo", "client");         // "iRO"
+.@fallback$ = callfunc("F_ClientInfo", "fallback");       // "kRO", or "" if none is set
+.@date      = callfunc("F_ClientInfo", "fallback_date");  // 20261007, or 0
+if (.@main$ == "kRO" || .@fallback$ == "kRO")
+	.@menu$ = .@menu$ + "Druid:";
+```
+
+`client_date` is the main client's. A client the app can't name is `""`, and a
+date it can't read is 0. A date is the GRF file's own, the day it was last
+patched, so it says roughly how new the files are, not which client version
+they are. These are the host's files, as of the last server start: changing the
+client or the fallback reaches scripts when the server next starts. Like
+`F_ModSetting`, the function is written only when some mod ships scripts, and
+an app from before it does not have it.
+
 ### renewalFolder / prerenewalFolder — one mod for both eras
 
 Some files only work in one era. An item script that calls a renewal-only
@@ -1266,9 +1290,12 @@ skill("GCR_VENOM_BURST", {
 
 `stock_checks = false` turns off the checks the server makes for that skill
 alone before it can be used (`skill_check_condition_castbegin` and `_castend`
-in rAthena's `skill.cpp`): Spell Fist's "only while casting a bolt", Release
-at level 2 needing a summoned sphere, Feint Bomb's Land Protector check, a
-summoning skill's limit. A reused skill whose effect a mod replaces usually
+in rAthena's `skill.cpp`), and on its target (`skill_castend_id_check`):
+Spell Fist's "only while casting a bolt", Release at level 2 needing a
+summoned sphere, Feint Bomb's Land Protector check, a summoning skill's limit,
+pre-renewal Back Stab's "only from behind". The skill's own effect may check
+again (Back Stab does), so a mod that wants it gone takes the effect over in
+`before_cast`. A reused skill whose effect a mod replaces usually
 wants them gone. What `skill_db.yml` asks for (SP, items, weapon, state,
 spheres) is still asked, and `can_cast` adds checks of the mod's own.
 
@@ -1537,6 +1564,7 @@ options.
 | `c:place_unit("MG_FIREWALL", level, x, y, { duration, by, power })` | place a ground skill at a cell, owned by the hook's owner (or `by`), whatever the skill's own limit on how many may stand; `duration` in ms, default the skill's; `power` the % of the damage its hits deal |
 | `c:end_unit(group)` | remove a ground skill: a `group` from `unit:ground_units()` or `ground_units_around()` |
 | `c:give_item("RED_POTION", amount, who, { floor = true })` | an item for `"caster"` (default), when that is a player; at its feet with `floor`, or when the bag is full |
+| `c:give_zeny(amount, who)` | zeny for `"caster"` (default), when that is a player, logged as a script's; never past the most a character can hold |
 | `c:take_item("MAGIC_GEAR_FUEL", amount, who)` | take items from a player, `"caster"` by default: all of them, or none when it has fewer |
 | `c:copy_skill("WZ_STORMGUST", level, who, slot)` | put a skill in a player's Plagiarism slot (`"plagiarism"`, the default) or Reproduce slot (`"reproduce"`), as the server's own copy does; `"caster"` by default. A skill the player has of its own is left alone |
 | `c:itemskill("WZ_METEOR", level, who)` | let a player use a skill once, as a scroll does: the client asks for the target. `"caster"` by default |
@@ -1913,6 +1941,27 @@ lists them in the client's `customSkillId`, `customSkillInfoList`,
 `customSkillDescript` and `customSkillTreeView`.
 [New skills, passives and statuses](mods/CUSTOM_SKILLS.md#what-players-see-the-clients-skill-tables)
 shows each table with an example.
+
+### Status icons: pictures and tooltips
+
+The client knows a status icon by three tables in
+`data/luafiles514/lua files/stateicon/`: `efstids.lub` (its name and number),
+`stateiconimginfo.lub` (its picture, a file in `data/texture/effect/`) and
+`stateiconinfo.lub` (its tooltip). As with the skill tables, a mod's copies are
+**added to the client's**: ship rows for your own icons, numbers 20000–22999
+that the server keeps for mods, or new pictures and tooltips for stock ones.
+
+- **The client's `efstids.lub` is read first, then every mod's**, then the
+  client's pictures and tooltips, then the mods', in mod order. A later mod
+  wins. A mod names only new icons in 20000–22999, never a stock one.
+- **Only that folder is read.** A status icon table anywhere else is copied
+  like any other file, and the log says so.
+
+The app copies each mod's tables aside as `efstids-<mod>.lub` and so on, and
+lists them in the client's `customEfstIds`, `customStateIconImgInfo` and
+`customStateIconInfo`.
+[A status icon of your own](mods/CUSTOM_SKILLS.md#a-status-icon-of-your-own)
+has an example of each, and the Lua side.
 
 ### Cut-ins: an NPC's full-length picture
 

@@ -1922,7 +1922,8 @@ pub fn assemble(cfg: &Config) -> Result<Assembled, String> {
             .map(|m| (m.name.clone(), script_values(&m.manifest, &effective(&m.manifest, saved.get(&m.name)))))
             .collect();
         fs::create_dir_all(build.join("npc")).map_err(|e| format!("mods: npc build folder: {e}"))?;
-        fs::write(build.join("npc").join(SETTINGS_SCRIPT), settings_script(&values))
+        let script = settings_script(&values) + &client_info_script(&client_info(&cfg.state));
+        fs::write(build.join("npc").join(SETTINGS_SCRIPT), script)
             .map_err(|e| format!("mods: {SETTINGS_SCRIPT}: {e}"))?;
         lines.push_str(&format!("npc: npc/mods/{SETTINGS_SCRIPT}\n"));
     }
@@ -2060,6 +2061,66 @@ fn settings_script(mods: &[(String, Vec<(String, ScriptValue)>)]) -> String {
         "\tif (getargcount() > 2) return getarg(2);\n\
          \tdebugmes \"F_ModSetting: \" + .@mod$ + \" has no setting \" + .@key$ + \" (pass a fourth argument to say what to use instead)\";\n\
          \treturn 0;\n\
+         }\n",
+    );
+    out
+}
+
+/// What `F_ClientInfo` answers, from `state/client-detected.json`: the client
+/// detected from the player's GRFs and the fallback GRF's, each with its
+/// date. `clientFolders` goes by the main client only, because the fallback
+/// supplies files and not tables; a script asking "is the Druid art there?"
+/// needs the fallback too.
+///
+/// Clients are names (`"kRO"`), or `""` when there is none or it could not be
+/// told. Dates are whole numbers, `20261007`, or 0: the GRF file's own date,
+/// which says when it was last patched, not which client version it is.
+fn client_info(state: &Path) -> Vec<(&'static str, ScriptValue)> {
+    let v = fs::read_to_string(state.join("client-detected.json"))
+        .ok()
+        .and_then(|text| json::parse(&text).ok());
+    let client = |d: Option<&json::Value>| {
+        let name = d.and_then(|d| d.str("client")).filter(|n| client_name(n)).unwrap_or("");
+        ScriptValue::Text(name.to_string())
+    };
+    let date = |d: Option<&json::Value>| {
+        let digits: String = d.and_then(|d| d.str("date")).unwrap_or("").chars().filter(char::is_ascii_digit).collect();
+        ScriptValue::Int(if digits.len() == 8 { digits.parse().unwrap_or(0) } else { 0 })
+    };
+    let main = v.as_ref();
+    let fallback = main.and_then(|v| v.get("fallback"));
+    vec![
+        ("client", client(main)),
+        ("client_date", date(main)),
+        ("fallback", client(fallback)),
+        ("fallback_date", date(fallback)),
+    ]
+}
+
+/// `F_ClientInfo`, written into the same file as `F_ModSetting`:
+///
+/// ```text
+/// .@main$     = callfunc("F_ClientInfo", "client");     // "iRO"
+/// .@fallback$ = callfunc("F_ClientInfo", "fallback");   // "kRO", or ""
+/// .@date      = callfunc("F_ClientInfo", "fallback_date"); // 20261007, or 0
+/// ```
+fn client_info_script(info: &[(&str, ScriptValue)]) -> String {
+    let mut out = String::from(
+        "\n//= The host's client files, as of this server start:\n\
+         //=   callfunc(\"F_ClientInfo\", \"client\" | \"client_date\" | \"fallback\" | \"fallback_date\")\n\
+         function\tscript\tF_ClientInfo\t{\n\
+         \t.@key$ = getarg(0);\n",
+    );
+    for (key, value) in info {
+        let literal = match value {
+            ScriptValue::Int(n) => n.to_string(),
+            ScriptValue::Text(t) => script_string(t),
+        };
+        out.push_str(&format!("\tif (.@key$ == {}) return {literal};\n", script_string(key)));
+    }
+    out.push_str(
+        "\tdebugmes \"F_ClientInfo: no such key \" + .@key$ + \" (client, client_date, fallback or fallback_date)\";\n\
+         \treturn \"\";\n\
          }\n",
     );
     out
@@ -3597,6 +3658,47 @@ mod tests {
         assert!(script.trim_end().ends_with('}'));
         // Braces balance, so rAthena reads it as one function.
         assert_eq!(script.matches('{').count(), script.matches('}').count());
+    }
+
+    #[test]
+    fn client_info_reports_the_main_client_and_the_fallback() {
+        let state = tmp("client-info");
+        // Nothing detected yet: empty names and zero dates, never an error.
+        assert_eq!(
+            client_info(&state),
+            vec![
+                ("client", ScriptValue::Text(String::new())),
+                ("client_date", ScriptValue::Int(0)),
+                ("fallback", ScriptValue::Text(String::new())),
+                ("fallback_date", ScriptValue::Int(0)),
+            ]
+        );
+        fs::write(
+            state.join("client-detected.json"),
+            r#"{"client": "iRO", "code": "us", "date": "2026-09-30",
+                "fallback": {"client": "kRO", "code": "kr", "from": "data.grf", "date": "2026-10-07"}}"#,
+        )
+        .unwrap();
+        let info = client_info(&state);
+        assert_eq!(
+            info,
+            vec![
+                ("client", ScriptValue::Text("iRO".to_string())),
+                ("client_date", ScriptValue::Int(20260930)),
+                ("fallback", ScriptValue::Text("kRO".to_string())),
+                ("fallback_date", ScriptValue::Int(20261007)),
+            ]
+        );
+        let script = client_info_script(&info);
+        assert!(script.contains("function\tscript\tF_ClientInfo\t{\n"));
+        assert!(script.contains("\tif (.@key$ == \"fallback\") return \"kRO\";\n"));
+        assert!(script.contains("\tif (.@key$ == \"fallback_date\") return 20261007;\n"));
+        assert_eq!(script.matches('{').count(), script.matches('}').count());
+
+        // A service the app has no name for is "" here, as for clientFolders.
+        fs::write(state.join("client-detected.json"), r#"{"client": null, "code": "xx", "fallback": {"client": null}}"#).unwrap();
+        assert_eq!(client_info(&state)[0].1, ScriptValue::Text(String::new()));
+        assert_eq!(client_info(&state)[2].1, ScriptValue::Text(String::new()));
     }
 
     #[test]

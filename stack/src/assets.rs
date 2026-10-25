@@ -92,12 +92,11 @@ pub fn game_text(cfg: &Config) -> Result<GameText, String> {
     }
 }
 
-/// Whether the player turned on move prediction. Anything but `true`, an
-/// unreadable settings.json included, leaves the client walking as it always
-/// has.
-fn move_prediction(cfg: &Config) -> bool {
+/// Whether the player turned a Settings switch on. Anything but `true`, an
+/// unreadable settings.json included, leaves the client as it always was.
+fn setting_on(cfg: &Config, key: &str) -> bool {
     crate::registration::settings(&cfg.state)
-        .is_ok_and(|s| matches!(s.get("move_prediction"), Some(crate::json::Value::Bool(true))))
+        .is_ok_and(|s| matches!(s.get(key), Some(crate::json::Value::Bool(true))))
 }
 
 /// Small overlays are owned copies. Multi-gigabyte archives and music are
@@ -935,8 +934,14 @@ fn write_client_config(
     let mut body = body;
     // Settings -> General -> Movement: walk on the click rather than on the
     // server's answer. Absent, the client's default (off) applies.
-    if move_prediction(cfg) {
+    if setting_on(cfg, "move_prediction") {
         body = insert_before_close(body, "\tmovePrediction: true,\n");
+    }
+    // Settings -> General -> Movement: map changes without the fade to and
+    // from the loading image. The client reads 0 as "use the 500 ms default",
+    // so instant is 1 ms.
+    if setting_on(cfg, "instant_map_changes") {
+        body = insert_before_close(body, "\ttransitionDuration: 1,\n");
     }
     // Only the stock Renewal server defines these packages. This separate file
     // fills missing client boxes without replacing any native package table.
@@ -1820,6 +1825,28 @@ mod tests {
         fs::write(cfg.state.join("settings.json"), r#"{"move_prediction": true}"#).unwrap();
         let on = written();
         assert!(on.contains("\tmovePrediction: true,\n"), "{on}");
+        assert!(on.trim_end().ends_with("};"), "{on}");
+        fs::remove_dir_all(cfg.state.parent().unwrap()).unwrap();
+    }
+
+    #[test]
+    fn instant_map_changes_follow_the_setting() {
+        let cfg = fixture_config("instant-map-changes");
+        fs::create_dir_all(cfg.root.join("config")).unwrap();
+        fs::write(cfg.root.join("config/Config.local.js"), "window.ROConfigLocal = {\nrenewal: true,\n};\n").unwrap();
+        let web = cfg.state.join("web");
+        fs::create_dir_all(&web).unwrap();
+        let written = || {
+            write_client_config(&cfg, &web, &[], &ModTables::default(), GameText::English, crate::packetver::default()).unwrap();
+            fs::read_to_string(web.join("Config.local.js")).unwrap()
+        };
+        assert!(!written().contains("transitionDuration"));
+        fs::write(cfg.state.join("settings.json"), r#"{"instant_map_changes": false}"#).unwrap();
+        assert!(!written().contains("transitionDuration"));
+        fs::write(cfg.state.join("settings.json"), r#"{"instant_map_changes": true}"#).unwrap();
+        let on = written();
+        assert!(on.contains("\ttransitionDuration: 1,\n"), "{on}");
+        assert!(!on.contains("movePrediction"), "{on}");
         assert!(on.trim_end().ends_with("};"), "{on}");
         fs::remove_dir_all(cfg.state.parent().unwrap()).unwrap();
     }

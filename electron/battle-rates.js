@@ -28,6 +28,29 @@ const CATEGORY_SLIDER = {
 const FAMILIES = ['', '_boss', '_mvp'];
 
 /**
+ * The MVP card rate in force: the player's own number, or the card slider's.
+ *
+ * `null` -- the default -- means "whatever Card drops says". A default of 100
+ * would have been a quiet nerf: the card slider has always driven
+ * item_rate_card_mvp, so every install with raised card drops would have had
+ * its MVP card rate dropped back to 1x by the upgrade, with nothing in the
+ * window to show it. Anything unreadable falls back the same way.
+ */
+function cardMvpRate(settings) {
+	const own = Number(settings.item_rate_card_mvp);
+	return Number.isFinite(own) && own > 0 ? own : settings.item_rate_card;
+}
+
+// Where one family of one category is set apart from its category's slider,
+// keyed as `${category}${family}`. Only MVP cards are, because that is the
+// one people actually want to split: a server can be generous with ordinary
+// cards and still keep an MVP card rare, and until now the two were one
+// number. Everything absent here follows CATEGORY_SLIDER.
+const FAMILY_RATE = {
+	card_mvp: cardMvpRate,
+};
+
+/**
  * Every drop rate key, for every monster family, as battle-conf lines.
  *
  * Deliberately not included: `item_rate_mvp` is the MVP *reward* rather than a
@@ -37,8 +60,10 @@ const FAMILIES = ['', '_boss', '_mvp'];
  */
 function dropRateConf(settings) {
 	return FAMILIES.flatMap(family =>
-		Object.entries(CATEGORY_SLIDER).map(
-			([category, slider]) => `item_rate_${category}${family}: ${settings[slider]}`))
+		Object.entries(CATEGORY_SLIDER).map(([category, slider]) => {
+			const own = FAMILY_RATE[`${category}${family}`];
+			return `item_rate_${category}${family}: ${own ? own(settings) : settings[slider]}`;
+		}))
 		.join('\n') + '\n';
 }
 
@@ -68,7 +93,9 @@ function mobCountRateConf(settings) {
 module.exports = {
 	dropRateConf,
 	mobCountRateConf,
+	cardMvpRate,
 	FAMILIES,
 	CATEGORY_SLIDER,
+	FAMILY_RATE,
 	MOB_COUNT_RATE_MAX,
 };

@@ -24,6 +24,24 @@ there is no need to move or duplicate the archives. Asset assembly failures leav
 the previous generation intact. An interrupted commit is recovered on the next
 asset rebuild; reconnect the sources and retry before starting the asset server.
 
+## Druid, Karnos or Alitea is invisible, or their skills show nothing
+
+The Druid line is kRO's newest, and its art — the job sprites, the Werewolf
+and Wereraptor shapeshifts, skill icons and effects — exists only in a recent
+(2026) kRO client. The app supplies the jobs and their skills, not their art,
+so on any other client they are missing or invisible.
+
+Use a 2026 kRO client in one of two ways:
+
+- as your client: **Settings → General → Client**, pointed at the kRO folder
+  holding `data.grf`; or
+- as a fallback: keep your own client and set the kRO `data.grf` under
+  **Settings → General → Client → Advanced: fallback GRF**, then reopen the game
+  window. Only files your client lacks are read from it.
+
+A player who joins a friend's server plays with the host's files, so it is
+the host who needs the kRO client. The jobs are Renewal only.
+
 ## Windows: a reboot loop, or the machine restarts on launch
 
 Kernel-level anti-cheat and this app cannot both drive the hypervisor. **Riot

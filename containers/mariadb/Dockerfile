@@ -35,6 +35,10 @@ RUN apk add --no-cache mariadb mariadb-client tzdata \
     # Compat symlinks (mysqld, mysql, …) whose targets just went.
     && find /usr/bin -type l ! -exec test -e {} \; -delete \
     && rm -rf /var/cache/apk/* /usr/share/man /usr/share/doc /usr/share/mariadb/mysql-test \
+    # The DuckDB storage engine, 57 MB of the plugin directory since Alpine's
+    # 2026-10-19 rebuild. Nothing loads it -- the schema is MyISAM and InnoDB, and
+    # no config names the plugin -- and it alone grew the download by ~20 MB.
+    && rm -f /usr/lib/mariadb/plugin/ha_duckdb.so \
     # Fail the build, not the first boot, if the prune took something needed.
     && mariadbd --version >/dev/null \
     && mariadb --version >/dev/null \

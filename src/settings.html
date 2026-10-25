@@ -485,6 +485,16 @@
        for instance &mdash; you see your character walk back. It applies to your own server;
        on a friend's, theirs decides. Changing this rebuilds the game files; log in again to
        use it.</p>
+    <label style="margin-top:12px">
+      <span>Map changes</span>
+      <input type="checkbox" id="instant_map_changes" style="accent-color: var(--accent); flex: none" />
+      <span class="val" style="width:auto; color: var(--dim)">instant, without the fade</span>
+    </label>
+    <p class="note" id="instant-map-changes-status" hidden style="margin:8px 0 0; color: var(--text)"></p>
+    <p class="note">Warps and teleports cut straight to the loading image and back instead
+       of fading, as official clients do. The map still takes as long to load. It applies to
+       your own server; on a friend's, theirs decides. Changing this rebuilds the game files;
+       log in again to use it.</p>
   </div>
 
   <h2>Startup</h2>
@@ -1196,6 +1206,16 @@
     <label><span>Item drops</span><input type="range" id="item_rate_common" min="100" max="5000" step="100"><span class="mult"><input type="number" class="val num" id="v-item_rate_common" min="0" step="0.1">x</span></label>
     <label><span>Equipment drops</span><input type="range" id="item_rate_equip" min="100" max="5000" step="100"><span class="mult"><input type="number" class="val num" id="v-item_rate_equip" min="0" step="0.1">x</span></label>
     <label><span>Card drops</span><input type="range" id="item_rate_card" min="100" max="5000" step="100"><span class="mult"><input type="number" class="val num" id="v-item_rate_card" min="0" step="0.1">x</span></label>
+    <label><span>MVP card drops</span><input type="range" id="item_rate_card_mvp" min="100" max="5000" step="100"><span class="mult"><input type="number" class="val num" id="v-item_rate_card_mvp" min="0" step="0.1">x</span></label>
+    <label style="margin-top:2px">
+      <span>Same as card drops</span>
+      <input type="checkbox" id="card_mvp_follows" style="accent-color: var(--accent); flex: none" />
+      <span class="val" style="width:auto; color: var(--dim)">one number for both</span>
+    </label>
+    <p class="note"><b>MVP card drops</b> is the card rate for MVPs only, so a server can
+       be generous with ordinary cards and still keep an MVP card rare. Leave <b>Same as
+       card drops</b> ticked and it follows the slider above, which is what it did before
+       it had a number of its own. Boss (mini-boss) cards follow <b>Card drops</b>.</p>
     <label><span>Monster population</span><input type="range" id="mob_count_rate" min="100" max="1000" step="25"><span class="mult"><input type="number" class="val num" id="v-mob_count_rate" min="1" max="10" step="0.1">x</span></label>
     <p class="note"><b>Monster population</b> multiplies the counts in the server's
        spawn tables: 2x is twice as many monsters on a map, 4x four times as many.
@@ -1270,6 +1290,23 @@
     <p class="note">Rates are written to rAthena's <code>conf/import/battle_conf.txt</code>,
        which overrides the shipped config. Applying restarts the map server, so
        log back in afterwards.</p>
+    <details id="advanced-conf-options"><summary>Advanced: other server settings</summary>
+      <p class="note bad">Only if you know what you are doing. These lines are passed to the
+         server as they are. A name the server does not know is not an error here &mdash; it is
+         ignored, and the only sign is <code>Unknown setting</code> in the map server log
+         (Settings &rarr; Save data &rarr; Copy diagnostics includes it).</p>
+      <p class="note">One <code>name: value</code> per line, for the rAthena battle settings
+         this window has no control for. <code>//</code> at the start of a line is a note.
+         Everything in rAthena's <code>conf/battle/</code> is in reach &mdash; no EXP loss on
+         death, a bigger cart, drops above the 90% ceiling:</p>
+      <label><span class="name">Extra settings</span></label>
+      <textarea id="custom_battle_conf" rows="6" spellcheck="false" autocomplete="off"
+                placeholder="// No EXP lost on death (100 = 1%, the default)&#10;death_penalty_base: 0&#10;death_penalty_job: 0&#10;// A drop can be certain; the default stops at 90%&#10;drop_rate_cap: 10000&#10;max_cart_weight: 16000"></textarea>
+      <p class="note">Applied after everything above, so a name you also set with a slider
+         wins here and the slider stops describing your server &mdash; Apply says so when it
+         happens. <code>import</code> is refused, because it reads another file. Saved with
+         your settings, so a whole-world backup carries it.</p>
+    </details>
   </div>
   </div>
 
@@ -1285,7 +1322,12 @@
 const { invoke } = window.__ELECTRON__.core;
 const $ = id => document.getElementById(id);
 const RATES = ['base_exp_rate','job_exp_rate','quest_exp_rate','item_rate_common',
-               'item_rate_equip','item_rate_card','mob_count_rate'];
+               'item_rate_equip','item_rate_card','item_rate_card_mvp','mob_count_rate'];
+// The one rate that can be null, meaning "follows Card drops". The slider
+// still has to show a number, and the number it shows is what the server will
+// actually use -- see cardMvpRate in electron/battle-rates.js.
+const CARD_MVP = 'item_rate_card_mvp';
+const rateShown = (k, s) => (k === CARD_MVP ? s[CARD_MVP] ?? s.item_rate_card : s[k]);
 const log = m => {
   const text = String(m ?? '').trim();
   $('log').textContent = text;
@@ -1576,6 +1618,33 @@ $('move_prediction').onchange = async () => {
     log(String(e));
   } finally {
     $('move_prediction').disabled = false;
+    refresh();
+  }
+};
+
+$('instant_map_changes').onchange = async () => {
+  const on = $('instant_map_changes').checked;
+  const status = $('instant-map-changes-status');
+  $('instant_map_changes').disabled = true;
+  status.hidden = false;
+  status.innerHTML = '<span class="spinner"></span>Rebuilding the game files…';
+  try {
+    const s = await invoke('get_settings');
+    await invoke('save_settings', { settings: { ...s, instant_map_changes: on } });
+    const mode = await invoke('get_mode');
+    status.textContent = mode.mode === 'join'
+      ? 'Saved for your own server. It will apply when you next host.'
+      : on
+        ? 'On. Log in again for map changes without the fade.'
+        : 'Off. Log in again for the fade back.';
+    log('instant map changes: ' + (on ? 'on' : 'off'));
+  } catch (e) {
+    const saved = await invoke('get_settings').catch(() => ({ instant_map_changes: !on }));
+    $('instant_map_changes').checked = !!saved.instant_map_changes;
+    status.textContent = `Could not rebuild the game files: ${String(e)}. Saved setting: ${saved.instant_map_changes ? 'on' : 'off'}.`;
+    log(String(e));
+  } finally {
+    $('instant_map_changes').disabled = false;
     refresh();
   }
 };
@@ -3779,6 +3848,10 @@ const COMMAND_SYMBOLS = ['@', '!', '.', '-'];
 $('save').onclick = async () => {
   const settings = await invoke('get_settings');
   for (const k of RATES) settings[k] = rateOf(k);
+  // Ticked means "whatever Card drops says", which is null rather than a copy
+  // of today's card rate -- so it keeps following when that slider moves.
+  if ($('card_mvp_follows').checked) settings[CARD_MVP] = null;
+  settings.custom_battle_conf = $('custom_battle_conf').value;
   settings.max_aspd = Number($('max_aspd').value) || 190;
   settings.max_parameter = Number($('max_parameter').value) || 99;
   settings.view_distance = $('view_distance').value;
@@ -3826,8 +3899,28 @@ for (const k of RATES) {
   // empty box during editing would read as 0.
   $('v-' + k).addEventListener('change', () => showRate(k, rateOf(k)));
 }
+
+// While MVP cards follow ordinary ones, their slider is read-only and tracks
+// the card rate as it moves -- so the number on screen is always the one the
+// server will use, rather than a stale copy the player has to reason about.
+function paintCardMvpFollow() {
+  const follows = $('card_mvp_follows').checked;
+  $(CARD_MVP).disabled = follows;
+  $('v-' + CARD_MVP).disabled = follows;
+  if (follows) showRate(CARD_MVP, rateOf('item_rate_card'));
+}
+$('card_mvp_follows').addEventListener('change', paintCardMvpFollow);
+// Registered after the loop above, so the card number box is already updated.
+$('item_rate_card').addEventListener('input', paintCardMvpFollow);
+$('v-item_rate_card').addEventListener('change', paintCardMvpFollow);
 invoke('get_settings').then(s => {
-  for (const k of RATES) showRate(k, s[k]);
+  for (const k of RATES) showRate(k, rateShown(k, s));
+  $('card_mvp_follows').checked = s[CARD_MVP] === null || s[CARD_MVP] === undefined;
+  paintCardMvpFollow();
+  $('custom_battle_conf').value = s.custom_battle_conf || '';
+  // Opened when there is something in it: settings restored from a backup are
+  // otherwise invisible behind a closed accordion.
+  $('advanced-conf-options').open = !!$('custom_battle_conf').value.trim();
   $('max_aspd').value = s.max_aspd ?? 190;
   $('max_parameter').value = s.max_parameter ?? 99;
   $('view_distance').value = s.view_distance || 'official';
@@ -3855,6 +3948,7 @@ invoke('get_settings').then(s => {
   $('command_symbol').value = COMMAND_SYMBOLS.includes(s.command_symbol) ? s.command_symbol : '@';
   $('open_settings_first').checked = !!s.open_settings_first;
   $('move_prediction').checked = !!s.move_prediction;
+  $('instant_map_changes').checked = !!s.instant_map_changes;
   $('population_enable').checked = !!s.population_enable;
   $('population_max').value = s.population_max;
   $('population_density').value = s.population_density;

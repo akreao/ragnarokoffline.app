@@ -11,7 +11,8 @@
 //! There are two shapes:
 //!
 //! - **List tables** ([`ListTable`]): one file per mod, a config key holding the
-//!   list. Items, quests, achievements, signboards and the four skill tables.
+//!   list. Items, quests, achievements, signboards, the four skill tables and
+//!   the three status icon tables.
 //!   A new one is a `ListTable` and an entry in [`LISTS`]; nothing else here
 //!   or in `link` changes.
 //! - **View tables** ([`ViewTables`]): the sprite tables behind a look, which
@@ -181,9 +182,66 @@ pub const SKILL_TREE_VIEWS: ListTable = ListTable {
     order: Order::ModOrder,
 };
 
+/// Where the client reads its status icon tables from.
+const STATE_ICON_DIR: &str = "data/luafiles514/lua files/stateicon";
+
+/// `customEfstIds`: the names of a mod's status icons (`efstids.lub`), which
+/// the other two status icon tables use.
+///
+/// The three status icon tables -- with [`STATE_ICON_IMAGES`] and
+/// [`STATE_ICON_INFO`] -- are each one table for every icon, like the skill
+/// tables. A mod ships only its rows: names for its own icons, in the range
+/// servers keep for mods (20000-22999 in our rAthena fork), their pictures
+/// and tooltips, or a new picture or tooltip for a stock icon. The client
+/// reads every mod's names, then its own pictures and tooltips, then the
+/// mods', each in mod order: a later mod wins.
+pub const STATE_ICON_IDS: ListTable = ListTable {
+    layer: Layer::Data,
+    matches: is_state_icon_id_table,
+    stem: "efstids",
+    ext: "lub",
+    dir: STATE_ICON_DIR,
+    config_key: "customEfstIds",
+    order: Order::ModOrder,
+};
+
+/// `customStateIconImgInfo`: the picture of a status icon
+/// (`stateiconimginfo.lub`), a file the client finds in `data/texture/effect/`.
+pub const STATE_ICON_IMAGES: ListTable = ListTable {
+    layer: Layer::Data,
+    matches: is_state_icon_image_table,
+    stem: "stateiconimginfo",
+    ext: "lub",
+    dir: STATE_ICON_DIR,
+    config_key: "customStateIconImgInfo",
+    order: Order::ModOrder,
+};
+
+/// `customStateIconInfo`: a status icon's tooltip (`stateiconinfo.lub`).
+pub const STATE_ICON_INFO: ListTable = ListTable {
+    layer: Layer::Data,
+    matches: is_state_icon_info_table,
+    stem: "stateiconinfo",
+    ext: "lub",
+    dir: STATE_ICON_DIR,
+    config_key: "customStateIconInfo",
+    order: Order::ModOrder,
+};
+
 /// Every list table, in the order their config entries are written.
-const LISTS: &[&ListTable] =
-    &[&ITEMS, &QUESTS, &ACHIEVEMENTS, &SIGNBOARDS, &SKILL_IDS, &SKILL_INFO, &SKILL_DESCRIPTIONS, &SKILL_TREE_VIEWS];
+const LISTS: &[&ListTable] = &[
+    &ITEMS,
+    &QUESTS,
+    &ACHIEVEMENTS,
+    &SIGNBOARDS,
+    &SKILL_IDS,
+    &SKILL_INFO,
+    &SKILL_DESCRIPTIONS,
+    &SKILL_TREE_VIEWS,
+    &STATE_ICON_IDS,
+    &STATE_ICON_IMAGES,
+    &STATE_ICON_INFO,
+];
 
 /// The list table a file under a mod's `data/` is, by its path there.
 fn data_table(rel: &str) -> Option<&'static ListTable> {
@@ -347,6 +405,17 @@ fn misplaced(root: &Path, mod_name: &str) -> Vec<String> {
     for found in skills {
         out.push(format!(
             "mods: {mod_name} has {found}, but the client reads skill tables only from {SKILL_DIR}/ -- move it there"
+        ));
+    }
+    // And the status icon tables, read only from stateicon/.
+    let icons = files_under(&root.join("System"), "System", is_state_icon_table_name).into_iter().chain(
+        files_under(&root.join("data"), "data", is_state_icon_table_name)
+            .into_iter()
+            .filter(|found| data_table(&found["data/".len()..]).is_none()),
+    );
+    for found in icons {
+        out.push(format!(
+            "mods: {mod_name} has {found}, but the client reads status icon tables only from {STATE_ICON_DIR}/ -- move it there"
         ));
     }
     out
@@ -592,14 +661,20 @@ fn is_signboard_name(name: &str) -> bool {
 /// The client's names for its four skill tables, without the extension.
 const SKILL_STEMS: [&str; 4] = ["skillid", "skillinfolist", "skilldescript", "skilltreeview"];
 
-/// `luafiles514/lua files/skillinfoz/<stem>.lub` under `data/`, in any case,
-/// or as `.lua`.
-fn is_skill_table(rel: &str, stem: &str) -> bool {
-    let read_from = SKILL_DIR.strip_prefix("data/").unwrap_or(SKILL_DIR);
+/// `<dir>/<stem>.lub` under `data/` (`dir` as the client reads it, from
+/// `data/`), in any case, or as `.lua`.
+fn is_table_in(dir: &str, rel: &str, stem: &str) -> bool {
+    let read_from = dir.strip_prefix("data/").unwrap_or(dir);
     rel.rsplit_once('/').is_some_and(|(dir, name)| {
         let name = name.to_lowercase();
         dir.to_lowercase() == read_from && name.strip_prefix(stem).is_some_and(|ext| ext == ".lub" || ext == ".lua")
     })
+}
+
+/// `luafiles514/lua files/skillinfoz/<stem>.lub` under `data/`, in any case,
+/// or as `.lua`.
+fn is_skill_table(rel: &str, stem: &str) -> bool {
+    is_table_in(SKILL_DIR, rel, stem)
 }
 
 fn is_skill_id_table(rel: &str) -> bool {
@@ -622,6 +697,29 @@ fn is_skill_tree_view_table(rel: &str) -> bool {
 fn is_skill_table_name(name: &str) -> bool {
     let lower = name.to_lowercase();
     SKILL_STEMS
+        .iter()
+        .any(|stem| lower.strip_prefix(stem).is_some_and(|ext| ext == ".lub" || ext == ".lua"))
+}
+
+/// The client's names for its three status icon tables, without the extension.
+const STATE_ICON_STEMS: [&str; 3] = ["efstids", "stateiconimginfo", "stateiconinfo"];
+
+fn is_state_icon_id_table(rel: &str) -> bool {
+    is_table_in(STATE_ICON_DIR, rel, "efstids")
+}
+
+fn is_state_icon_image_table(rel: &str) -> bool {
+    is_table_in(STATE_ICON_DIR, rel, "stateiconimginfo")
+}
+
+fn is_state_icon_info_table(rel: &str) -> bool {
+    is_table_in(STATE_ICON_DIR, rel, "stateiconinfo")
+}
+
+/// A file named like one of the status icon tables, wherever it is.
+fn is_state_icon_table_name(name: &str) -> bool {
+    let lower = name.to_lowercase();
+    STATE_ICON_STEMS
         .iter()
         .any(|stem| lower.strip_prefix(stem).is_some_and(|ext| ext == ".lub" || ext == ".lua"))
 }
@@ -1203,6 +1301,68 @@ mod tests {
                 "mods: m has data/luafiles514/lua files/SkillId.lub, but the client reads skill tables only from \
                  data/luafiles514/lua files/skillinfoz/ -- move it there",
             ]
+        );
+        let _ = fs::remove_dir_all(&tmp);
+    }
+
+    /// Each of the three status icon tables is recognised by its own name, in
+    /// any case, and only in stateicon/, where the client reads it.
+    #[test]
+    fn a_status_icon_table_is_recognised_only_where_the_client_reads_it() {
+        let key = |rel: &str| data_table(rel).map(|t| t.config_key);
+        assert_eq!(key("luafiles514/lua files/stateicon/efstids.lub"), Some("customEfstIds"));
+        assert_eq!(key("LuaFiles514/Lua Files/StateIcon/StateIconImgInfo.lua"), Some("customStateIconImgInfo"));
+        assert_eq!(key("luafiles514/lua files/stateicon/stateiconinfo.lub"), Some("customStateIconInfo"));
+        assert_eq!(key("luafiles514/lua files/stateicon/stateiconinfo_f.lub"), None);
+        assert_eq!(key("luafiles514/lua files/efstids.lub"), None);
+    }
+
+    /// A mod's status icon tables are kept aside rather than laid over the
+    /// client's, and are listed per table in mod order.
+    #[test]
+    fn status_icon_tables_are_kept_aside_and_listed_in_mod_order() {
+        let tmp = tmp("state-icons");
+        let web = tmp.join("web");
+        let icons = web.join("data/luafiles514/lua files/stateicon");
+        write(&icons.join("stateiconinfo.lub"), "STOCK");
+        let mut all = ModTables::default();
+        for m in ["a", "b"] {
+            let src = tmp.join(m).join("data/luafiles514/lua files/stateicon");
+            for stem in STATE_ICON_STEMS {
+                write(&src.join(format!("{stem}.lub")), &format!("{m} {stem}"));
+            }
+            all.extend(copy_data_layer(&tmp.join(m).join("data"), &web, m).unwrap());
+        }
+        assert_eq!(fs::read_to_string(icons.join("stateiconinfo.lub")).unwrap(), "STOCK");
+        assert_eq!(fs::read_to_string(icons.join("efstids-b.lub")).unwrap(), "b efstids");
+        assert!(!icons.join("stateiconimginfo.lub").exists());
+        let entry = |key: &str, stem: &str| {
+            format!(
+                "\t{key}: ['data/luafiles514/lua files/stateicon/{stem}-a.lub', \
+                 'data/luafiles514/lua files/stateicon/{stem}-b.lub'],\n"
+            )
+        };
+        assert_eq!(
+            all.config_entries(&web),
+            vec![
+                entry("customEfstIds", "efstids"),
+                entry("customStateIconImgInfo", "stateiconimginfo"),
+                entry("customStateIconInfo", "stateiconinfo"),
+            ]
+        );
+        let _ = fs::remove_dir_all(&tmp);
+    }
+
+    /// A status icon table the client never reads is reported.
+    #[test]
+    fn a_misplaced_status_icon_table_is_reported() {
+        let tmp = tmp("misplaced-icons");
+        write(&tmp.join("System/efstids.lub"), "x");
+        write(&tmp.join("data/luafiles514/lua files/stateicon/stateiconinfo.lub"), "x");
+        assert_eq!(
+            misplaced(&tmp, "m"),
+            ["mods: m has System/efstids.lub, but the client reads status icon tables only from \
+              data/luafiles514/lua files/stateicon/ -- move it there"]
         );
         let _ = fs::remove_dir_all(&tmp);
     }
