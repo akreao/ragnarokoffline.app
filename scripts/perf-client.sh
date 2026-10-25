@@ -2,17 +2,19 @@
 # Build a measurable client from a roBrowserLegacy fork branch and install it
 # into the rotest world.
 #
-#   scripts/perf-client.sh build <fork-ref> <out-dir>   # <fork-ref> + the PerfProbe branch, patched, built
+#   scripts/perf-client.sh build <fork-ref> <out-dir>   # <fork-ref>, patched, built
 #   scripts/perf-client.sh install <out-dir>            # serve <out-dir>/dist/Web from the world (hold the lock)
 #
 # The fork checkout is ~/Projects/roBrowserLegacy (FORK to change it). The ref
-# is merged with fork/perf-probe (PROBE to change it) in a throwaway worktree,
-# so the measured build has window.roPerf. The app's client patches are applied
-# with this repo's scripts/patch-client.sh, as the release build does.
+# is checked out in a throwaway worktree. The fork's `ragnarokoffline` has had
+# the probe (Core/PerfProbe.js) since #21; for an older ref, PROBE=<branch>
+# merges a probe branch in first. The app's client patches are applied with
+# this repo's scripts/patch-client.sh, as the release build does; the perf
+# scripts read the probe through one of them (AgentHook, roAgent.perf).
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FORK="${FORK:-$HOME/Projects/roBrowserLegacy}"
-PROBE="${PROBE:-fork/perf-probe}"
+PROBE="${PROBE:-}"
 WORLD="${RO_E2E_WORLD:-$HOME/Downloads/ragnarokoffline.app/artifacts/agent-world}"
 
 case "${1:-}" in
@@ -22,7 +24,7 @@ build)
     rm -rf "$WT" "$SRC"
     git -C "$FORK" worktree add -q --detach "$WT" "$REF"
     trap 'git -C "$FORK" worktree remove --force "$WT" 2>/dev/null || true' EXIT
-    if ! git -C "$WT" -c user.name=perf -c user.email=perf@local merge -q --no-edit "$PROBE"; then
+    if [ -n "$PROBE" ] && ! git -C "$WT" -c user.name=perf -c user.email=perf@local merge -q --no-edit "$PROBE"; then
         # The only expected conflict: two imports added beside each other.
         for f in $(git -C "$WT" diff --name-only --diff-filter=U); do
             sed -i '/^<<<<<<< /d; /^=======\r\?$/d; /^>>>>>>> /d' "$WT/$f"

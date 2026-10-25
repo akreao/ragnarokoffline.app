@@ -159,3 +159,44 @@ test('Target: { Field } aims a ground cast at the middle of a field someone else
 	assert.match(cast, /if \(aimed && !at_field\)/);
 	assert.match(cast, /if \(at_field\) \{\n\t\tif \(!status_check_skilluse\(sd, nullptr, id, 0\)\)/);
 });
+
+test('Equip is worn while its rule applies, whatever else takes the turn, and comes off after', () => {
+	// Every Equip rule is run before the turn's own, and skipped in it.
+	assert.match(src, /if \(!c\.rule->equip_items\.empty\(\)\)\n\t\t\t\t\(void\)run_rule\(t, \*c\.rule, \*c\.plan, \*c\.state, do_skills, attack_only\);/);
+	assert.match(src, /if \(!c\.rule->equip_items\.empty\(\)\)\n\t\t\t\tcontinue;/);
+	// Only a companion that started unequipped, holding the piece.
+	assert.match(body('static bool requires_ok(const map_session_data *sd, const Rule &rule)'),
+		/!population_shell_gear_can_switch\(sd\) \|\| equip_piece\(sd, rule, true\) < 0/);
+	const back = body('static void put_gear_back(');
+	assert.match(back, /if \(DIFF_TICK\(s->until, tick\) > 0\)/);
+	assert.match(back, /population_shell_gear_put_on\(sd, std::get<0>\(b\), std::get<2>\(b\)\)/);
+	// Before the plans are worked out, so it happens with no plan left to apply; and a
+	// companion that would rest takes that turn first.
+	assert.match(src, /put_gear_back\(sd, gs->second, tick\);\n\n\tblock_list \*enemy = same_map_bl\(sd, sd->pop\.target_id\);/);
+	assert.match(body('bool population_strategy_wants_turn('), /for \(const GearSwap &s : st\.swaps\)\n\t\tif \(DIFF_TICK\(s\.until, tick\) <= 0\)\n\t\t\treturn true;/);
+});
+
+test('the save records the normal set: a fight\'s piece as carried, what it replaced as worn', () => {
+	const normal = body('uint32 population_strategy_normal_equip(');
+	assert.match(normal, /if \(s\.on_index == index && it\.nameid == s\.on_id && it\.equip != 0\)\n\t\t\treturn 0;/);
+	assert.match(normal, /return std::get<2>\(b\);/);
+	// Once the owner has moved the switched piece, what is worn is what is saved.
+	assert.match(normal, /if \(on\.nameid != s\.on_id \|\| on\.equip == 0\)\n\t\t\tcontinue;/);
+	// Every writer of the row asks: the slot columns (twice), gear_detail, the bag and its digest.
+	const count = (text) => (text.match(/population_shell_gear_as_saved\(sd, i\)/g) || []).length;
+	assert.equal(count(read('files', 'src', 'map', 'population_engine.cpp')), 3);
+	assert.equal(count(read('files', 'src', 'map', 'population_engine', 'runtime', 'population_shell_inventory.cpp')), 2);
+	assert.match(read('files', 'src', 'map', 'population_engine', 'runtime', 'population_shell_gear.cpp'),
+		/if \(it\.nameid != 0 && !\(it\.equip & EQP_AMMO\)\)\n\t\tit\.equip = population_strategy_normal_equip\(sd, index\);/);
+});
+
+test('Equip asks for the card with a plain loop, and reads Item without overwriting the node', () => {
+	const piece = body('static int16 equip_piece(');
+	assert.match(piece, /carded = it\.card\[c\] == rule\.equip_card;/);
+	assert.doesNotMatch(piece, /none_of\(std::begin\(it\.card\)/);
+	assert.match(src, /keyed \? scalars\(e\["Item"\]\) : scalars\(e\)/);
+	assert.doesNotMatch(src, /names = e\["Item"\]/);
+	// Any worn piece may be named, a weapon too; ammunition stays the engine's.
+	assert.doesNotMatch(src, /data->type == IT_WEAPON/);
+	assert.match(src, /!itemdb_isequip2\(data\.get\(\)\) \|\| \(data->equip & EQP_AMMO\)/);
+});

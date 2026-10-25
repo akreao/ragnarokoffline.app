@@ -24,6 +24,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawn, spawnSync } = require('node:child_process');
+const { withPerf } = require('./perf-probe.cjs');
 
 const repo = path.resolve(__dirname, '..');
 const argv = process.argv.slice(2);
@@ -113,25 +114,25 @@ async function run(profile) {
     };
     try {
         rotest('start', '--size', '1920x1080');
-        const login = await waitFor(() => { const v = evaluate('window.roPerf ? window.roPerf.marks.login : null'); return v > 0 ? v : null; }, 300000);
+        const login = await waitFor(() => { const v = evaluate(withPerf('perf ? perf.marks.login : null')); return v > 0 ? v : null; }, 300000);
         phase('startup', { loginWindowMs: login });
         let t = timed('login');
         phase('login', { ms: t.ms, ok: t.out.ok !== false && !t.out.error });
         t = timed('char', '0');
         // `char` gives up after a minute; a slow link can take longer than that.
-        const first = await waitFor(() => { const v = (evaluate('roPerf.marks.maps') || []).at(-1); return v && v.firstFrameMs ? v : null; }, 300000);
+        const first = await waitFor(() => { const v = (evaluate(withPerf('perf ? perf.marks.maps : []')) || []).at(-1); return v && v.firstFrameMs ? v : null; }, 300000);
         t.ms = Math.max(t.ms, first ? Math.round(first.firstFrameMs) : 0);
         phase('playable', { ms: t.ms, ok: Boolean(t.out.ok), map: first && first.map, mapFirstFrameMs: first && first.firstFrameMs });
         for (const [map, x, y] of MAPS) {
             if (first && first.map.startsWith(map)) continue;
             t = timed('gm', `@warp ${map} ${x} ${y}`);
-            const m = await waitFor(() => { const v = (evaluate('roPerf.marks.maps') || []).at(-1); return v && v.map.startsWith(map) && v.firstFrameMs ? v : null; }, 120000);
+            const m = await waitFor(() => { const v = (evaluate(withPerf('perf ? perf.marks.maps : []')) || []).at(-1); return v && v.map.startsWith(map) && v.firstFrameMs ? v : null; }, 120000);
             phase(`map ${map}`, { ms: t.ms, firstFrameMs: m && m.firstFrameMs });
         }
         // Reload: the HTTP cache and roBrowser's own file cache are warm now.
         evaluate('setTimeout(() => location.reload(), 50)');
         await sleep(1000);
-        const warm = await waitFor(() => { const v = evaluate('window.roPerf ? window.roPerf.marks.login : null'); return v > 0 ? v : null; }, 300000);
+        const warm = await waitFor(() => { const v = evaluate(withPerf('perf ? perf.marks.login : null')); return v > 0 ? v : null; }, 300000);
         phase('reload', { loginWindowMs: warm });
         // The next profile's first map: log out in Prontera, a busy town.
         rotest('login'); rotest('char', '0'); rotest('gm', '@warp prontera 156 191');

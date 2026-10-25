@@ -20,6 +20,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
+const { withPerf } = require('./perf-probe.cjs');
 
 const repo = path.resolve(__dirname, '..');
 const argv = process.argv.slice(2);
@@ -60,7 +61,7 @@ async function main() {
     rotest('stop');
     for (let i = 0; i < 30 && node('status').status === 0; i++) await sleep(500);
     rotest('start', '--size', '1920x1080', ...(HEADED ? ['--headed'] : []));
-    for (let i = 0; i < 120 && !(evaluate('window.roPerf && window.roPerf.marks.login') > 0); i++) await sleep(500);
+    for (let i = 0; i < 120 && !(evaluate(withPerf('perf && perf.marks.login')) > 0); i++) await sleep(500);
     rotest('login');
     rotest('char', '0');
     for (const cmd of ['@alive', '@baselvl 99', '@joblvl 50', '@allskill', '@heal']) rotest('gm', cmd);
@@ -69,7 +70,7 @@ async function main() {
     evaluate(`(roAgent.modules.GraphicsSettings.fpslimit = ${CAPPED ? 60 : 0}, roAgent.modules.GraphicsSettings.occluderFade = 'off')`);
     await sleep(2000);
 
-    evaluate('roPerf.reset()');
+    evaluate(withPerf('perf.reset()'));
     rotest('trace', 'start');
     await sleep(500);
 
@@ -122,8 +123,8 @@ async function rest() {
 
 async function finish() {
     const traced = rotest('trace', 'stop', OUT);
-    const slow = evaluate('roPerf.slowFrames()');
-    const stats = evaluate('(() => { const s = roPerf.stats(); delete s.marks; return s; })()');
+    const slow = evaluate(withPerf('perf.slowFrames()'));
+    const stats = evaluate(withPerf('(() => { const s = perf.stats(); delete s.marks; return s; })()'));
     const meta = { headed: HEADED, capped: CAPPED, short: SHORT, trace: traced.file, bytes: traced.bytes, dataLoss: traced.dataLossOccurred, steps, slow, stats };
     fs.writeFileSync(OUT.replace(/\.json$/, '.meta.json'), JSON.stringify(meta, null, 2));
     log(`trace ${traced.file} (${Math.round((traced.bytes || 0) / 1048576)} MB${traced.dataLossOccurred ? ', BUFFER FILLED: later events lost' : ''}), ${slow.length} slow frames`);

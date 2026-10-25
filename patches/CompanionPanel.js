@@ -74,6 +74,12 @@ let _skillPending = [];
 let _skills = [];
 let _skillMeta = { job: '', chosen: false, emitted: 0, answered: false };
 
+/// What each summoned companion wears and carries, by name, as the server last said
+/// (`@companion spare <name> raw`). The Gear tab only mirrors it: a button sends a command and
+/// asks again, so the tab never shows a piece somewhere the server did not put it.
+let _gear = new Map();
+let _gearPending = null;
+
 /**
  * Jobs the Summon tab offers: the same names @companion jobs prints and the
  * engine's kJobNameMap resolves. Kept as plain data so the panel needs no
@@ -274,6 +280,52 @@ function parseSkillLine(text) {
  * from a Companion Recruiter in town. null until the server has answered.
  */
 let _terms = null;
+
+/**
+ * Parse the lines of one companion's gear (see population_shell_gear.cpp, list):
+ *   @CPGR|<name>|<can carry 0/1>|<why not>
+ *   @CPGW|<slot>|<item id>|<item name>|<refine>|<cards>            worn
+ *   @CPGS|<bag place>|<slot>|<item id>|<item name>|<refine>|<cards>  carried
+ *   @CPGREND|<worn>|<carried>
+ *
+ * @param {string} text
+ * @return {boolean} true when the line was ours
+ */
+function parseGearLine(text) {
+	const body = rosterBody(text);
+	if (body === null || !body.startsWith('@CPG')) {
+		return false;
+	}
+	const p = body.split('|');
+	if (p[0] === '@CPGRFAIL') {
+		_gearPending = null;
+		return true;
+	}
+	if (p[0] === '@CPGR') {
+		_gearPending = { name: p[1] || '', can: p[2] === '1', why: p[3] || '', worn: [], spares: [] };
+		return true;
+	}
+	if (_gearPending === null) {
+		return true;
+	}
+	if (p[0] === '@CPGW' && p.length >= 5) {
+		_gearPending.worn.push({ slot: p[1], id: parseInt(p[2], 10) || 0, name: p[3], refine: parseInt(p[4], 10) || 0 });
+	} else if (p[0] === '@CPGS' && p.length >= 6) {
+		_gearPending.spares.push({
+			place: parseInt(p[1], 10) || 0, slot: p[2], id: parseInt(p[3], 10) || 0, name: p[4], refine: parseInt(p[5], 10) || 0
+		});
+	} else if (p[0] === '@CPGREND') {
+		_gear.set(_gearPending.name, _gearPending);
+		_gearPending = null;
+		_drawGear();
+	}
+	return true;
+}
+
+/** Ask the server what every summoned companion wears and carries. */
+function requestGear() {
+	_roster.filter(m => m.active).forEach(m => talk(`@companion spare ${m.name} raw`, false));
+}
 
 function parseTermsLine(text) {
 	const body = rosterBody(text);
@@ -1218,13 +1270,72 @@ function _drawGear() {
 		grid.className = 'grid';
 		grid.append(_button('All', 'b', () => {
 			talk(`@companion gear ${m.name}`, false);
-		}, 'Take everything'));
+			talk(`@companion spare ${m.name} raw`, false);
+		}, 'Take everything, worn and carried'));
 		slots.forEach(slot => {
 			grid.append(_button(slot, 'b', () => {
 				talk(`@companion gear ${m.name} ${slot}`, false);
+				talk(`@companion spare ${m.name} raw`, false);
 			}, `Take back: ${slot}`));
 		});
 		page.append(grid);
+
+		// Spare gear: only a companion that started unequipped carries any (the server says).
+		const g = _gear.get(m.name);
+		if (!g) {
+			return;
+		}
+		if (!g.can) {
+			if (g.spares.length === 0) {
+				return;
+			}
+		} else {
+			const carry = document.createElement('div');
+			carry.className = 'hint';
+			carry.textContent = 'Carry as spare, to wear again later:';
+			page.append(carry);
+			const stow = document.createElement('div');
+			stow.className = 'grid';
+			['weapon', 'shield', 'armor', 'shoes', 'garment', 'acc', 'head'].forEach(slot => {
+				if (!g.worn.some(w => w.slot === slot)) {
+					return;
+				}
+				stow.append(_button(slot, 'b', () => {
+					talk(`@companion spare ${m.name} stow ${slot}`, false);
+					talk(`@companion spare ${m.name} raw`, false);
+				}, `Carry as spare: ${slot}`));
+			});
+			if (stow.children.length) {
+				page.append(stow);
+			} else {
+				carry.textContent = 'It wears nothing it could carry as a spare.';
+			}
+		}
+		if (!g.spares.length) {
+			return;
+		}
+		const carried = document.createElement('div');
+		carried.className = 'hint';
+		carried.textContent = 'Carried:';
+		page.append(carried);
+		g.spares.forEach(sp => {
+			const label = document.createElement('span');
+			label.textContent = `${sp.refine > 0 ? '+' + sp.refine + ' ' : ''}${sp.name} (${sp.slot}) `;
+			const line = document.createElement('div');
+			line.className = 'grid';
+			line.append(label);
+			if (g.can) {
+				line.append(_button('Wear', 'b', () => {
+					talk(`@companion spare ${m.name} wear ${sp.place}`, false);
+					talk(`@companion spare ${m.name} raw`, false);
+				}, `Put on: ${sp.name}`));
+			}
+			line.append(_button('Take back', 'b', () => {
+				talk(`@companion spare ${m.name} take ${sp.place}`, false);
+				talk(`@companion spare ${m.name} raw`, false);
+			}, `Take back: ${sp.name}`));
+			page.append(line);
+		});
 	});
 }
 
@@ -1248,7 +1359,7 @@ function installChatHook() {
 	}
 	const original = ChatBox.addText;
 	ChatBox.addText = function addText(text, ...rest) {
-		if (parseSkillLine(text) || parseTermsLine(text) || parseRosterLine(text)) {
+		if (parseGearLine(text) || parseSkillLine(text) || parseTermsLine(text) || parseRosterLine(text)) {
 			return;
 		}
 		return original.call(this, text, ...rest);
@@ -1387,6 +1498,10 @@ CompanionPanel.init = function init() {
 			if (btn.dataset.tab === 'party' || btn.dataset.tab === 'gear' ||
 				btn.dataset.tab === 'rebirth') {
 				refreshRoster();
+			}
+			// What each companion wears and carries is asked for with the tab, not kept current.
+			if (btn.dataset.tab === 'gear') {
+				requestGear();
 			}
 			// The Skills tab shows a chooser, so it opens with the list already fresh.
 			if (btn.dataset.tab === 'skills') {

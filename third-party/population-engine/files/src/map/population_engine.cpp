@@ -12,6 +12,7 @@
 #include "population_engine/runtime/population_shell_ammo.hpp"
 #include "population_engine/runtime/population_shell_inventory.hpp" // RAGNAROKMAC
 #include "population_engine/runtime/population_companion_roam.hpp" // RAGNAROKMAC (roam)
+#include "population_engine/runtime/population_shell_gear.hpp" // RAGNAROKMAC
 #include "population_engine/runtime/population_shell_loot.hpp"
 #include "population_engine/runtime/population_shell_selling.hpp"
 #include "population_engine/runtime/population_shell_runtime.hpp"
@@ -819,6 +820,9 @@ static uint16_t find_valid_equip_item(uint32 equip_type);
 static void population_engine_shell_equip_item(map_session_data* sd, t_itemid nameid, uint32_t index, const char* slot_label, uint32 force_pos = 0)
 {
 	if (!sd || nameid == 0)
+		return;
+	// RAGNAROKMAC (companions start unequipped): such a companion is dressed by its owner alone.
+	if (population_shell_gear_bare(sd))
 		return;
 	// Guard against max_weight reset by prior pc_equipitem → status_calc_pc calls.
 	sd->max_weight = 2000000;
@@ -4800,6 +4804,8 @@ uint32_t population_engine_companion_draft(map_session_data *owner, uint16_t job
 	// here (the row does not exist yet) while reporting no error - which is exactly
 	// how a drafted companion stayed invisible to @companion list. Create the row.
 	population_engine_persist_companion_row(shell, owner);
+	// RAGNAROKMAC (companions start unequipped): with the setting on, nothing of the spawn's stays.
+	population_shell_gear_drafted(shell);
 	// Tell an open panel about the new companion; the roster changed.
 	population_engine_push_companion_list(owner);
 	ShowInfo("population_engine: drafted companion '%s' (job %u) for owner %u.\n",
@@ -4944,7 +4950,10 @@ uint32_t population_engine_companion_hire(map_session_data *owner, uint16_t job_
 		return 0;
 	const int mode = population_engine_companion_hire_mode();
 	if (mode == 0) {
+		// RAGNAROKMAC: a free draft comes at its owner's level too, as a hired one does.
+		g_pop_draft_level = static_cast<int16_t>(owner->status.base_level);
 		const uint32_t made = population_engine_companion_draft(owner, job_id, 1, name_hint, sex);
+		g_pop_draft_level = 0;
 		if (made == 0)
 			msg = "Could not draft that companion (see map-server console).";
 		return made;
@@ -5960,9 +5969,12 @@ static map_session_data* population_engine_spawn_shell(int16_t map_id, int x, in
 		}
 		// RAGNAROKMAC: a hired companion comes at its owner's level, within
 		// the band its profile allows (population_engine_companion_hire).
+		// Never below the band (a transcendent class has a floor), but past its top up to the
+		// class's own cap: the band is where the crowd rolls, not a limit on a player's party.
 		if (g_pop_draft_level > 0)
 			rolled = static_cast<int16_t>(cap_value(static_cast<int>(g_pop_draft_level),
-				static_cast<int>(pop_cfg->base_level_min), static_cast<int>(hi)));
+				static_cast<int>(pop_cfg->base_level_min),
+				std::max(static_cast<int>(hi), static_cast<int>(pc_maxbaselv(sd)))));
 		sd->status.base_level = cap_value(rolled, 1, MAX_LEVEL);
 	} else {
 		// Upstream defaults an undeclared BaseLevel to 99, which is how a
@@ -7390,7 +7402,7 @@ bool population_engine_persist_companion_row(map_session_data *sd, const map_ses
 	// those slots from the numbers, so they came back as nothing. The worn items go in instead.
 	uint32_t head_top = 0, head_mid = 0, head_low = 0, garment = 0;
 	for (int16_t i = 0; i < MAX_INVENTORY; ++i) {
-		const struct item &slot = sd->inventory.u.items_inventory[i];
+		const struct item slot = population_shell_gear_as_saved(sd, i); // RAGNAROKMAC (Equip): the normal set
 		if (!slot.nameid || !slot.equip) continue; // equipped only
 		if ((slot.equip & EQP_HAND_R) && !(slot.equip & EQP_SHADOW_WEAPON))  weapon  = slot.nameid;
 		else if ((slot.equip & EQP_HAND_L) && !(slot.equip & EQP_SHADOW_SHIELD)) shield = slot.nameid;
@@ -7581,6 +7593,10 @@ static uint32_t pop_companion_worn_positions(const map_session_data *shell)
 /// from the job's gear set, the same picks spawn and job advance use.
 static void pop_companion_reequip_own(map_session_data *shell, uint32_t freed)
 {
+	// RAGNAROKMAC (companions start unequipped): it has no gear of its own to put back, and a
+	// slot its owner left empty stays empty.
+	if (population_shell_gear_bare(shell))
+		return;
 	for (int16 i = 0; i < MAX_INVENTORY && freed != 0; ++i) {
 		const struct item &slot = shell->inventory.u.items_inventory[i];
 		if (!slot.nameid || slot.equip || slot.amount <= 0)
@@ -7628,6 +7644,7 @@ int population_engine_companion_return_gear(map_session_data *owner, map_session
 {
 	if (!owner || !shell) return -1;
 	if (!population_engine_is_population_pc(shell->id)) return -1;
+	population_shell_gear_owned(shell); // RAGNAROKMAC (start unequipped): all it wears is the owner's
 
 	int returned = 0, kept_own = 0;
 	uint32_t freed = 0;
@@ -7651,6 +7668,9 @@ int population_engine_companion_return_gear(map_session_data *owner, map_session
 			freed |= worn;
 		}
 	}
+	// RAGNAROKMAC (spare gear): "everything" is what it carries too.
+	if (slot_mask == 0)
+		returned += population_shell_gear_return_spares(owner, shell);
 	if (returned > 0) {
 		pop_companion_reequip_own(shell, freed);
 		ShowInfo("population_engine: returned %d worn item(s) from companion %u to owner %u\n",
@@ -7683,7 +7703,7 @@ static std::string pop_companion_gear_detail(const map_session_data *sd)
 	std::string out = "v1";
 	char entry[512];
 	for (int16 i = 0; i < MAX_INVENTORY; ++i) {
-		const struct item &it = sd->inventory.u.items_inventory[i];
+		const struct item it = population_shell_gear_as_saved(sd, i); // RAGNAROKMAC (Equip): the normal set
 		if (!it.nameid || !it.equip || it.amount <= 0)
 			continue;
 		int n = snprintf(entry, sizeof(entry), ";%u,%u,%d,%u,%u,%u,%u,%u,%d,%" PRIu64,
@@ -7812,6 +7832,7 @@ void population_engine_persist_companion_gear(map_session_data *sd)
 	// The row's owner is the companion's registered owner (set at recruit).
 	const uint32_t owner = sd->pop.companion_owner_account;
 	if (owner == 0) return; // not a recruited companion
+	population_shell_gear_owned(sd); // RAGNAROKMAC (start unequipped): all it wears is the owner's
 
 	const uint32_t index_ = sd->status.char_id - POPULATION_ENGINE_CHAR_ID_BASE;
 
@@ -7823,7 +7844,7 @@ void population_engine_persist_companion_gear(map_session_data *sd)
 	// The worn headgear, not status.head_*: that is each piece's look, not its item.
 	uint32_t head_top=0, head_mid=0, head_low=0;
 	for (int16_t i = 0; i < MAX_INVENTORY; ++i) {
-		const struct item &slot = sd->inventory.u.items_inventory[i];
+		const struct item slot = population_shell_gear_as_saved(sd, i); // RAGNAROKMAC (Equip): the normal set
 		if (!slot.nameid || !slot.equip) continue; // equipped only
 		if (slot.equip & EQP_SHADOW_WEAPON)       sh_weapon  = slot.nameid;
 		else if (slot.equip & EQP_SHADOW_SHIELD)  sh_shield  = slot.nameid;
@@ -8214,7 +8235,8 @@ bool population_engine_companion_holds_given_gear(uint32_t owner_account, uint32
 		holds = data != nullptr && strtoul(data, nullptr, 10) != 0;
 	}
 	Sql_FreeResult(mmysql_handle);
-	return holds;
+	// RAGNAROKMAC (spare gear): what it carries is the owner's as much as what it wears.
+	return holds || population_shell_gear_row_has_spares(shell_index);
 }
 
 /// Prints the owner's saved companions (name, job, active, favorite) to the
@@ -8777,6 +8799,8 @@ static void population_engine_recall_one_companion(map_session_data *owner, int1
 	shell->status.status_point = 0;
 	shell->status.trait_point  = 0;
 
+	// RAGNAROKMAC (companions start unequipped): how it was drafted, before anything dresses it.
+	population_shell_gear_recalled(shell);
 	population_engine_shell_equip_item(shell, armor, index_, "armor");
 	population_engine_shell_equip_item(shell, shoes, index_, "shoes");
 	// Goal 2: accessories persist too
@@ -9414,6 +9438,16 @@ static uint16_t find_valid_equip_item(uint32 equip_type) {
 // Get appropriate weapon item ID for a job
 // Get base job class (1st class) from any job ID
 static uint16_t get_base_job(uint16_t job_id) {
+    // RAGNAROKMAC: rAthena's own answer first. The ranges below start with
+    // JOB_KNIGHT..JOB_ROYAL_GUARD, which is ids 7..4066: nearly every job came back a
+    // Swordman, so one with no rows of its own (a Super Novice, a Gunslinger, a High Mage)
+    // was given the Swordman's skills and gear. The map id knows each job's first class,
+    // the expanded jobs their own (Gunslinger, Ninja, Taekwon, Summoner).
+    if (const uint64 mapid = pc_jobid2mapid(job_id); mapid != static_cast<uint64>(-1)) {
+        const int32 base = pc_mapid2jobid(mapid & MAPID_FIRSTMASK, SEX_MALE);
+        if (base >= 0)
+            return static_cast<uint16_t>(base);
+    }
     // Map advanced jobs to their base 1st class
     if (job_id == JOB_SWORDMAN || (job_id >= JOB_KNIGHT && job_id <= JOB_ROYAL_GUARD) ||
         (job_id >= JOB_BABY_KNIGHT && job_id <= JOB_BABY_ROYAL_GUARD) ||

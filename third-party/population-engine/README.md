@@ -576,6 +576,32 @@ spawned anew, so it has a fresh stock too.
 
 ### A companion lives on its bag
 
+**Companions start unequipped.** The engine dresses a drafted companion from its
+job's gear set, and again at a job change and wherever it finds a slot empty.
+With `population_engine_companion_start_unequipped` on (Settings → Population →
+Companions start unequipped, off by default, registered by patch 0036), a
+drafted companion loses what the spawn put on it and is marked, in memory and in
+`cp_companion_persistence.start_unequipped`; `runtime/population_shell_gear.cpp`
+holds this. From then on `population_engine_shell_equip_item` (the one function
+every gear-set piece goes through) and `pop_companion_reequip_own` return early
+for it, so a job change and a recall give it nothing: it wears what its owner
+gave it. The mark is the companion's, not the setting's: a recall reads it from
+the row, and the setting acts at the draft only.
+
+**Spare gear.** Such a companion can carry equipment it does not wear, with
+Companion inventory on. `@companion spare <name> list | stow <slot> | wear <#> |
+take <#>` (patch 0037, one line in the command; the rest is in
+`population_shell_gear.cpp`) moves pieces between body and bag and back to the
+owner; `raw` is the listing the Companions window reads (`@CPGR`, `@CPGW`,
+`@CPGS`, `@CPGREND`). Everything it wears counts as the owner's: after each change
+`companion_given_mask` is set to every worn position, which is what the engine's
+own hand-back, job change and removal check read. Two lines in
+`population_engine.cpp` cover the bag: `population_engine_companion_return_gear`
+with no slots also returns carried pieces, and
+`population_engine_companion_holds_given_gear` also answers for a row whose bag
+holds equipment, so a companion that is not summoned is not removed with gear
+in it.
+
 Every shell has rAthena's inventory, and the engine used it as a free supply:
 the potions above, ammunition topped up before each attack
 (`population_shell_ammo.cpp`), and every item cost waived by the early return

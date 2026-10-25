@@ -2,6 +2,7 @@
 // RAGNAROKMAC (companion inventory): see population_shell_inventory.hpp.
 
 #include "population_shell_inventory.hpp"
+#include "population_shell_gear.hpp"
 
 #include <algorithm>
 #include <cinttypes>
@@ -56,7 +57,7 @@ uint64 bag_digest(const map_session_data *sd)
 	uint64 h = 1469598103934665603ULL;
 	auto mix = [&h](uint64 v) { h = (h ^ v) * 1099511628211ULL; };
 	for (int16 i = 0; i < MAX_INVENTORY; ++i) {
-		const item &it = sd->inventory.u.items_inventory[i];
+		const item it = population_shell_gear_as_saved(sd, i); // (Equip) the normal set
 		if (!carried(it))
 			continue;
 		mix(static_cast<uint64>(i));
@@ -75,7 +76,7 @@ std::string bag_detail(const map_session_data *sd)
 	std::string out = "v1";
 	char entry[512];
 	for (int16 i = 0; i < MAX_INVENTORY; ++i) {
-		const item &it = sd->inventory.u.items_inventory[i];
+		const item it = population_shell_gear_as_saved(sd, i); // (Equip) the normal set
 		if (!carried(it))
 			continue;
 		int n = snprintf(entry, sizeof(entry), ";%u,%d,%u,%d,%d,%d,%u,%u,%u,%u,%u,%d,%u,%" PRIu64,

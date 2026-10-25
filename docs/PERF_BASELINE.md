@@ -23,14 +23,29 @@ node scripts/perf-bench.cjs --capped --scenes iz_dun05,pay_fild02      # at 60 f
 node scripts/perf-bench.cjs --cpu-throttle 4 --scenes iz_dun05,pay_fild02
 ```
 
-The world's client has to include the probe. Until the PR above is in a pin,
-build it from the `perf-probe` branch:
+The world's client has to include the probe, and the app's client patches
+(the scripts read the probe through AgentHook, as `roAgent.perf`). The fork's
+`ragnarokoffline` branch has the probe, so a build of it works as it is:
 
-1. Copy the tree somewhere.
-2. Run `scripts/patch-client.sh` on the copy, with `RAGNAROK_ROBROWSER_DIR`
-   pointing at it.
-3. Run `npm run build:all`, then `scripts/patch-bundle.sh <copy>/dist/Web`.
-4. Copy `dist/Web` over `artifacts/agent-world/runtime/vendor/roBrowserLegacy/dist/Web`.
+```sh
+scripts/perf-client.sh build origin/ragnarokoffline /tmp/perf-client   # in a fork checkout, FORK=... to change it
+scripts/perf-client.sh install /tmp/perf-client                        # the world now serves it
+```
+
+`perf-client.sh` copies the ref, applies `scripts/patch-client.sh`, runs
+`npm run build:all` and `scripts/patch-bundle.sh`, then `install` copies
+`dist/Web` over `artifacts/agent-world/runtime/vendor/roBrowserLegacy/dist/Web`
+(keeping the original as `Web.pinned`). For a ref from before the probe, set
+`PROBE=<branch>` to merge a probe branch in first.
+
+The probe is switched on by the client configuration, `perfProbe: true`.
+`ROTEST_PERF=1`, which every perf script sets, adds it to the page's
+configuration. The probe changed in roBrowserLegacy #78 (it used to be
+`localStorage.roPerf` and `window.roPerf`); the scripts read either. Two
+things differ across that change: `reset()` now clears the map marks, and
+`fps` counts only time spent drawing, so a window with a map load in it reads
+higher than it would have. The steady-scene numbers below compare as they
+are.
 
 Each run writes a Markdown table and the raw JSON to `artifacts/perf/`.
 

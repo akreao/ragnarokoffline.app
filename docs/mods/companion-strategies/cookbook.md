@@ -50,6 +50,7 @@ not yet. Adjust names, priorities and numbers to your plan. The
 
 **Items**
 - [Drink, cure and endow from the bag](#drink-cure-and-endow-from-the-bag)
+- [Gear for one fight](#gear-for-one-fight)
 
 **Talking**
 - [Ask another companion for something](#ask-another-companion-for-something)
@@ -672,6 +673,47 @@ have the rule. Say when, or it uses the next one as soon as it may:
 
 A trap is an item too, but a skill's own cost: Ankle Snare takes its trap from
 the bag when it is cast, with no `UseItem`.
+
+## Gear for one fight
+
+A companion that started unequipped wears what you gave it, and can carry spares
+(the Companions window's Gear tab: **Carry as spare**). A plan puts a carried
+piece on for as long as the plan applies, and the earlier one goes back on
+afterwards:
+
+```yaml
+- Mob: DARK_LORD
+  Encounter: true                     # while Dark Lord is within 14 cells
+  Jobs:
+    - Job: All
+      Rules:
+        - Name: raydric_garment
+          Priority: 60
+          Equip: { Item: [Manteau, Muffler], Card: 4133 }   # Raydric Card (Daydric_Card)
+- Mobs: [{ Element: Fire }]
+  Jobs:
+    - Job: Knight
+      Rules:
+        - Name: fire_armour
+          Priority: 55
+          Equip: Flame_Sprits_Armor_
+```
+
+A weapon works the same way: a holy weapon against the undead, a bow for a
+monster that must be kept at a distance.
+
+```yaml
+- Mob: { Race: Undead }
+  Jobs:
+    - Job: Knight
+      Rules:
+        - { Name: holy_blade, Priority: 55, Equip: Excalibur }
+```
+
+A companion without the piece has no such rule, so one table serves a geared
+party and a bare one. The trace shows each change: `put on Manteau (took off
+Muffler)`, and `gear: Manteau off, no rule asks for it any more (back on:
+Muffler)`.
 
 ## Ask another companion for something
 

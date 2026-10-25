@@ -213,9 +213,18 @@ function refresh() {
 }
 
 /**
- * Undo the preview
+ * Undo the preview, and forget the original: the window is going away
  */
 function revert() {
+	showOriginal();
+	_original = null;
+}
+
+/**
+ * Put the character back as it was when the window opened, but keep
+ * remembering that, so the window can go on being used
+ */
+function showOriginal() {
 	const entity = Session.Entity;
 	if (!entity || !_original) {
 		return;
@@ -226,7 +235,6 @@ function revert() {
 			entity[look.prop] = _original[look.prop];
 		}
 	});
-	_original = null;
 }
 
 /**
@@ -266,15 +274,21 @@ function apply() {
  * so the preview simply becomes the truth -- there is nothing to apply here,
  * only the original to forget so Cancel cannot undo a paid-for haircut.
  *
+ * On a refusal the window stays open, so the original is kept: forgetting it
+ * made every later Apply send nothing while the preview stayed on the
+ * character, which looked like a change that was never bought. The server
+ * does not say why it refused; with rAthena's own table it is nearly always
+ * the price or the coupon.
+ *
  * @param {object} pkt - PACKET.ZC.STYLE_CHANGE_RES
  */
 function onStyleChangeResult(pkt) {
 	if (pkt.flag) {
 		ChatBox.addText(
-			'The stylist cannot do that one.',
+			'The stylist cannot do that one (not enough Zeny, or a coupon missing).',
 			ChatBox.TYPE.ERROR
 		);
-		revert();
+		showOriginal();
 		refresh();
 		return;
 	}

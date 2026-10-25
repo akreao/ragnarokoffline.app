@@ -230,10 +230,17 @@ Do it on a field map (`@warp prt_fild08 170 360`); towns forbid some skills.
 
 The client carries an opt-in probe, `src/Core/PerfProbe.js` in the
 roBrowserLegacy fork. It measures frame time, draw calls per frame, map load
-and startup to the login window, and does nothing unless
-`localStorage.roPerf` is `'1'`. `ROTEST_PERF=1` in the environment of `rotest
-start` sets it before the page loads, and puts a small overlay in the corner;
-`rotest eval "roPerf.stats()"` reads it. `ROTEST_UNCAPPED=1` starts Chromium
+and startup to the login window, and does nothing unless the configuration
+has `perfProbe: true` (ROConfig, so `config/Config.local.js` for the app).
+`ROTEST_PERF=1` in the environment of `rotest start` adds it to the page's
+configuration before the client loads, which also puts a small overlay in the
+corner. The probe has no global of its own; the test hook hands it out as
+`roAgent.perf`, so `rotest eval "roAgent.perf.stats()"` reads it
+(`roAgent.perf.reset()`, `.slowFrames()` and `.marks` too). In the client
+itself, `/perf` in the chat prints the same numbers (`/perf reset`,
+`/perf slow`, `/perf overlay off`). Builds from before roBrowserLegacy #78
+use `localStorage.roPerf` and `window.roPerf` instead; rotest sets both, and
+the perf scripts read whichever is there (`scripts/perf-probe.cjs`). `ROTEST_UNCAPPED=1` starts Chromium
 with no vsync or frame cap, so a frame's time is what it costs, not the 60 Hz
 tick.
 
@@ -249,7 +256,10 @@ node scripts/perf-bench.cjs --capped         # what a player at 60 fps sees
 node scripts/perf-bench.cjs --scenes pay_fild02 --secs 5
 ```
 
-The world's client has to be a build with the probe in it.
+The world's client has to be a build with the probe in it, and with this
+repo's client patches (the probe reaches the scripts through AgentHook).
+`scripts/perf-client.sh build <fork-ref> <dir>` makes one from a fork
+checkout and `scripts/perf-client.sh install <dir>` puts it in the world.
 [docs/PERF_BASELINE.md](PERF_BASELINE.md) has the numbers to compare against.
 
 ## How it works, and what to watch for

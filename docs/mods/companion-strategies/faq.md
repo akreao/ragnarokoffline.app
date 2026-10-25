@@ -221,14 +221,14 @@ made it.
 
 ### Can it use items, potions, or switch gear?
 
-Items, yes; gear, not yet. With **Settings → Population → Companion inventory**
-on, a companion owns its bag. A `UseItem` rule uses what is in it (a potion, a
-cure, an elemental converter, a Fly Wing), and a skill's catalyst or trap is
-taken from it when the skill is cast. With the setting off, the bag holds only
-what the engine hands a companion and catalysts are not charged. A plan cannot
-yet name gear to wear for a fight; the roadmap's
-[Switching gear](../../COMPANION_STRATEGY_ROADMAP.md#switching-gear-to-the-situation)
-says what is open.
+Yes, with **Settings → Population → Companion inventory** on, so that a companion
+owns its bag. A `UseItem` rule uses what is in it (a potion, a cure, an elemental
+converter, a Fly Wing), and a skill's catalyst or trap is taken from it when the
+skill is cast. An `Equip` rule changes any worn piece (a weapon, a shield,
+armour, a garment, shoes, headgear, an accessory) for as long as the rule
+applies, for a companion that **started unequipped** (the setting of that name):
+everything it wears and carries is then yours, handed over in the Companions
+window's Gear tab.
 
 ### Do regular AI characters use plans too?
 

@@ -48,6 +48,7 @@ each one does. New to it? Start with the [guide](guide.md). For party play see
 | `Present` / `Absent` | a selector finds someone / nobody | `Hold` | stand still |
 | `Reach` | the monster could fight back here | `Sit` | sit down, regenerating faster |
 | | | `UseItem` | an item from its own bag |
+| | | `Equip` | a carried piece of gear, while the rule applies |
 | | | `Aim` (with a ground `Cast`) | the cell it lands on |
 | | | `Target: { Field }` (with a ground `Cast`) | onto a field someone else laid |
 | `Enemy` | the monster's element, race, size, boss | **Also, with or without an action:** | |
@@ -263,6 +264,7 @@ And then does one thing:
 | `Aim: { Cells, From, Lead }` (with a ground `Cast`) | Where a ground skill lands, when not at the target's feet. `Cells: n` is the cell `n` cells from the companion on the straight line to the target; `From: target` counts from the target, toward the companion. `Lead: true` takes the target to be where its walk will have brought it when the cast lands (its path, its speed, the companion's cast time for the skill), so a spell with a cast time meets a monster that is walking; one standing still is where it is. Together: `Aim: { Cells: 2, From: target, Lead: true }` is two cells in front of where it will be. The cell lies strictly between the two: with the target no further off than `Cells`, the rule does not cast (`too close to aim 3 cells toward it`). A cell nobody can stand on is pulled back toward where the count began; with none, the trace says `no free cell to aim at`. Range, and "the cell is taken", are asked of the aimed cell. The trace shows it: `Ice Wall on Raydric at (63,71), 3 cells from itself, 4 from it`. What it is for: an Ice Wall between a Wizard and what is coming for it, not on top of it; a Fire Wall in a monster's path; a trap or a Quagmire ahead of a monster, since a trap cannot go on the cell it stands on; Storm Gust or Meteor Storm where a walking pack will be once the cast is done. |
 | `Consume: true` (with `Cast`) | Marks a cast that pays its catalyst (a Flame Stone, a Blue Gemstone) as a player does. With **Companion inventory** on, every cast of a companion pays from its own bag through rAthena, marked or not, and a cast it cannot pay for is passed over. With it off, the cast goes ahead as if the catalyst were paid, as the engine does for every shell. |
 | `UseItem:` item or `[list]`, `Target:` | Uses one of an item the companion carries, as a player does: the item's own delay, its job and level limits, its script, and one taken from the bag. A list uses the first one in the bag (`UseItem: [White_Potion, Yellow_Potion]`). A companion that carries none of them does not have the rule, so the same table serves a stocked companion and an empty one. An item that casts a skill (an elemental converter, a Fly Wing, a scroll) casts it on the companion, or on the rule's `Target` when the skill needs one. Without a `Cooldown` the rule waits 1 s between uses; say when with a condition, or it uses the item again as soon as it may (`When: not_self_aspdpotion1` for an Awakening Potion, `When: self_poison` for a Green Potion, `When: not_self_enchantarms` with `Enemy: { Element: Water }` for a wind converter). With **Companion inventory** off the bag holds only what the engine hands a companion, so these rules mostly have nothing to use. A Fly Wing moves the companion, and following brings it back to its owner as soon as the owner is out of sight. |
+| `Equip:` item, `[list]` or `{ Item, Card }` | Wears a carried piece of gear **while the rule applies**, and puts back what it replaced once no `Equip` rule has asked for that slot for about 10 s. `Equip: Manteau` in a boss's plan with `Encounter: true` is "the Manteau while the boss is within 14 cells": there is no rule to write for taking it off. A list takes the first piece the companion wears or carries; `{ Item: Muffler, Card: Daydric_Card }` only a piece holding that card. Two rules that ask for the same slot: the higher priority has it. `Equip` is never the turn's action: the companion changes and still casts, moves or attacks that turn, and a rule above it cannot keep it from holding. It takes no `Cooldown`. Only a companion that **started unequipped** (Settings → Population) with **Companion inventory** on has such rules, and only for a piece it holds: what it wears and carries is then all its owner's, handed over in the Companions window's Gear tab. Any piece that is worn can be named: weapons, shields, armour, garments, shoes, headgear, accessories, costumes and shadow gear. A two-handed weapon takes the shield off with the weapon it replaces, and both go back on afterwards. With Weapon rules on, the skills a companion may use follow the weapon in its hand, so a plan that changes weapon changes those too. Ammunition is not named: the engine picks it for the weapon and the target. What is saved is the companion's normal gear, never the fight's: after a server restart in the middle of a fight it is back in its own pieces with the fight's piece in its bag, and the rule puts it on again if it still applies. |
 | `Retreat: away` / `owner`, `Distance:` | Steps that many cells away from the monster (or from an event's `source`), or walks back to the owner. |
 | `MoveTo: event` | Walks next to whoever the event is about: the companion that sent a `signal`, the member who spoke in party chat. Already beside them: the rule passes. |
 | `MoveTo: reachable` | Walks to the nearest cell (within 8) from which the monster could fight back, so hitting it from there does not make it teleport. Already on one: the rule passes. |
@@ -284,7 +286,7 @@ A companion that cannot move (petrified, frozen, stunned: whatever rAthena's
 `unit_can_move` refuses) skips every movement rule; it does not walk away while
 turned to stone.
 
-`Cast`, `UseItem`, `Retreat`, `KeepDistance`, `MoveTo`, `Leave`, `Hold` and `Sit` end the companion's turn; only one
+`Cast`, `UseItem`, `Retreat`, `KeepDistance`, `MoveTo`, `Leave`, `Hold` and `Sit` end the companion's turn (`Equip` does not, though a rule takes it in place of one of them); only one
 of them is allowed per rule. `Say`, `Switch` and `Signal` do not end it and can
 come with any of them, after it has succeeded. When no rule acts, the companion takes its
 ordinary turn: heals, buffs and the skill rotation (minus anything `Ban` or
@@ -356,6 +358,8 @@ it), `melee_attacked`, `range_attacked`, `self_being_cast_on`, `enemy_hidden`,
 `enemy_casting`, `enemy_casting_ground`, `enemy_is_boss`. The engine's
 `population_skill_db.yml` uses the same syntax, so conditions copied from there
 work here too. A token that names nothing is a warning at load, with its line.
+
+**Items by name or by number.** Wherever a table names an item (`Equip`, its `Card`, `UseItem`, `Requires: { Items }`, `item_below`), the AegisName and the item id both work: `Equip: Manteau` and `Equip: 2505` are the same rule. The id is the surer of the two where a name is not what one expects: the Raydric Card is `Daydric_Card` in rAthena, or `4133`. Skills, monsters and jobs take their ids the same way.
 
 ### Which skills: `Allow` and `Ban`
 
@@ -844,9 +848,6 @@ The rest still loads.
 
 ## What it cannot do yet
 
-- **Switch gear.** A plan cannot name gear for a fight (a shield against a
-  boss, armour of an element). Using items is built (`UseItem`), and catalysts
-  are paid from the bag with Companion inventory on.
 [Not done yet](../../COMPANION_STRATEGY_ROADMAP.md#not-done-yet) in the roadmap
 describes each of these: why it waits, how it would work, what it would add.
 

@@ -25,6 +25,7 @@ import UIManager from 'UI/UIManager.js';
 import GraphicsSettings from 'Preferences/Graphics.js';
 import EffectManager from 'Renderer/EffectManager.js';
 import EffectTable from 'DB/Effects/EffectTable.js';
+import PerfProbe from 'Core/PerfProbe.js';
 
 function enabled() {
     try { return window.localStorage.getItem('roAgent') === '1'; } catch { return false; }
@@ -152,6 +153,11 @@ export function install() {
     if (!enabled() || window.roAgent) return;
     trace();
     traceEffects();
+    // The probe switches itself on in Renderer.init, at the first map, so on
+    // its own it misses the login window and the first map load. Starting it
+    // here, before the login window, keeps both marks. With `perfProbe` off
+    // in the configuration this does nothing.
+    PerfProbe.attach(null);
     Object.defineProperty(window, 'roAgent', { configurable: true, value: Object.freeze({
         version: 1,
         project, player, entities, skills: skillList, chat,
@@ -173,6 +179,18 @@ export function install() {
         effects(since = 0) { return effects.filter(e => e.at >= since).map(({ id, known, owner }) => ({ id, known, owner })); },
         mouse() { return { state: Mouse.state, intersect: Mouse.intersect, screen: { ...Mouse.screen }, world: { ...Mouse.world },
             over: EntityManager.getOverEntity() ? describe(EntityManager.getOverEntity()) : null }; },
-        modules: { Session, Camera, Renderer, MapRenderer, EntityManager, Entity, Altitude, Mouse, DB, SkillInfo, Network, PACKET, PACKETVER, UIManager, GraphicsSettings },
+        // The client's performance probe (Core/PerfProbe.js), for the perf
+        // scripts. It runs only when the configuration has `perfProbe: true`,
+        // which rotest sets with ROTEST_PERF=1; until then `enabled` is false.
+        perf: Object.freeze({
+            get enabled() { return Boolean(PerfProbe.enabled); },
+            stats: () => PerfProbe.stats(),
+            reset: () => PerfProbe.reset(),
+            slowFrames: () => PerfProbe.slowFrames(),
+            overlay: show => PerfProbe.overlay(show),
+            // { login, maps: [{ map, loadMs, firstFrameMs }] }. reset() clears the maps.
+            get marks() { return PerfProbe.stats().marks; },
+        }),
+        modules: { Session, Camera, Renderer, MapRenderer, EntityManager, Entity, Altitude, Mouse, DB, SkillInfo, Network, PACKET, PACKETVER, UIManager, GraphicsSettings, PerfProbe },
     }) });
 }
