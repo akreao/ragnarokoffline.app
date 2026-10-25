@@ -104,7 +104,7 @@ class SharingController {
       // Google/Apple sign-in only on your own hostname: the providers send the
       // browser back to a redirect URI registered in advance, and a temporary
       // trycloudflare.com address is different every time.
-      const gateway = new this.Gateway({ origin, ports: this.ports, register: this.register, lifetime: this.lifetime(), invite: this.invite(), signIn: saved ? this.signIn() : null, remember: this.remember(), modHost: this.modHost });
+      const gateway = new this.Gateway({ origin, ports: this.ports, register: this.register, lifetime: this.lifetime(), invite: this.invite(), signIn: saved ? this.signIn() : null, remember: this.remember(), modHost: this.modHost, log: this.log });
       // Record whatever it ended up using: a reused token, or a fresh one when
       // nothing was stored or the stored value was unusable.
       this.onInvite(gateway.invite);
@@ -119,8 +119,14 @@ class SharingController {
       const env = { PATH: process.env.PATH, SystemRoot: process.env.SystemRoot, WINDIR: process.env.WINDIR,
         TUNNEL_CRED_CONTENTS: credentials };
       for (const key of Object.keys(env)) if (env[key] === undefined) delete env[key];
-      const args = saved ? ['tunnel', '--config', configPath, '--no-autoupdate', '--loglevel', 'error', 'run', saved.tunnelId]
-        : ['tunnel', '--config', configPath, '--no-autoupdate', '--url', 'http://127.0.0.1:' + port, '--metrics', '127.0.0.1:0'];
+      // HTTP/2 over TCP, not cloudflared's default QUIC over UDP. On a home
+      // connection QUIC kept tearing connections down every few minutes, and a
+      // friend's game socket on one of them went dead without either end
+      // closing it: the client showed "disconnected" while the host still
+      // held the session.
+      const transport = ['--protocol', 'http2'];
+      const args = saved ? ['tunnel', '--config', configPath, '--no-autoupdate', '--loglevel', 'error', ...transport, 'run', saved.tunnelId]
+        : ['tunnel', '--config', configPath, '--no-autoupdate', ...transport, '--url', 'http://127.0.0.1:' + port, '--metrics', '127.0.0.1:0'];
       this.child = this.launch(executable, args, { env, stdio: ['ignore', 'ignore', 'pipe'], windowsHide: true });
       const child = this.child;
       // Keep cloudflared's own diagnostics. A named tunnel discarded them

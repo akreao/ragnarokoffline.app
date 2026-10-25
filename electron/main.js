@@ -1104,6 +1104,11 @@ const SETTINGS_DEFAULTS = {
 	// Companions window, instead of following. Off: every companion follows, and
 	// the window offers no Roam control.
 	population_companion_roam: false,
+	// Whether a drafted companion starts with nothing on, and is given no gear by
+	// the engine afterwards: it wears what its owner gives it. Off keeps the
+	// engine dressing it from its job's gear set. Kept per companion from its
+	// draft on, so this changes none that already exists.
+	population_companion_start_unequipped: false,
 	// Whether ambient shells pick up the drops of their own kills, the way a
 	// player would, and how (see population-conf.js shellLoot). Off keeps the
 	// historic behaviour: every drop stays on the ground until it expires.
@@ -2732,8 +2737,13 @@ const handlers = {
 		// partition that could not be created, a hypervisor that is not
 		// available) sits in that file. A report arrived with an empty console
 		// log, a generic timeout, and this never collected.
+		// The .prev pair is the run before this one (nebula 0.2.7 and later):
+		// when the VM died on its own, the player has usually started it again
+		// before reporting, and that start replaced the logs that say why.
 		for (const [file, want] of [['nebulad.log', 200], ['vessel-console.log', 100],
 		                            ['vessel-console.worker-stderr.log', 100],
+		                            ['vessel-console.prev.log', 100],
+		                            ['vessel-console.worker-stderr.prev.log', 100],
 		                            ['launchd.err.log', 60]]) {
 			const p2 = path.join(nebulaLogs, file);
 			if (fs.existsSync(p2)) {
@@ -3350,6 +3360,8 @@ function clientLogStart() {
 		fs.mkdirSync(dir, { recursive: true });
 		fs.writeFileSync(path.join(dir, 'client.log'),
 			`${new Date().toISOString()} client log started\n`);
+		// The overflow of an earlier run (clientLog) is not this run's.
+		fs.rmSync(path.join(dir, 'client.log.1'), { force: true });
 	} catch {
 		/* logging must never be the thing that breaks the app */
 	}
@@ -3363,8 +3375,21 @@ function clientLog(level, text, line, src) {
 	// roBrowser logs a line per file it loads, and the DB alone is hundreds.
 	// That volume is worth keeping -- comparing the loads that started against
 	// the ones that finished is exactly how a stalled database is spotted --
-	// but not without a ceiling.
-	if (clientLogBytes > 4 * 1024 * 1024) return;
+	// but not without a ceiling. It also logs every packet, so a long session
+	// reaches the ceiling within the hour. Stopping there lost the part a
+	// player complains about, the latest; the full file moves to client.log.1
+	// instead, and client.log starts again.
+	if (clientLogBytes > 4 * 1024 * 1024) {
+		clientLogBytes = 0;
+		try {
+			const file = path.join(stateDir(), 'client.log');
+			fs.renameSync(file, `${file}.1`);
+			fs.writeFileSync(file,
+				`${new Date().toISOString()} client log continued; the lines before are in client.log.1\n`);
+		} catch {
+			/* as below */
+		}
+	}
 	try {
 		const name = typeof level === 'number'
 			? (CLIENT_LOG_LEVELS[level] || String(level))

@@ -1,0 +1,35 @@
+From 0000000000000000000000000000000000000036
+Subject: [PATCH] Settings: companions can start unequipped
+
+The engine dresses a drafted companion from its job's gear set, and again at a job change and
+wherever it finds a slot empty. Settings -> Population -> Companions start unequipped turns on
+population_engine_companion_start_unequipped: a companion drafted with it on starts with
+nothing on, and the engine gives it no gear afterwards (population_shell_gear). What it wears is
+what its owner gave it. Off by default, and kept per companion from its draft on, so the
+setting changes no companion that already exists.
+
+diff --git a/src/custom/battle_config_init.inc b/src/custom/battle_config_init.inc
+--- a/src/custom/battle_config_init.inc
++++ b/src/custom/battle_config_init.inc
+@@ -68,6 +68,7 @@
+ { "population_engine_skill_weapon_check",&battle_config.population_engine_skill_weapon_check,0,0,1,},
+ { "population_engine_companion_inventory",&battle_config.population_engine_companion_inventory,0,0,1,},
+ { "population_engine_companion_roam",&battle_config.population_engine_companion_roam,0,0,1,},
++{ "population_engine_companion_start_unequipped",&battle_config.population_engine_companion_start_unequipped,0,0,1,},
+ { "population_engine_loot_enable",&battle_config.population_engine_loot_enable,0,0,1,},
+ { "population_engine_loot_rare_rate",&battle_config.population_engine_loot_rare_rate,100,0,10000,},
+ { "population_engine_loot_rare_pickup_pct",&battle_config.population_engine_loot_rare_pickup_pct,95,0,100,},
+diff --git a/src/custom/battle_config_struct.inc b/src/custom/battle_config_struct.inc
+--- a/src/custom/battle_config_struct.inc
++++ b/src/custom/battle_config_struct.inc
+@@ -139,6 +139,10 @@
+ /// Roaming: 1 = a player may set a companion to roam the map on its own instead of following
+ /// (Companions window, @companion roam); 0 = every companion follows (as before).
+ int32 population_engine_companion_roam;
++/// Gear: 1 = a drafted companion starts with nothing on, and the engine gives it no gear at a
++/// job change or a recall either: it wears what its owner gives it; 0 = the engine dresses it
++/// from its job's gear set (as before). Kept per companion from its draft on.
++int32 population_engine_companion_start_unequipped;
+ /// Looting: 1 = ambient shells pick up the drops of their own kills; 0 = they
+ /// leave them on the ground (as before). Recruited companions are unaffected.
+ int32 population_engine_loot_enable;

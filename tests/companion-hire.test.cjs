@@ -34,6 +34,13 @@ test('a hired companion is the owner\'s tier and level, and is paid for only onc
 	assert.match(engine, /if \(g_pop_draft_level > 0\)\n\t\t\trolled = /, 'spawn_shell takes the owner\'s level, within the profile band');
 });
 
+test('a free draft comes at the owner\'s level too, past the profile band up to the class cap', () => {
+	const hire = engine.slice(engine.indexOf('uint32_t population_engine_companion_hire('), engine.indexOf('void population_engine_companion_terms('));
+	assert.match(hire, /if \(mode == 0\) \{\n(?:\t\t\/\/.*\n)*\t\tg_pop_draft_level = static_cast<int16_t>\(owner->status\.base_level\);\n\t\tconst uint32_t made = population_engine_companion_draft\(owner, job_id, 1, name_hint, sex\);\n\t\tg_pop_draft_level = 0;/);
+	// The band is where the crowd rolls: its floor holds, its top gives way to the class's cap.
+	assert.match(engine, /cap_value\(static_cast<int>\(g_pop_draft_level\),\n\t\t\t\tstatic_cast<int>\(pop_cfg->base_level_min\),\n\t\t\t\tstd::max\(static_cast<int>\(hi\), static_cast<int>\(pc_maxbaselv\(sd\)\)\)\)\);/);
+});
+
 test('the recruiter is registered, hides unless recruiter mode is on, and hires through the engine', () => {
 	assert.match(patch, /\+npc: npc\/custom\/population\/recruiter\.txt/);
 	assert.match(npc, /OnInit:\n\tif \(getbattleflag\("population_engine_companion_hire"\) != 2\)\n\t\tdisablenpc strnpcinfo\(0\);/);

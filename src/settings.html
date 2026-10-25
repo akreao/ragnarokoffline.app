@@ -975,6 +975,12 @@
     </label>
     <p class="note" id="companion-roam-note"></p>
     <label style="margin-top:6px">
+      <span>Companions start unequipped</span>
+      <input type="checkbox" id="population_companion_start_unequipped" style="accent-color: var(--accent); flex: none" />
+      <span class="val" style="width:auto; color: var(--dim)">a new companion wears only what you give it</span>
+    </label>
+    <p class="note" id="companion-start-unequipped-note"></p>
+    <label style="margin-top:6px">
       <span>Server memory</span>
       <input type="range" id="vm_ram_mib" min="2048" max="16384" step="1024">
       <span class="val" id="v-vm_ram_mib"></span>
@@ -1869,6 +1875,14 @@ function refreshPopulation() {
       + 'them on the Battle tab. A roaming companion walks the map and fights by its stance, '
       + 'comes along when you change maps, and comes back to you with Recall.'
     : '';
+  $('population_companion_start_unequipped').disabled = !on;
+  $('companion-start-unequipped-note').textContent = $('population_companion_start_unequipped').checked
+    ? 'On: a companion you draft or hire from now on starts with no weapon, armour or headgear, '
+      + 'and is never given any: trade it what it should wear and it puts it on. Until then it '
+      + 'fights bare-handed, and skills that need a weapon wait for one. Companions you already '
+      + 'have keep the gear they started with, and one drafted while this is on stays this way '
+      + 'when you turn it off again.'
+    : 'Off: a new companion comes dressed for its class, and gets new gear when it changes class.';
   $('companion-inventory-note').textContent = $('population_companion_inventory').checked
     ? 'On: nothing refills a companion. Trade it potions, arrows or bullets, and the '
       + 'gemstones and other items its skills cost; an archer or gunslinger with no '
@@ -1961,6 +1975,7 @@ $('population_companion_hire').addEventListener('change', refreshPopulation);
 $('population_skill_weapon_check').addEventListener('change', refreshPopulation);
 $('population_companion_inventory').addEventListener('change', refreshPopulation);
 $('population_companion_roam').addEventListener('change', refreshPopulation);
+$('population_companion_start_unequipped').addEventListener('change', refreshPopulation);
 // Every loot slider, besides the on/off box: disabled together, saved together.
 const LOOT_FIELDS = ['population_loot_common_pickup_pct', 'population_loot_rare_pct',
   'population_loot_rare_pickup_pct', 'population_loot_forget_pct', 'population_loot_hp_abort_pct',
@@ -1984,6 +1999,7 @@ $('save-population').onclick = async () => {
   settings.population_skill_weapon_check = $('population_skill_weapon_check').checked;
   settings.population_companion_inventory = $('population_companion_inventory').checked;
   settings.population_companion_roam = $('population_companion_roam').checked;
+  settings.population_companion_start_unequipped = $('population_companion_start_unequipped').checked;
   settings.population_loot_enable = $('population_loot_enable').checked;
   for (const id of LOOT_FIELDS) settings[id] = Number($(id).value);
   // Machine-level, so it lives in client.json beside the client paths and the
@@ -3689,6 +3705,7 @@ invoke('get_settings').then(s => {
   $('population_skill_weapon_check').checked = s.population_skill_weapon_check === true;
   $('population_companion_inventory').checked = s.population_companion_inventory === true;
   $('population_companion_roam').checked = s.population_companion_roam === true;
+  $('population_companion_start_unequipped').checked = s.population_companion_start_unequipped === true;
   $('population_loot_enable').checked = s.population_loot_enable === true;
   // A save from before the loot settings has no keys: the defaults.
   $('population_loot_common_pickup_pct').value = s.population_loot_common_pickup_pct ?? 70;

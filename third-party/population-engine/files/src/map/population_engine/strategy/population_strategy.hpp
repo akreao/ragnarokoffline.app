@@ -50,6 +50,10 @@ bool population_strategy_holds_position(const map_session_data *sd, t_tick tick)
 /// rest: the tick a lone boss dies is the tick nothing needs the companion any more, so one below
 /// its rest mark sat down at once and its rules never saw encounter_ended.
 bool population_strategy_wants_turn(const map_session_data *sd, t_tick tick);
+/// Where the item at inventory `index` is worn in the companion's normal set: its `equip` as it
+/// is, except that a piece an Equip rule has on answers 0 (carried) and a piece such a rule took
+/// off answers the position it came from. The save asks, so it never records a fight's gear.
+uint32 population_strategy_normal_equip(const map_session_data *sd, int16 index);
 
 /// Whether the skill rotation may use `skill_id` against `target`: false when a rule
 /// set bans it for that monster, or turns the rotation off there.

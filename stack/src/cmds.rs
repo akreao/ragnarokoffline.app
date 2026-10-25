@@ -1319,6 +1319,9 @@ const COMPANION_COLUMNS: &[(&str, &str)] = &[
     // v14: the companion roams its owner's map instead of following, chosen in the Companions
     // window. 0 on an existing row: every companion follows, as before.
     ("roam", "TINYINT NOT NULL DEFAULT 0"),
+    // v15: drafted with nothing on (Settings -> Population -> Companions start unequipped).
+    // 0 on an existing row: the engine dressed it, and goes on doing so.
+    ("start_unequipped", "TINYINT NOT NULL DEFAULT 0"),
 ];
 
 /// Indexes added after the table first shipped, as (name, columns).
@@ -1509,11 +1512,16 @@ fn run_server(cfg: &Config, dk: &Docker, name: &str, port: u16, binary: &str, la
         .map_err(|e| format!("starting {name}: {e}"))
 }
 
+/// Stop the game servers the way rAthena expects to be stopped: SIGTERM, with
+/// time to finish. The map server goes first, while the char server it saves
+/// through is still up -- its shutdown quits every player, which writes them
+/// to the char server, and flushes that before exiting. Stopped in any other
+/// way (`rm -f` is SIGKILL) everything since the last autosave is lost.
 fn stop_game_services(cfg: &Config, dk: &Docker) -> Result<(), String> {
     crate::crashes::capture_all(cfg, dk);
     for service in [WEB_SERVER, "ragnarok-map", "ragnarok-char", "ragnarok-login"] {
         if dk.is_running(service) && (dk.output(["stop", "-t", "30", service]).is_err() || dk.is_running(service)) {
-            return Err(format!("Could not stop {service} cleanly; database credentials were not changed."));
+            return Err(format!("Could not stop {service} cleanly"));
         }
     }
     Ok(())
@@ -1735,7 +1743,7 @@ pub fn secure_services(cfg: &Config, dk: &Docker, lan: bool, ram_mib: Option<u32
         // includes all player data; secure its host directory before writing.
         crate::private_fs::directory(&cfg.state)?;
         let backups = cfg.state.join("backups"); crate::private_fs::directory(&backups)?;
-        stop_game_services(cfg, dk)?;
+        stop_game_services(cfg, dk).map_err(|e| format!("{e}; database credentials were not changed."))?;
         let destination = backups.join(format!("before-service-credentials-{}-{}.sql", crate::service_credentials::era(cfg), crate::private_fs::random_hex(8)?));
         if let Err(error) = backup_snapshot(cfg, dk, &destination.to_string_lossy(), true) {
             return Err(format!("Service credentials were not changed: {error}. Start the server to reconnect."));
@@ -1777,12 +1785,21 @@ pub fn up(cfg: &Config, dk: &Docker, lan: bool, ram_mib: Option<u32>) -> Result<
     let _lock = Lock::acquire(cfg)?;
     phase(cfg, "Starting the virtual machine…");
     ensure_engine(cfg, dk, lan, ram_mib)?;
+    // A start with the game already running -- Apply in Settings, a mod
+    // switched on, a restore -- replaces every server below, and replacing
+    // one removes it with `rm -f`. Stop them properly first, so the players
+    // in the world are saved instead of rolled back to the last autosave.
+    if SERVERS.iter().chain([&WEB_SERVER]).any(|s| dk.is_running(s)) {
+        phase(cfg, "Saving and stopping the game servers…");
+        stop_game_services(cfg, dk)
+            .map_err(|e| format!("{e}; nothing was changed. Try again."))?;
+    }
     if let Some(credentials) = &credentials {
         credentials.write_files()?;
         protect_game_config(cfg)?;
         // Recreate the database with the private bind/copy, including after a
-        // failed migration or a runtime update. Flush players first.
-        stop_game_services(cfg, dk)?;
+        // failed migration or a runtime update. The game servers were stopped
+        // above.
         if dk.is_running(DB_CONTAINER) && (dk.output(["stop", "-t", "30", DB_CONTAINER]).is_err() || dk.is_running(DB_CONTAINER)) {
             return Err("Could not stop the database cleanly; credentials were not changed".into());
         }
@@ -2121,7 +2138,7 @@ fn endpoint_json(advertise: &str, ports: &crate::ports::Ports) -> String {
 
 pub fn down(cfg: &Config, dk: &Docker) -> Result<(), String> {
     let _lock = Lock::acquire(cfg)?;
-    stop_game_services(cfg, dk)?;
+    stop_game_services(cfg, dk).map_err(|e| format!("{e}; it was left running to protect the save."))?;
     for c in SERVERS {
         dk.remove_container(c);
     }
