@@ -142,12 +142,13 @@ class FriendGateway {
   // `modHost(name, request, { client, from })` answers a mod's host route
   // (../mod-host/manager.js) with { status, type, body: Buffer }, or null for
   // a mod that has none; without it every /_friend/mod/ path is a 404.
-  constructor({ origin, ports = DEFAULT_PORTS, upstreamPort = ports.asset, register, now = Date.now, lifetime = 8 * 60 * 60 * 1000, maxSessions = 32, invite = null, signIn = null, remember = null, modHost = null, log = () => {} }) {
+  constructor({ origin, ports = DEFAULT_PORTS, upstreamPort = ports.asset, register, now = Date.now, lifetime = 8 * 60 * 60 * 1000, maxSessions = 32, invite = null, signIn = null, remember = null, modHost = null, log = () => {}, friendSilenceLimit = 45000 }) {
     const url = new URL(origin);
     if (url.protocol !== 'https:' || url.origin !== origin || url.username || url.password) throw Error('An HTTPS game hostname is required');
-    Object.assign(this, { origin, upstreamPort, register, now, lifetime, maxSessions, signIn, remember, modHost, log });
+    Object.assign(this, { origin, upstreamPort, register, now, lifetime, maxSessions, signIn, remember, modHost, log, friendSilenceLimit });
     this.socketPaths = new Set(gameTargets(ports).map(target => '/ws/' + target));
     this.loginPath = '/ws/127.0.0.1:' + ports.login;
+    this.mapPath = '/ws/127.0.0.1:' + ports.map;
     this.host = url.host; this.sessions = new Map(); this.sockets = new Set(); this.requests = new Set();
     // Reused connections to the asset server: a map load is hundreds of small
     // files. Idle ones close after 4 s, well inside the asset server's own
@@ -481,6 +482,7 @@ class FriendGateway {
         this.log(`friend link ${req.url} ended after ${Math.round((now - link.opened) / 1000)} s: ${why}; ` +
           `last from friend ${ago(link.fromFriend)}, last to friend ${ago(link.toFriend)}; ${link.in} bytes in, ${link.out} bytes out`);
       }
+      if (link) clearInterval(link.watch);
       proxy.destroy(); socket.destroy(); entry.sockets.delete(socket); this.requests.delete(proxy);
     };
     socket.on('error', error => close(`the friend's connection failed (${error.code || error.message})`));
@@ -495,6 +497,18 @@ class FriendGateway {
       link = { opened: Date.now(), fromFriend: Date.now(), toFriend: Date.now(), in: 0, out: 0, incoming, done: false };
       socket.on('data', chunk => { link.fromFriend = Date.now(); link.in += chunk.length; });
       upstream.on('data', chunk => { link.toFriend = Date.now(); link.out += chunk.length; });
+      // The game client pings the map server every 10 s, so a map link the
+      // friend has sent nothing on for this long is dead: their network or
+      // Cloudflare dropped it without a close. Cloudflare can take two
+      // minutes to say so, and until then rAthena refuses the friend's
+      // re-login as "already online". Ending it here frees the character.
+      if (req.url === this.mapPath && this.friendSilenceLimit > 0) {
+        const limit = this.friendSilenceLimit;
+        link.watch = setInterval(() => {
+          if (Date.now() - link.fromFriend >= limit) end(socket, `nothing from the friend for ${Math.round(limit / 1000)} s (their connection dropped without a goodbye)`);
+        }, Math.min(5000, limit));
+        link.watch.unref();
+      }
       incoming.on('error', error => close(`the friend sent ${error.message.toLowerCase()}`));
       outgoing.on('error', error => close(`the game server sent ${error.message.toLowerCase()}`));
       upstream.on('error', error => close(`the game server's connection failed (${error.code || error.message})`));
