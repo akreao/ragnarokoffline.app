@@ -260,6 +260,11 @@ class FriendGateway {
     if (!bytes) {
       const tags = ifNoneMatch(req.headers['if-none-match']);
       if (tags) headers['if-none-match'] = tags;
+      // A friend is on the far side of an internet link, where map textures
+      // are most of the wait: the asset server sends them its BMPs and JPEGs
+      // as lossy WebP, about half the bytes. The host's own client keeps the
+      // exact files (RemoteClient src/compact.rs, COMPACT_IMAGE_QUALITY).
+      headers['x-compact-images'] = '1';
     }
     if (bytes) headers['content-length'] = bytes.length;
     const search = req.method === 'POST' && ['/', '/search'].includes(req.url);

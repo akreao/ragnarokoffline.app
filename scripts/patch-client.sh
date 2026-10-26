@@ -275,9 +275,10 @@ else:
         "import EnchantUI from 'UI/Components/Enchant/Enchant.js';\nimport Stylist from 'UI/Components/Stylist/Stylist.js';",
         1,
     )
-    old = "\tswitch (pkt.ui_type) {\n\t\tcase 7:"
+    # Case 1 goes before the first case above it. Our fork adds others to this
+    # switch (0 bank, 6 quest...), so the case that follows `switch` varies.
+    m = re.search(r"\tswitch \(pkt\.ui_type\) \{\n(?:.*\n)*?(\t\tcase ([2-9]|\d\d+):)", s)
     new = (
-        "\tswitch (pkt.ui_type) {\n"
         "\t\tcase 1:\n"
         "\t\t\t// The stylist. rAthena sets sd->state.stylist_open when it sends\n"
         "\t\t\t// this, and only clears it on a successful buy or on our close\n"
@@ -294,11 +295,10 @@ else:
         "\t\t\t\t}\n"
         "\t\t\t}\n"
         "\t\t\tbreak;\n"
-        "\t\tcase 7:"
     )
-    if old not in s:
+    if not m:
         sys.exit("UIOpen.js: the ui_type switch no longer matches; re-check the patch")
-    p.write_text(s.replace(old, new, 1))
+    p.write_text(s[: m.start(1)] + new + s[m.start(1) :])
     print("patched UIOpen.js (ui_type 1 opens the stylist)")
 
 # 0011 - The window layout is never written unless something removes the
