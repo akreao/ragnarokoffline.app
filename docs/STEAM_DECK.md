@@ -67,7 +67,9 @@ backend:
 
 | Launched as | Ozone platform | Layout |
 |---|---|---|
-| plain double-click | X11, through Xwayland | desktop |
+| plain double-click in an X11 session | X11 | desktop |
+| plain double-click in a Wayland session | Wayland | phone |
+| `--ozone-platform=x11` | X11, through Xwayland | desktop |
 | `--ozone-platform=wayland` | Wayland | phone |
 
 Both are playable. Neither is forced, deliberately: the default is whatever the
@@ -174,8 +176,9 @@ systemd-run --user --unit=ragnarok --collect \
 
 `systemctl --user stop ragnarok` stops it, and `journalctl --user -u ragnarok`
 has its output. Add `--ozone-platform=wayland` to get the native Wayland path
-and the phone layout. (Electron 38 and later dropped `--ozone-platform-hint`;
-the app picks X11 itself whenever `DISPLAY` is set, see `electron/main.js`.)
+and the phone layout. (Electron 38 and later dropped `--ozone-platform-hint`
+and pick Wayland by themselves in a Wayland session; these tables were made
+on Electron 33, which always used X11 unless told otherwise.)
 
 One more SSH-specific thing, in the other direction: `/proc/<pid>/environ` and
 `/proc/<pid>/fd` are unreadable for a process you did not start, because

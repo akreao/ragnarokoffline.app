@@ -21,14 +21,13 @@ const HEADLESS = process.argv.includes('--headless') || process.env.RAGNAROK_OFF
 // fallback if this build of Electron lacks it.
 if (HEADLESS && process.platform === 'linux' && !process.env.DISPLAY && !process.env.WAYLAND_DISPLAY) {
 	app.commandLine.appendSwitch('ozone-platform', 'headless');
-} else if (process.platform === 'linux' && process.env.DISPLAY
-	&& !process.argv.some(a => a.startsWith('--ozone-platform'))) {
-	// Electron 38 and later start as a native Wayland app in a Wayland
-	// session. Electron 33 ran through Xwayland there, and that is what the
-	// game was tested on (docs/STEAM_DECK.md), so keep it while an X server is
-	// available. `--ozone-platform=wayland` on the command line opts in.
-	app.commandLine.appendSwitch('ozone-platform', 'x11');
 }
+// Electron 38 and later run as a native Wayland app in a Wayland session and
+// through X11 otherwise; Electron 33 always used X11 (Xwayland). Left at that
+// default on purpose: on Electron 44 with an NVIDIA card under KDE Wayland,
+// forcing X11 crashed the GPU process three times at start and left the game
+// on software rendering, while native Wayland ran it on the GPU.
+// `--ozone-platform=x11` on the command line still picks X11.
 // Mods' own settings pages are served from a private scheme, which Chromium
 // only accepts if it is declared before the app is ready.
 // Every privileged scheme in one call (Electron keeps only the last): the mod
