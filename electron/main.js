@@ -22,6 +22,12 @@ const HEADLESS = process.argv.includes('--headless') || process.env.RAGNAROK_OFF
 if (HEADLESS && process.platform === 'linux' && !process.env.DISPLAY && !process.env.WAYLAND_DISPLAY) {
 	app.commandLine.appendSwitch('ozone-platform', 'headless');
 }
+// Electron 38 and later run as a native Wayland app in a Wayland session and
+// through X11 otherwise; Electron 33 always used X11 (Xwayland). Left at that
+// default on purpose: on Electron 44 with an NVIDIA card under KDE Wayland,
+// forcing X11 crashed the GPU process three times at start and left the game
+// on software rendering, while native Wayland ran it on the GPU.
+// `--ozone-platform=x11` on the command line still picks X11.
 // Mods' own settings pages are served from a private scheme, which Chromium
 // only accepts if it is declared before the app is ready.
 // Every privileged scheme in one call (Electron keeps only the last): the mod
@@ -1038,6 +1044,10 @@ const SETTINGS_DEFAULTS = {
 	item_rate_common: 100,
 	item_rate_equip: 100,
 	item_rate_card: 100,
+	// MVP card drops, apart from ordinary ones. null follows item_rate_card,
+	// which is what drove item_rate_card_mvp before this existed -- see
+	// cardMvpRate in electron/battle-rates.js for why the default is not 100.
+	item_rate_card_mvp: null,
 	// How many monsters spawn per map, as a percentage of rAthena's spawn
 	// tables (stock is 100 = 1x). Read once at boot when the maps parse;
 	// 200 is twice as many as normal. There is no in-game reload that
@@ -1067,6 +1077,14 @@ const SETTINGS_DEFAULTS = {
 	// Random / Cancel; on, it warps at once, as a Fly Wing does. Maps to
 	// rAthena's skip_teleport_lv1_menu (conf/battle/skill.conf), stock `no`.
 	skip_teleport_lv1_menu: false,
+	// Settings -> Rates -> Advanced: `key: value` lines appended to the
+	// generated battle configuration, for the rAthena settings this window has
+	// no control for. Parsed and reported by electron/custom-conf.js.
+	custom_battle_conf: '',
+	// Which character a command starts with: '@storage' or '!storage'. Maps to
+	// rAthena's atcommand_symbol; '@' is stock. See
+	// electron/command-symbol.js for why the choice is a fixed list.
+	command_symbol: '@',
 	population_enable: false,
 	// A ceiling, not a target. Demand-driven spawning builds only the maps
 	// somebody is on, and a map holds 20-40 by the spawn tables, so this binds
@@ -1136,6 +1154,12 @@ const SETTINGS_DEFAULTS = {
 	// window already reads it, and it is deliberately ignored by
 	// writeSettingsFiles: the server knows nothing about it.
 	open_settings_first: false,
+	// Settings -> General -> Updates (app-update.js), also app preferences.
+	// auto_update: look for a new release every few hours and download it.
+	// install_update_on_quit: install a downloaded one on an ordinary quit;
+	// off, only "Restart to install" does.
+	auto_update: true,
+	install_update_on_quit: false,
 	// Pre-renewal is a different rAthena build, not a runtime option, so this
 	// selects which of the two the supervisor starts. Each mode keeps its own
 	// characters -- see db_volume() in stack/src/cmds.rs for why sharing them
@@ -1148,6 +1172,16 @@ const SETTINGS_DEFAULTS = {
 	// better served reading that. See GameText in stack/src/assets.rs for why
 	// the text and the codepage are one setting rather than two.
 	game_text: 'english',
+	// The client starts walking on a click instead of waiting for the server's
+	// answer, and blends the server's moves in rather than snapping to them
+	// (roBrowserLegacy#163). Off by default: with it off the client walks
+	// exactly as it always has. write_client_config in stack/src/assets.rs
+	// hands it to the client as `movePrediction`.
+	move_prediction: false,
+	// Map changes without the fade to and from the loading image: the client's
+	// `transitionDuration` at 1 ms instead of its 500 (write_client_config).
+	// Off by default, as official clients fade.
+	instant_map_changes: false,
 	// Which client version the server is built for and the client speaks --
 	// see electron/packetvers.js. null follows the app's default rather than
 	// pinning today's, so a later app that moves the default moves this too.
@@ -1165,7 +1199,7 @@ function getSettings() {
 // Keys in settings.json that the app acts on rather than the server, and the
 // only names set_app_preference will write. Everything else in that file
 // changes how the server runs and has to go through Apply.
-const APP_PREFERENCES = new Set(['open_settings_first']);
+const APP_PREFERENCES = new Set(['open_settings_first', 'auto_update', 'install_update_on_quit']);
 // Settings -> Mods -> Favorites: how many mods can be starred (settings-store checks the same).
 const MOD_FAVORITES_MAX = 500;
 
@@ -1241,7 +1275,11 @@ function toolsInstance() {
 				}
 				handlers.open_game();
 				if (moved && moved.error) return { message: `The map is on, but the character was not moved: ${moved.error}`, moved };
-				return { message: char ? `The map is on. Log in with that character and you arrive on ${map} at ${x}, ${y}.` : `The map is on. As a GM: @warp ${map} ${x} ${y}.`, moved };
+				// The prefix is a setting, so the command to type has to be
+				// read rather than spelled: telling a player to type @warp on
+				// a server running on ! sends them somewhere nothing happens.
+				const prefix = require('./command-symbol').symbol(getSettings().command_symbol);
+				return { message: char ? `The map is on. Log in with that character and you arrive on ${map} at ${x}, ${y}.` : `The map is on. As a GM: ${prefix}warp ${map} ${x} ${y}.`, moved };
 			},
 		});
 	}
@@ -1271,6 +1309,10 @@ function agentPlay() {
 			gamePath: GAME_PATH,
 			runAccount: request => require('./accounts').runAccounts(stackBin(), stackEnv(), request),
 			era: () => (getSettings().prerenewal ? 'prerenewal' : 'renewal'),
+			// Read per call, not once: the player can change the prefix while
+			// an agent is playing, and a stale one leaves it saying "@warp
+			// prontera" in local chat instead of travelling.
+			commandPrefix: () => require('./command-symbol').symbol(getSettings().command_symbol),
 			hosting: () => getClientPaths().mode !== 'join',
 			log: appLog,
 		});
@@ -1341,7 +1383,10 @@ function expRatesRaised(s) {
 		|| Number(s.quest_exp_rate) > 100;
 }
 
-function toBattleConf(s) {
+// What settings.json implies, before the player's own Advanced lines. Split
+// out so custom-conf can be told which settings it is overriding, and so the
+// two halves of the file cannot be confused for each other.
+function generatedBattleConf(s) {
 	return (
 		'// Generated by Ragnarok Offline. Edits here are overwritten.\n' +
 		`base_exp_rate: ${s.base_exp_rate}\n` +
@@ -1370,6 +1415,10 @@ function toBattleConf(s) {
 		// battle.conf, so an untouched install writes nothing surprising.
 		`arrow_decrement: ${s.unlimited_arrows ? 'no' : 'yes'}\n` +
 		`skip_teleport_lv1_menu: ${s.skip_teleport_lv1_menu ? 'yes' : 'no'}\n` +
+		// Which character starts a command. One line, but the choice of what
+		// may go in it is rAthena's and not obvious -- see
+		// electron/command-symbol.js.
+		require('./command-symbol').commandSymbolConf(s) +
 		// One cap in the UI, several keys here, because rAthena caps third,
 		// baby, extended and summoner classes separately and a player who
 		// raises "the" limit means all of them -- setting only max_parameter
@@ -1387,6 +1436,14 @@ function toBattleConf(s) {
 		// share their bounds -- see electron/population-conf.js.
 		require('./population-conf').lines(s)
 	);
+}
+
+// The generated settings, then the player's own. Advanced lines come last
+// because rAthena applies what it reads in order, so a key repeated there
+// beats the slider that wrote it -- which is the point of the box, and what
+// saveSettings reports when it happens.
+function toBattleConf(s) {
+	return generatedBattleConf(s) + require('./custom-conf').customConf(s);
 }
 
 // Everything settings.json implies, written out.
@@ -1412,6 +1469,14 @@ async function saveSettings(settings) {
 	settings = require('./settings-store').write(path.join(state, 'settings.json'), settings, SETTINGS_DEFAULTS);
 	writeSettingsFiles(settings);
 
+	// A line the player typed under Advanced that the server could not have
+	// read, or one that overrides a slider, is said out loud here. Dropping it
+	// in silence is the failure this feature invites: the box looks like it
+	// worked, the server never saw the setting, and the only other evidence is
+	// a line in the map server log.
+	const advanced = require('./custom-conf').report(generatedBattleConf(settings), settings.custom_battle_conf);
+	const withAdvanced = message => (advanced ? `${message} ${advanced}` : message);
+
 	// A marker rather than a value: stack.sh regenerates the Kafra scripts from
 	// a pristine copy on every start and only needs to know which way.
 	const marker = path.join(state, 'free_kafra_warp');
@@ -1427,7 +1492,7 @@ async function saveSettings(settings) {
 	// Restarting RemoteClient alone does not change either. Rebuild on Apply,
 	// including retries after a partially completed era switch or mod change.
 	const client = getClientPaths();
-	if (client.mode === 'join') return 'Settings saved for your own server. Joining starts no local server.';
+	if (client.mode === 'join') return withAdvanced('Settings saved for your own server. Joining starts no local server.');
 	const cycleAssets = assetServer.running;
 	if (cycleAssets) {
 		appLog('applying settings: stopping the asset server before rebuilding');
@@ -1448,7 +1513,7 @@ async function saveSettings(settings) {
 	// still differs, so reopening the game clears it.
 	if (!(windows.game && !windows.game.isDestroyed())) await dropStaleClientCache();
 
-	return out;
+	return withAdvanced(out);
 }
 
 // Fill in a whole client from one folder. A full-client archive unzips to
@@ -1652,11 +1717,13 @@ function makeWindow(id, file, opts) {
 	// Levels are Electron's: 0 verbose, 1 info, 2 warning, 3 error.
 	clientLogStart();
 	win.webContents.on('console-message', (...a) => {
-		// Electron 36 replaced (event, level, message, line, sourceId) with a
-		// single details object. Accept both so this does not go quiet on an
+		// Electron 35 moved (event, level, message, line, sourceId) onto the
+		// event itself and deprecated the extra arguments. Read the event first
+		// and fall back to the old arguments, so this does not go quiet on an
 		// upgrade -- silently logging nothing is the failure it exists to fix.
-		const d = a.length === 1 && typeof a[0] === 'object' ? a[0] : null;
-		const level = d ? d.level : a[1];
+		const d = a[0] && typeof a[0].message === 'string' ? a[0] : null;
+		// The event names the lowest level 'debug'; the log has called it 'verbose'.
+		const level = d ? (d.level === 'debug' ? 'verbose' : d.level) : a[1];
 		const text = d ? d.message : a[2];
 		const line = d ? d.lineNumber : a[3];
 		const src = d ? d.sourceId : a[4];
@@ -2834,7 +2901,7 @@ const handlers = {
 	// GitHub or Reddit, not a folder.
 	copy_diagnostics: async () => {
 		const text = await handlers.collect_diagnostics();
-		clipboard.writeText(text);
+		await clipboard.writeText(text);
 		return `Copied ${Math.round(text.length / 1024)} KB — paste it into the issue.`;
 	},
 
@@ -2848,7 +2915,7 @@ const handlers = {
 	// through that, so the body is a placeholder telling them to paste.
 	report_issue: async () => {
 		const text = await handlers.collect_diagnostics();
-		clipboard.writeText(text);
+		await clipboard.writeText(text);
 		const body = [
 			'**What happened?**', '', '(describe it here)', '',
 			'**What did you expect?**', '', '', '---', '',
@@ -2906,8 +2973,9 @@ const handlers = {
     // Remembered, so that applying a setting a minute later does not undo it.
     // Cleared by the next start, by hand or at the next launch.
     sharing_stop: async () => { sharingStoppedByHand = true; ++sharingStartRequest; await getSharing().stop(); return getSharing().status(); },
-    sharing_copy: () => {
-        clipboard.writeText(getSharing().invitation());
+    sharing_copy: async () => {
+        // Electron 44's clipboard writes return a promise.
+        await clipboard.writeText(getSharing().invitation());
         // Say the figure actually in force rather than a number baked into the
         // sentence: this is configurable, and it was never Cloudflare's limit.
         const days = Number(getSettings().sharing_invite_days);
@@ -3228,10 +3296,25 @@ const handlers = {
 		const on = !!value;
 		require('./settings-store').write(path.join(stateDir(), 'settings.json'),
 			{ [key]: on }, SETTINGS_DEFAULTS);
+		if (key === 'install_update_on_quit') appUpdater().preferencesChanged();
+		// Turned back on: look now rather than in up to four hours.
+		if (key === 'auto_update' && on) appUpdater().check();
 		return on;
 	},
 
-	copy_text: ({ text }) => clipboard.writeText(String(text || '')),
+	// Settings -> General -> Updates.
+	app_update_status: () => appUpdater().status(),
+	app_update_check: () => appUpdater().check(),
+	// Quit the normal way -- before-quit stops the server first -- and let
+	// finishQuit hand over to the installer, which starts the new version.
+	app_update_install: () => {
+		if (!appUpdater().status().canInstall) throw new Error('No update is ready to install.');
+		updateRestartRequested = true;
+		app.quit();
+		return true;
+	},
+
+	copy_text: async ({ text }) => { await clipboard.writeText(String(text || '')); },
 
 	// Settings -> Tools (#195).
 	tools_list: () => toolsInstance().list(),
@@ -3679,6 +3762,52 @@ function buildMenu() {
 // ---------------------------------------------------------------------------
 
 let tearingDown = false;
+// Settings -> Updates -> Restart to install, pressed: see before-quit.
+let updateRestartRequested = false;
+
+let appUpdaterInstance = null;
+function appUpdater() {
+	if (appUpdaterInstance) return appUpdaterInstance;
+	const update = require('./app-update');
+	const prefs = () => {
+		try {
+			const s = getSettings();
+			return { auto: s.auto_update !== false, installOnQuit: s.install_update_on_quit === true };
+		} catch {
+			return { auto: true, installOnQuit: false };
+		}
+	};
+	appUpdaterInstance = update.createAppUpdater({
+		app,
+		log: appLog,
+		preferences: prefs,
+		availability: update.availability({
+			packaged: app.isPackaged,
+			headless: HEADLESS,
+			platform: process.platform,
+			appImage: !!process.env.APPIMAGE,
+			adHocSigned: process.platform === 'darwin' && app.isPackaged && macAdHocSigned(),
+			hasUpdateConfig: app.isPackaged && fs.existsSync(path.join(process.resourcesPath, 'app-update.yml')),
+		}),
+		load: () => require('electron-updater').autoUpdater,
+		nativeUpdater: () => require('electron').autoUpdater,
+	});
+	return appUpdaterInstance;
+}
+
+// A fork's build is sealed ad hoc (afterPack.js), and Squirrel.Mac refuses an
+// update whose signature does not match the running app's Developer ID -- so
+// such a copy would download every release and never install one.
+function macAdHocSigned() {
+	try {
+		const bundle = path.resolve(process.execPath, '..', '..', '..');
+		const out = require('child_process').spawnSync('codesign', ['-dv', bundle], { encoding: 'utf8', timeout: 10000 });
+		const text = `${out.stdout || ''}${out.stderr || ''}`;
+		return /Signature=adhoc/.test(text) || /TeamIdentifier=not set/.test(text) || !/TeamIdentifier=/.test(text);
+	} catch {
+		return true;
+	}
+}
 const crashMonitor = new (require('./crash-monitor').CrashMonitor)({
 	active: () => !tearingDown && assetServer.running && assetServer.current?.identity?.launchId,
 	collect: () => queueServerOperation(() => !tearingDown && assetServer.running
@@ -3801,11 +3930,13 @@ if (!app.requestSingleInstanceLock()) {
 		// So take the click as what it plainly means and come back on our own
 		// once the teardown is finished. app.relaunch only queues it; the
 		// exit already scheduled is what carries it out.
+		//
+		// Only noted here; the end of before-quit queues it, unless an update
+		// is being installed, in which case the installer starts the new
+		// version instead -- a relaunch of this one would race the files it is
+		// replacing.
 		if (tearingDown) {
-			if (!relaunchQueued) {
-				relaunchQueued = true;
-				app.relaunch();
-			}
+			relaunchQueued = true;
 			return;
 		}
 		// Headless has no window to bring forward; say where Settings is.
@@ -3831,6 +3962,9 @@ if (!app.requestSingleInstanceLock()) {
 // for an admin page, and anything that opens a window has nowhere to open.
 const HEADLESS_PAGE_HANDLERS = new Set([
 	'agent_replace_token', 'agent_set', 'agent_status', 'map_editor_agent_set', 'assets_ready', 'assets_stop', 'check_mod_updates',
+	// Settings -> Updates: headless reports itself off ("headless") and has
+	// nothing to install, so these only describe that.
+	'app_update_status', 'app_update_check', 'app_update_install',
 	'client_folders', 'copy_diagnostics', 'data_location', 'db_backup', 'db_backup_full', 'db_inspect',
 	'db_inspect_full', 'db_restore', 'db_restore_full', 'game_status', 'get_client_paths', 'client_detected', 'get_mode',
 	'get_settings', 'get_vm_ram_mib', 'host_facts', 'host_ram_mib', 'hosting_check', 'install_mod',
@@ -4061,6 +4195,10 @@ app.whenReady().then(() => {
 		openGame();
 	}
 
+	// The first look for a new release waits until the window is up; never a
+	// reason for a launch to fail.
+	try { appUpdater().start(); } catch (e) { appLog(`update: ${e.message}`); }
+
 	// Clicking the Dock icon with every window closed is the same question as
 	// launching the app, so it gets the same answer.
 	app.on('activate', () => {
@@ -4125,9 +4263,24 @@ app.on('before-quit', e => {
 	// the layout in it.
 	persistClientUi();
 	saveTrackedWindows();
-	teardownAsync().finally(() => {
+	teardownAsync().finally(async () => {
 		flushClientStorage();
-		app.exit(0);
+		// With the server stopped: install a downloaded update if the player
+		// asked for it (app-update.js decides), or exit as before.
+		const exitNow = () => {
+			if (relaunchQueued) app.relaunch();
+			app.exit(0);
+		};
+		const outcome = await appUpdater().finishQuit({
+			restartRequested: updateRestartRequested,
+			relaunch: relaunchQueued,
+			// The restart was asked for, so come back on this version rather
+			// than not at all.
+			stuck: () => { app.relaunch(); app.exit(0); },
+		}).catch(() => 'none');
+		if (outcome === 'handed-off') return;
+		if (outcome === 'installed') app.exit(0);
+		else exitNow();
 	});
 });
 

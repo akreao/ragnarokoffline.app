@@ -1384,75 +1384,6 @@ fn wait_for_db(dk: &Docker) -> Result<(), String> {
     Err("timed out waiting for the database schema".into())
 }
 
-/// The map-server listens on its port long before it is usable: it then reads its
-/// maps and the whole npc tree, and only afterwards registers those maps with
-/// the char-server. A character logging in during that window is told "Map is
-/// not available" and bounced. The container being Up is not readiness; the
-/// char-server saying it has the maps is.
-fn wait_for_maps(dk: &Docker) -> Result<(), String> {
-    for _ in 0..90 {
-        if dk.logs("ragnarok-char", "400").contains("loading complete") {
-            return Ok(());
-        }
-        // A server that has exited is not a slow server. Waiting three minutes
-        // for one and then reporting success is how a stack with no game
-        // servers at all still went on to start the asset server and present
-        // itself as ready -- the launch looked slow, then looked fine, and
-        // nothing worked.
-        // Only a container that has actually stopped, not one that is merely
-        // not running yet. `docker start` returns before the container reports
-        // "running", so a server still coming up reads as "created" -- and
-        // treating that as death aborted the launch of a perfectly healthy
-        // stack, leaving three running servers, no asset server, and a phase
-        // frozen mid-sentence.
-        let dead: Vec<&str> = SERVERS
-            .iter()
-            .copied()
-            .filter(|c| matches!(dk.state(c).as_deref(), Some("exited") | Some("dead")))
-            .collect();
-        if !dead.is_empty() {
-            // The server's own last words are worth more than anything this
-            // could say about them: rAthena reports what it could not reach.
-            let tail = dk.logs(dead[0], "8");
-            let reason = tail
-                .lines()
-                .filter(|l| l.contains("Error") || l.contains("error"))
-                .last()
-                .map(|l| strip_ansi(l))
-                .unwrap_or_else(|| "no error was logged".into());
-            return Err(format!(
-                "{} stopped during startup: {reason}",
-                dead.join(", ")
-            ));
-        }
-        sleep(Duration::from_secs(2));
-    }
-    // Still running, just slow. That is worth saying rather than failing --
-    // a first launch on a slow machine genuinely takes a while, and the maps
-    // finish loading shortly after.
-    eprintln!("map-server has not registered its maps yet; first login may need a retry");
-    Ok(())
-}
-
-/// rAthena colours its output, and an escape sequence in an error message
-/// makes it unreadable wherever it is shown.
-fn strip_ansi(s: &str) -> String {
-    let mut out = String::with_capacity(s.len());
-    let mut chars = s.chars();
-    while let Some(c) = chars.next() {
-        if c == '\u{1b}' {
-            for c in chars.by_ref() {
-                if c.is_ascii_alphabetic() {
-                    break;
-                }
-            }
-        } else {
-            out.push(c);
-        }
-    }
-    out.trim().to_string()
-}
-
 fn run_server(cfg: &Config, dk: &Docker, name: &str, port: u16, binary: &str, lan: bool) -> Result<(), String> {
     // Before the container goes, and with it its log.
     crate::crashes::capture_all(cfg, dk);
@@ -2110,7 +2041,15 @@ pub fn up(cfg: &Config, dk: &Docker, lan: bool, ram_mib: Option<u32>) -> Result<
         eprintln!("warning: guild emblems are unavailable: {e}");
     }
     phase(cfg, "Loading maps and NPCs…");
-    wait_for_maps(dk)?;
+    match crate::readiness::wait(dk, None, Duration::from_secs(180)) {
+        // Still running, just slow. That is worth saying rather than failing:
+        // a first launch on a slow machine genuinely takes a while, and the
+        // maps finish loading shortly after. A server that stopped is an error.
+        Err(e) if e == crate::readiness::TIMED_OUT => {
+            eprintln!("warning: {e}; first login may need a retry");
+        }
+        other => other?,
+    }
     // After the map server has read its tables and before anyone is told the
     // world is ready: this is the only moment rAthena's verdict on the mods'
     // own tables exists, and it exists in its log and nowhere else.

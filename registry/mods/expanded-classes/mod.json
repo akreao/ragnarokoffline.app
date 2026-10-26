@@ -1,0 +1,24 @@
+{
+  "name": "expanded-classes",
+  "author": "BlaXun",
+  "description": "Renewal's expanded advancements in pre-renewal, each the next step of its finished base class, which keeps every skill it has and levels to 175: a Ninja becomes a Kagerou or Oboro, a Gunslinger a Rebellion, a Star Gladiator a Star Emperor, a Soul Linker a Soul Reaper, a Super Novice an Expanded Super Novice. Each has its own gear, measured damage and skill descriptions. Needs level175-core; the third classes are the transcendent-third-classes mod.",
+  "tags": [
+    "jobs",
+    "expanded-class",
+    "pre-renewal",
+    "lua",
+    "level-175"
+  ],
+  "homepage": "https://github.com/BlaXun/ro-endgame-classes/tree/main/mods/expanded-classes",
+  "requires": {
+    "app": ">=1.6.7",
+    "era": "pre-renewal",
+    "mods": [
+      "level175-core"
+    ]
+  },
+  "source": {
+    "github": "BlaXun/ro-endgame-classes",
+    "asset": "expanded-classes-*.zip"
+  }
+}

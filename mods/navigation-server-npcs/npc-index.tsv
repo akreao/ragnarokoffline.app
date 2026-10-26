@@ -1745,14 +1745,18 @@ load	renewal	npc/re/guides/guides_umbala.txt
 load	renewal	npc/re/guides/guides_veins.txt
 load	renewal	npc/re/guides/guides_woe_te.txt
 load	renewal	npc/re/instances/AirshipAssault.txt
+load	renewal	npc/re/instances/AirshipDestruction.txt
+load	renewal	npc/re/instances/BaggotLaboratory.txt
 load	renewal	npc/re/instances/BakonawaLake.txt
 load	renewal	npc/re/instances/BangungotHospital.txt
 load	renewal	npc/re/instances/BuwayaCave.txt
 load	renewal	npc/re/instances/CentralLaboratory.txt
 load	renewal	npc/re/instances/CharlestonCrisis.txt
+load	renewal	npc/re/instances/ConfusedSnakesNest.txt
 load	renewal	npc/re/instances/CorOperation.txt
 load	renewal	npc/re/instances/DeepForest.txt
 load	renewal	npc/re/instances/DevilTower.txt
+load	renewal	npc/re/instances/DragonsTest.txt
 load	renewal	npc/re/instances/EclageInterior.txt
 load	renewal	npc/re/instances/EddaHalfMoonInTheDaylight.txt
 load	renewal	npc/re/instances/FacewormsNest.txt
@@ -1764,6 +1768,7 @@ load	renewal	npc/re/instances/HeartHunterWarBase.txt
 load	renewal	npc/re/instances/HiddenGarden.txt
 load	renewal	npc/re/instances/InfiniteSpace.txt
 load	renewal	npc/re/instances/IsleOfBios.txt
+load	renewal	npc/re/instances/IwinPatrol.txt
 load	renewal	npc/re/instances/LastRoom.txt
 load	renewal	npc/re/instances/LostFarm.txt
 load	renewal	npc/re/instances/MalangdoCulvert.txt
@@ -1783,6 +1788,7 @@ load	renewal	npc/re/instances/SealedOs.txt
 load	renewal	npc/re/instances/SkyFortress.txt
 load	renewal	npc/re/instances/TempleOfDemonGod.txt
 load	renewal	npc/re/instances/ThorGunsuBase.txt
+load	renewal	npc/re/instances/TourneyHallOfTrials.txt
 load	renewal	npc/re/instances/TwilightGarden.txt
 load	renewal	npc/re/instances/VillaofDeception.txt
 load	renewal	npc/re/instances/VillaofHighPriest.txt
@@ -1818,6 +1824,7 @@ load	renewal	npc/re/merchants/enchan_rockridge.txt
 load	renewal	npc/re/merchants/enchan_sage_legacy_17_2.txt
 load	renewal	npc/re/merchants/enchan_verus.txt
 load	renewal	npc/re/merchants/enchantgrade.txt
+load	renewal	npc/re/merchants/episode_19.txt
 load	renewal	npc/re/merchants/Extended_Ammunition.txt
 load	renewal	npc/re/merchants/Extended_Stylist.txt
 load	renewal	npc/re/merchants/flute.txt
@@ -1907,6 +1914,7 @@ load	renewal	npc/re/quests/quests_illusion_dungeons.txt
 load	renewal	npc/re/quests/quests_17_1.txt
 load	renewal	npc/re/quests/quests_17_2.txt
 load	renewal	npc/re/quests/quests_18.txt
+load	renewal	npc/re/quests/quests_19.txt
 load	renewal	npc/re/quests/quests_aldebaran.txt
 load	renewal	npc/re/quests/quests_dewata.txt
 load	renewal	npc/re/quests/quests_dicastes.txt
@@ -1976,6 +1984,8 @@ load	renewal	npc/re/jobs/novice/academy.txt
 load	renewal	npc/re/jobs/novice/supernovice_ex.txt
 load	renewal	npc/re/jobs/repair.txt
 load	renewal	npc/re/jobs/doram/spirit_handler.txt
+load	renewal	npc/re/jobs/4-1/dragon_knight.txt
+load	renewal	npc/re/jobs/4-2/imperial_guard.txt
 load	renewal	npc/re/quests/skills/merchant_skills.txt
 load	renewal	npc/re/quests/skills/swordman_skills.txt
 load	renewal	npc/re/mapflag/nopvp.txt
@@ -2034,6 +2044,8 @@ load	renewal	npc/re/mobs/dungeons/gon_dun.txt
 load	renewal	npc/re/mobs/dungeons/ice_dun.txt
 load	renewal	npc/re/mobs/dungeons/in_sphinx.txt
 load	renewal	npc/re/mobs/dungeons/iz_dun.txt
+load	renewal	npc/re/mobs/dungeons/jor_ab.txt
+load	renewal	npc/re/mobs/dungeons/jor_dun.txt
 load	renewal	npc/re/mobs/dungeons/juperos.txt
 load	renewal	npc/re/mobs/dungeons/kh_dun.txt
 load	renewal	npc/re/mobs/dungeons/lhz_dun.txt
@@ -2082,6 +2094,7 @@ load	renewal	npc/re/mobs/fields/geffen.txt
 load	renewal	npc/re/mobs/fields/gonryun.txt
 load	renewal	npc/re/mobs/fields/gw_fild.txt
 load	renewal	npc/re/mobs/fields/hugel.txt
+load	renewal	npc/re/mobs/fields/jor_back.txt
 load	renewal	npc/re/mobs/fields/lighthalzen.txt
 load	renewal	npc/re/mobs/fields/louyang.txt
 load	renewal	npc/re/mobs/fields/lutie.txt
@@ -2107,6 +2120,7 @@ load	renewal	npc/re/warps/cities/einbech.txt
 load	renewal	npc/re/warps/cities/einbroch.txt
 load	renewal	npc/re/warps/cities/lasagna.txt
 load	renewal	npc/re/warps/cities/lighthalzen.txt
+load	renewal	npc/re/warps/cities/icecastle.txt
 load	renewal	npc/re/warps/cities/izlude.txt
 load	renewal	npc/re/warps/cities/malangdo.txt
 load	renewal	npc/re/warps/cities/malaya.txt
@@ -2121,6 +2135,7 @@ load	renewal	npc/re/warps/dungeons/ecl_dun.txt
 load	renewal	npc/re/warps/dungeons/ein_dun.txt
 load	renewal	npc/re/warps/dungeons/harboro2.txt
 load	renewal	npc/re/warps/dungeons/iz_dun.txt
+load	renewal	npc/re/warps/dungeons/jor_dun.txt
 load	renewal	npc/re/warps/dungeons/mag_dun.txt
 load	renewal	npc/re/warps/dungeons/moc_pryd.txt
 load	renewal	npc/re/warps/dungeons/nif_dun.txt
@@ -2136,6 +2151,7 @@ load	renewal	npc/re/warps/fields/dic_fild.txt
 load	renewal	npc/re/warps/fields/geffen_fild.txt
 load	renewal	npc/re/warps/fields/gw_fild.txt
 load	renewal	npc/re/warps/fields/hugel_fild.txt
+load	renewal	npc/re/warps/fields/jor_fild.txt
 load	renewal	npc/re/warps/fields/morroc_fild.txt
 load	renewal	npc/re/warps/fields/payon_fild.txt
 load	renewal	npc/re/warps/fields/prontera_fild.txt
@@ -2157,6 +2173,11 @@ load	renewal	npc/re/warps/other/TrainingZone123.txt
 load	renewal	npc/re/warps/other/un_myst.txt
 load	renewal	npc/re/warps/other/verus.txt
 load	renewal	npc/re/warps/guildcastles.txt
+load	renewal	npc/re/world_sync/spawns.txt
+load	renewal	npc/re/world_sync/warps.txt
+load	renewal	npc/re/world_sync/transports.txt
+load	renewal	npc/re/world_sync/npcs.txt
+load	renewal	npc/re/world_sync/rune_tablet.txt
 load	renewal	npc/custom/population/arena.txt
 load	renewal	npc/custom/population/recruiter.txt
 load	prerenewal	npc/other/Global_Functions.txt
@@ -8397,6 +8418,10 @@ npc	te_prt_gld	203	243	0	893	Rental Manager
 file	npc/re/instances/AirshipAssault.txt
 npc	dali02	136	79	0	945	Adventurer Leon
 npc	dali02	142	81	0	10007	Dimensional Device
+file	npc/re/instances/AirshipDestruction.txt
+npc	jor_nest	22	255	0	10024	Rope
+file	npc/re/instances/BaggotLaboratory.txt
+npc	jor_nest	66	260	0	10461	Arolong
 file	npc/re/instances/BakonawaLake.txt
 npc	ma_scene01	174	179	0	541	Taho
 npc	sec_in02	26	26	0	541	Bakonawa's Rage
@@ -8789,6 +8814,13 @@ npc	xmas	148	127	0	714	Soy
 npc	xmas	149	127	0	714	Mimi
 npc	xmas	151	127	0	716	Spectator
 npc	xmas	154	129	0	797	Spectator
+file	npc/re/jobs/4-1/dragon_knight.txt
+npc	gef_fild08	54	101	0	10307	Oscar
+npc	gef_fild08	57	104	0	10368	Leticia
+file	npc/re/jobs/4-2/imperial_guard.txt
+npc	prt_cas	181	10	0	470	King's Knight
+npc	prontera	58	364	0	20825	Knight of Devotion
+npc	prontera	276	355	0	20826	Knight of Armament
 file	npc/re/jobs/doram/spirit_handler.txt
 npc	payon	165	116	0	857	Request Board
 npc	payon	252	297	0	741	Woodworker
@@ -10102,6 +10134,10 @@ npc	verus04	165	217	0	10080	MARS_01
 file	npc/re/merchants/enchantgrade.txt
 npc	grademk	34	184	0	10098	Sratos
 npc	paramk	34	184	0	10079	Suribell
+file	npc/re/merchants/episode_19.txt
+npc	icas_in	192	57	0	10428	Incineration Furnace
+npc	icas_in	188	60	0	10461	Forr
+npc	icas_in	169	70	0	10429	Card
 file	npc/re/merchants/flute.txt
 npc	hu_in01	386	306	0	51	Falcon Flute Trader
 npc	pay_arche	91	134	0	51	Falcon Flute Trader
@@ -12412,6 +12448,249 @@ npc	rachel	31	89	0	91	Tiling
 npc	wolfvill	167	135	0	10397	Asad
 npc	wolfvill	164	137	0	10399	Emmet
 npc	wolfvill	170	131	0	10394	Bamdat
+file	npc/re/quests/quests_19.txt
+npc	wolfvill	223	83	0	10398	Grey Wolf Villager
+npc	prt_cas	325	263	0	10304	Nihil M. Heine
+npc	prt_cas	323	266	0	10121	Catherine
+npc	prt_cas	331	342	0	10432	Book-shaped Box
+npc	prt_cas	334	342	0	10469	Lehar
+npc	ba_in01	30	264	0	10354	Navigator Ginger
+npc	air_if	46	71	0	10354	Navigator Ginger
+npc	jor_tail	216	51	0	10354	Navigator Ginger
+npc	icas_in	141	220	0	10465	Guardian Aurelie
+npc	icas_in	137	211	0	10454	Lazy
+npc	icas_in	139	210	0	10376	Maram
+npc	icas_in	141	210	0	10377	Miriam
+npc	icas_in	136	219	0	10468	Vellgunde
+npc	icas_in	144	218	0	10467	Voglinde
+npc	icas_in	141	216	0	10469	Lehar
+npc	icas_in	32	189	0	10464	Leon Petit
+npc	icas_in	30	188	0	10469	Lehar
+npc	icas_in	29	187	0	10376	Maram
+npc	icas_in	30	185	0	10377	Miriam
+npc	icas_in	32	184	0	10461	Horuru
+npc	icas_in	30	183	0	10468	Vellgunde
+npc	icas_in	32	182	0	10467	Voglinde
+npc	icas_in	34	183	0	10454	Lazy
+npc	icas_in	34	189	0	10465	Aurelie Petit
+npc	jor_back3	97	318	0	10475	Lazy
+npc	jor_dun02	256	169	0	10470	Rgan
+npc	jor_dun02	254	168	0	10472	Rgan
+npc	jor_nest	185	49	0	10470	Rgan Priest
+npc	jor_nest	182	45	0	10471	Rgan Priest
+npc	jor_nest	186	46	0	10472	Rgan Priest
+npc	jor_nest	182	50	0	10475	Lazy
+npc	jor_nest	180	48	0	10474	Rgan Bishop
+npc	jor_nest	196	202	0	10474	Rgan Bishop
+npc	jor_nest	193	200	0	10475	Lazy
+npc	jor_nest	118	187	0	10475	Lazy
+npc	jor_nest	115	187	0	10474	Rgan Bishop
+npc	jor_nest	56	246	0	10386	Bagot
+npc	jor_nest	51	246	0	10473	Sarekgand
+npc	jor_nest	55	244	0	10475	Lazy
+npc	jor_nest	53	244	0	10474	Rgan Bishop
+npc	jor_nest	24	142	0	10475	Lazy
+npc	jor_nest	25	140	0	10473	Sarekgand
+npc	jor_nest	25	57	0	10473	Rgan Bishop
+npc	jor_nest	26	55	0	10471	Rgan Priest
+npc	jor_nest	23	58	0	10470	Rgan Priest
+npc	jor_nest	82	163	0	10080	Chime
+npc	jor_dun02	150	237	0	10475	Lazy
+npc	jor_dun02	153	239	0	10470	Rgan Security
+npc	jor_dun02	148	264	0	89	Human
+npc	jor_dun02	134	257	0	93	Human
+npc	jor_dun02	136	254	0	870	Human
+npc	jor_dun02	140	253	0	84	Human
+npc	jor_nest	22	192	0	10473	Yugurungand
+npc	jor_nest	34	139	0	10386	Bagot
+npc	icas_in	243	120	0	10470	Juncea
+npc	icas_in	247	116	0	10461	Horuru
+npc	icas_in	243	120	0	10457	Juncea
+npc	icas_in	246	119	0	10475	Lazy
+npc	jor_que	270	83	0	478	Human
+npc	jor_que	269	83	0	908	Human
+npc	jor_que	268	84	0	879	Human
+npc	jor_que	277	34	0	851	Human
+npc	jor_que	276	33	0	851	Human
+npc	jor_que	125	41	0	880	Human
+npc	jor_que	183	272	0	881	Human
+npc	jor_que	227	277	0	125	Human
+npc	jor_que	223	277	0	89	Human
+npc	jor_que	252	244	0	748	Human
+npc	jor_que	139	257	0	10475	Lazy
+npc	jor_que	134	257	0	93	Human
+npc	jor_que	136	254	0	870	Human
+npc	jor_que	140	253	0	84	Human
+npc	jor_que	146	252	0	10469	Lehar
+npc	jor_que	36	35	0	10465	Aurelie
+npc	jor_que	35	34	0	10464	Leon
+npc	icas_in	163	226	0	10467	Voglinde
+npc	icas_in	162	228	0	10469	Lehar
+npc	icas_in	132	201	0	10377	Miriam
+npc	jor_tail	211	63	0	10460	Hellock
+npc	aldebaran	102	103	0	10460	Helock
+npc	prontera	254	309	0	641	copy officer
+npc	prt_cas	22	33	0	10383	Mark
+npc	prt_cas	23	32	0	10382	Dew
+npc	prt_cas	24	31	0	10365	Maggi
+npc	prt_cas	25	31	0	10384	Alp
+npc	prt_cas	20	32	0	10459	Suitcase
+npc	icecastle	27	123	0	10469	Lehar
+npc	icecastle	25	121	0	10458	friederike
+npc	icecastle	20	126	0	10382	Dew
+npc	icecastle	21	127	0	10383	Mark
+npc	icecastle	21	128	0	10365	Maggi
+npc	icecastle	22	129	0	10384	Alp
+npc	icas_in	34	121	0	10467	Voglinde
+npc	icas_in	27	119	0	10382	Dew
+npc	icas_in	30	121	0	10383	Mark
+npc	icas_in	29	120	0	10365	Maggi
+npc	icas_in	26	119	0	10384	Alp
+npc	jor_nest	17	97	0	10474	Bernagand
+npc	jor_nest	18	92	0	10473	Yuramigand
+npc	jor_nest	21	99	0	10471	Rakanorgand
+npc	jor_nest	239	239	0	10473	Delfanagand
+npc	jor_back2	222	123	0	10432	Marked place
+npc	jor_back2	49	175	0	10432	Marked place
+npc	jor_back2	308	99	0	10432	Marked place
+npc	jor_back2	113	235	0	10432	Marked place
+npc	jor_back2	279	307	0	10432	Marked place
+npc	jor_back3	152	359	0	10432	Marked place
+npc	jor_back3	328	277	0	10432	Marked place
+npc	jor_back3	128	138	0	10432	Marked place
+npc	jor_back3	264	133	0	10432	Marked place
+npc	jor_back3	46	324	0	10432	Marked place
+npc	icas_in	185	63	0	10468	Vellgunde
+npc	jor_tail	48	241	0	10452	Moryara
+npc	jor_nest	239	244	0	10475	Sidrgand
+npc	jor_nest	37	75	0	10470	Berbergand
+npc	jor_nest	34	79	0	10473	Mimirgand
+npc	jor_nest	74	100	0	10475	Arleigand
+npc	icas_in	42	252	0	10464	Guardian Leon
+npc	icas_in	48	252	0	10377	Miriam
+npc	jor_back2	365	39	0	550	Pit
+npc	jor_back2	354	53	0	550	Pit
+npc	jor_back2	256	197	0	550	Pit
+npc	jor_back2	125	295	0	550	Pit
+npc	jor_back2	195	161	0	550	Pit
+npc	jor_back2	274	178	0	550	Pit
+npc	jor_back2	216	336	0	550	Pit
+npc	jor_back2	142	91	0	550	Pit
+npc	jor_back2	127	34	0	550	Pit
+npc	jor_back2	20	130	0	550	Pit
+npc	jor_back3	344	296	0	550	Pit
+npc	jor_back3	320	208	0	550	Pit
+npc	jor_back3	182	305	0	550	Pit
+npc	jor_back3	110	269	0	550	Pit
+npc	jor_back3	277	208	0	550	Pit
+npc	jor_back3	197	178	0	550	Pit
+npc	jor_back3	107	298	0	550	Pit
+npc	jor_back3	231	68	0	550	Pit
+npc	jor_back3	151	74	0	550	Pit
+npc	jor_back3	39	322	0	550	Pit
+npc	icas_in	241	66	0	10451	Zoryara
+npc	icas_in	235	57	0	10461	Horyara
+npc	icas_in	232	59	0	10461	Toralung
+npc	icas_in	32	123	0	10458	Friederike
+npc	jor_back1	300	272	0	10024	Hunting trap
+npc	jor_back2	346	203	0	10024	Hunting trap
+npc	jor_back2	260	294	0	10024	Hunting trap
+npc	jor_back2	260	296	0	10384	Alp
+npc	jor_back2	258	295	0	10383	Mark
+npc	jor_back2	255	312	0	10462	Surr
+npc	jor_back2	261	312	0	10383	Mark
+npc	jor_back2	263	311	0	10384	Alp
+npc	jor_back2	260	312	0	10458	Friederike
+npc	jor_ab01	116	11	0	10462	Surr
+npc	jor_ab01	115	14	0	10384	Alp
+npc	jor_ab01	223	107	0	10045	Suspicious Trace
+npc	jor_ab01	104	270	0	10045	Suspicious Trace
+npc	jor_ab02	28	254	0	10045	End of Pit
+npc	jor_back2	367	36	0	10024	Frozen Trap
+npc	jor_back2	84	88	0	10024	Frozen Trap
+npc	jor_back2	158	320	0	10024	Frozen Trap
+npc	jor_back2	190	184	0	10024	Frozen Trap
+npc	jor_ab01	163	253	0	10045	Ominous trail
+npc	jor_ab01	117	141	0	10045	Ominous trail
+npc	jor_ab01	222	125	0	10045	Ominous trail
+npc	jor_ab01	196	260	0	10045	Ominous trail
+npc	jor_ab01	112	62	0	10045	Ominous trail
+npc	jor_ab01	25	265	0	10045	Ominous trail
+npc	jor_ab02	151	272	0	10045	Ominous trail
+npc	jor_ab02	139	148	0	10045	Ominous Traces
+npc	jor_ab02	182	83	0	10045	Ominous trail
+npc	jor_ab02	48	27	0	10045	Ominous Traces
+npc	jor_ab02	208	48	0	10045	Ominous Traces
+npc	jor_ab02	201	184	0	10045	Ominous trail
+npc	jor_tail	291	91	0	10461	Hamur
+npc	jor_tail	216	79	0	10461	Rachho
+npc	jor_tail	168	86	0	10461	Gorr
+npc	jor_tail	153	76	0	10461	Nordor
+npc	jor_tail	150	81	0	10461	Bazaar
+npc	jor_tail	181	158	0	10461	Hoho
+npc	jor_tail	216	269	0	10461	Harya
+npc	jor_tail	250	273	0	10461	Joorong
+npc	jor_nest	108	79	0	10471	Rgan Priest
+npc	jor_nest	29	251	0	10470	Rgan Security
+npc	jor_nest	23	247	0	10471	Rgan Security
+npc	jor_nest	35	270	0	10474	Rgan Security
+npc	jor_nest	41	270	0	10473	Rgan Security
+npc	jor_nest	115	212	0	10470	Rgan Priest
+npc	jor_nest	186	173	0	10472	Rgan Priest
+npc	jor_nest	219	38	0	10472	Rgan Priest
+npc	jor_nest	76	22	0	10473	Rgan Bishop
+npc	jor_nest	73	17	0	10474	Rgan Bishop
+npc	jor_nest	123	132	0	10470	Rgan Priest
+npc	jor_nest	179	144	0	10474	Rgan Bishop
+npc	jor_nest	152	108	0	10470	Viranimalgand
+npc	jor_nest	24	97	0	10470	Handi Marigand
+npc	jor_nest	243	223	0	10472	LacruzGand
+npc	jor_nest	241	223	0	10470	Dumpling Gigande
+npc	jor_nest	261	233	0	10472	GandGand
+npc	icecastle	101	216	0	10461	Goryuro
+npc	icecastle	103	216	0	10461	Goruro
+npc	icecastle	99	119	0	10461	goyl
+npc	icecastle	129	121	0	10461	Hora dragon
+npc	icecastle	131	121	0	10461	Doryarung
+npc	icecastle	118	270	0	10461	Homer
+npc	icecastle	172	153	0	10461	Noriri
+npc	icecastle	25	113	0	857	Notice
+npc	icecastle	178	229	0	857	Notice
+npc	icecastle	43	104	0	10461	Choruryong
+npc	icecastle	45	102	0	10461	Doryaro
+npc	icecastle	47	100	0	10461	Nororu
+npc	icecastle	49	98	0	10461	Zororo
+npc	icecastle	73	101	0	10461	Choralung
+npc	icecastle	77	106	0	10461	Mororyo
+npc	icecastle	89	94	0	10461	olir
+npc	icecastle	85	95	0	10461	Toriro
+npc	icecastle	86	100	0	10461	Porara
+npc	icecastle	90	100	0	10461	Nororyong
+npc	icecastle	82	111	0	10461	Sashasha
+npc	icecastle	84	129	0	10461	Bangir
+npc	icecastle	71	255	0	10461	Ayar
+npc	icecastle	103	227	0	10461	Jjoriru
+npc	icecastle	105	227	0	10461	Torura
+npc	icecastle	248	211	0	10461	Doluri
+npc	icecastle	261	179	0	10461	Goryu
+npc	icecastle	241	146	0	10461	Chorari
+npc	icecastle	170	142	0	10461	Chorirong
+npc	icecastle	133	165	0	10461	Harr
+npc	icas_in	251	60	0	10461	Horari
+npc	icas_in	245	53	0	10461	Jorrori
+npc	icas_in	119	62	0	858	Vellgunde Lab
+npc	icas_in	95	57	0	858	Eagle Patrol
+npc	icas_in	95	62	0	858	Eagle Patrol
+npc	icas_in	175	63	0	10461	Hoyoyo
+npc	icas_in	180	61	0	10376	Maram
+npc	icas_in	251	46	0	10461	Sorarang
+npc	icas_in	252	50	0	10461	Coryri
+npc	icas_in	248	47	0	10461	Soori
+npc	icas_in	241	49	0	10461	Jororuru
+npc	icas_in	236	45	0	10461	Goryar
+npc	icas_in	234	49	0	10461	Full
+npc	icas_in	251	59	0	10461	Torira
+npc	icas_in	244	63	0	10461	Jororo
 file	npc/re/quests/quests_aldebaran.txt
 npc	c_tower1	232	222	0	968	Belljamin Button
 npc	c_tower2_	274	26	0	962	Belljamin Button
@@ -13434,6 +13713,109 @@ npc	mid_camp	210	292	0	10007	Transport Device
 npc	moc_fild22b	222	200	0	10007	Transport Device
 npc	bif_fild01	318	159	0	10007	Transport Device
 npc	dic_fild02	241	31	0	10007	Transport Device
+file	npc/re/world_sync/npcs.txt
+npc	hero_lb	128	151	0	117	Kafra Staff
+npc	jor_albe	118	150	1	84	Tool Dealer
+npc	kindlbrk	174	124	0	114	Kafra Employee
+npc	mbase_in	217	126	1	83	Tool Dealer
+npc	pay_mk	107	93	0	117	Kafra Employee
+npc	pay_mk	109	44	0	115	Kafra Employee
+npc	pay_mk	160	103	0	114	Kafra Employee
+npc	pay_mk	46	104	0	113	Kafra Employee
+npc	pay_mk	99	160	0	112	Kafra Employee
+npc	pay_mk	145	163	1	83	Tool Dealer
+npc	pay_mk	64	162	1	84	Tool Dealer
+npc	pay_mk	67	40	1	85	Tool Dealer
+npc	pay_mk	143	37	1	85	Tool Dealer
+npc	prt_mk	162	153	0	117	Kafra Employee
+npc	prt_mk	172	24	0	115	Kafra Employee
+npc	prt_mk	295	171	0	114	Kafra Employee
+npc	prt_mk	28	154	0	113	Kafra Employee
+npc	prt_mk	152	299	0	112	Kafra Employee
+npc	prt_mk	294	47	1	83	Tool Dealer
+npc	prt_mk	53	23	1	84	Tool Dealer
+npc	prt_mk	27	275	1	85	Tool Dealer
+npc	prt_mk	272	299	1	85	Tool Dealer
+npc	ygg_fruit	167	119	0	114	Kafra Employee
+file	npc/re/world_sync/rune_tablet.txt
+npc	prontera	193	189	0	726	Rune Tablet
+file	npc/re/world_sync/transports.txt
+npc	ba_chess	13	16	0	100	Travel to ba_maison
+npc	ba_chess	13	36	0	100	Travel to bl_depth2
+npc	bl_death	65	121	0	100	Travel to bl_depth1
+npc	bl_depth1	179	179	0	100	Travel to ba_in01
+npc	bl_depth2	141	137	0	100	Travel to ba_chess
+npc	bl_grass	131	365	0	100	Travel to bl_depth1
+npc	bl_ice	198	268	0	100	Travel to bl_depth1
+npc	bl_lava	151	263	0	100	Travel to bl_depth1
+npc	bl_soul	300	292	0	100	Travel to bl_depth1
+npc	bl_temple	272	331	0	100	Travel to bl_depth1
+npc	bl_venom	182	250	0	100	Travel to bl_depth1
+npc	iroweekrace	134	208	0	100	Travel to izlude
+npc	jor_root1	32	75	0	100	Travel to jor_safty2
+npc	jor_safty1	195	155	0	100	Travel to jor_twice
+npc	jor_safty1	328	150	0	100	Travel to jor_twice
+npc	jor_twice	43	331	0	100	Travel to jor_twig
+npc	vr_bob	293	202	0	100	Travel to vr_bob
+npc	vr_bob	288	183	0	100	Travel to vr_bob
+npc	vr_bob	82	388	0	100	Travel to vr_bob
+npc	vr_bob	295	209	0	100	Travel to vr_bob
+npc	ch1fild1	106	84	0	100	Travel to ch1zero1
+npc	ch2safe3	142	68	0	100	Travel to kindlbrk
+npc	ch2safe4	197	114	0	100	Travel to uknw_ruin2
+npc	ch2safe4	213	231	0	100	Travel to uknw_ruin2
+npc	ch2safe4	235	176	0	100	Travel to ch2safe4
+npc	hem_dun01	221	209	0	100	Travel to ch1_dw
+npc	hem_fild	207	32	0	100	Travel to ygg_roots
+npc	hem_fild	334	188	0	100	Travel to hem_dun02
+npc	hem_fild	133	337	0	100	Travel to ch1_gfn03
+npc	hem_fild	231	299	0	100	Travel to ch1_gfn01
+npc	hero_lb	153	148	0	100	Travel to hero_dun1
+npc	hero_lb	116	163	0	100	Travel to gef_fild13
+npc	hero_lb	116	116	0	100	Travel to alde_gld
+npc	hero_lb	163	116	0	100	Travel to prt_gld
+npc	hero_lb	163	163	0	100	Travel to pay_gld
+npc	job4_tro	51	47	0	100	Travel to odin_tem03
+npc	jor_albe	201	200	0	100	Travel to jor_mbase
+npc	jor_crk	139	141	0	100	Travel to jor_tail
+npc	jor_crk	105	108	0	100	Travel to jor_crk_p
+npc	jor_crk_p	79	64	0	100	Travel to jor_mbase
+npc	jor_crk_p	105	108	0	100	Travel to jor_crk
+npc	jor_mbase	122	27	0	100	Travel to jor_crk_p
+npc	jor_mbase	343	148	0	100	Travel to jor_albe
+npc	jor_mbase	161	343	0	100	Travel to jor_raise2
+npc	jor_raise2	100	26	0	100	Travel to jor_mbase
+npc	kin_in01	171	122	0	100	Travel to kin_in01
+npc	kindlbrk	256	120	0	100	Travel to ch2safe3
+npc	mbase_in	85	141	0	100	Travel to mbase_in
+npc	mu_fild01	84	160	0	100	Travel to ygg_roots
+npc	rgs_dun1	273	80	0	100	Travel to ch2safe4
+npc	star_in	177	84	0	100	Travel to star_frst
+npc	uknw_ruin	266	243	0	100	Travel to ygg_roots
+npc	veledor	153	315	0	100	Travel to ygg_edge
+npc	vr_gen	20	56	0	100	Travel to prt_elib
+npc	vr_pop1	299	291	0	100	Travel to prt_elib
+npc	vr_pop1	284	244	0	100	Travel to vr_pop1
+npc	vr_pop1	253	81	0	100	Travel to vr_pop1
+npc	vr_pop1	73	147	0	100	Travel to vr_pop1
+npc	vr_pop1	49	160	0	100	Travel to vr_pop1
+npc	vr_pop1	81	94	0	100	Travel to vr_pop1
+npc	vr_pop1	70	91	0	100	Travel to vr_pop1
+npc	vr_pop1	102	358	0	100	Travel to vr_pop2
+npc	vr_pop2	152	29	0	100	Travel to vr_pop2
+npc	vr_pop2	159	167	0	100	Travel to vr_pop3
+npc	vr_pop3	149	179	0	100	Travel to vr_pop1
+npc	vr_prtg	50	22	0	100	Travel to vr_prtd03
+npc	vr_zrr01	46	134	0	100	Travel to vr_zrr02
+npc	ygg_edge	259	245	0	100	Travel to yggdrasil01
+npc	ygg_edge	31	117	0	100	Travel to ygg_roots
+npc	ygg_roots	325	153	0	100	Travel to ygg_edge
+npc	ygg_roots	157	242	0	100	Travel to hem_fild
+npc	ygg_roots	342	252	0	100	Travel to mu_fild01
+npc	ygg_roots	34	126	0	100	Travel to uknw_ruin
+npc	yuno_lib	61	84	0	100	Travel to vr_zrr01
+npc	yuno_lib	56	84	0	100	Travel to vr_hero00
+npc	yuno_lib	50	84	0	100	Travel to vr_prtg
 file	npc/test/npc_test_checkweight.txt
 npc	prontera	161	181	0	763	ChkSpace
 file	npc/test/npc_test_longvar.txt

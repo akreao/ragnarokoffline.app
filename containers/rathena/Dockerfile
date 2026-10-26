@@ -59,6 +59,7 @@ RUN sh /rathena/ragnarok-crash-tests/verify.sh
 # CPPFLAGS, and make does not rebuild on a changed compiler flag -- without the
 # clean the second pass relinks the first pass's objects and produces a
 # renewal binary under a pre-renewal name.
+# Build char and map separately: their recursive builds share common objects.
 #
 # The same is true of every packet version: packets.hpp is included from
 # src/common, so no object survives a change of PACKETVER, and each version is
@@ -92,7 +93,8 @@ RUN set -e; mkdir -p /out/bin; \
         done; \
         make clean >/dev/null; \
         ./configure --enable-packetver="$ver" --enable-prere; \
-        make -j"$(nproc)" char map; \
+        make -j"$(nproc)" char; \
+        make -j"$(nproc)" map; \
         mkdir -p "/symbols/pre-re$suffix"; \
         for binary in char-server map-server; do \
             objcopy --only-keep-debug "$binary" "/symbols/pre-re$suffix/$binary.debug"; \

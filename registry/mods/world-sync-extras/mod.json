@@ -1,0 +1,18 @@
+{
+  "name": "world-sync-extras",
+  "author": "Lil Art",
+  "description": "World Sync's playable content, iRO's missing quests and item names, in blocks you can switch: the Jormungandr saga (Episodes 20 and 21), Chapters 1 and 2 of the Song of the World Tree, Varmundt, the Star Emperor job change, Sanctuary Herosria and its Sunday siege, iRO services like the Devil in the Box, iRO Quests (Bounty Boards, City Investment, Gramps, the 2021 town quests), and names and descriptions for 3,800 items the client calls \"Unknown Item\". The official NPCs still without logic stand where the clients put them, and @npcplace moves any NPC. Renewal, 1.6.9+.",
+  "tags": [
+    "episodes",
+    "items",
+    "maps",
+    "npc",
+    "quests",
+    "world"
+  ],
+  "homepage": "https://github.com/LilArt420/world-sync-extras",
+  "source": {
+    "github": "LilArt420/world-sync-extras",
+    "asset": "world-sync-extras-*.zip"
+  }
+}

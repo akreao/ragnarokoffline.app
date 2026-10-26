@@ -9,9 +9,12 @@
  * patch-bundle.sh's edits, which need the unminified source:
  *
  * - minifies the scripts the game page loads with terser: whitespace,
- *   comments and local names only. compress is off and function and class
- *   names are kept, because the client keys effects and logs packets by
- *   `constructor.name`.
+ *   comments and local names only. compress is off, and the bundle's
+ *   top-level names are not mangled: rolldown hoists every module's classes
+ *   there as `StrEffect = class {...}`, whose `constructor.name` comes from
+ *   that binding, and EffectManager groups effects by it (keep_classnames
+ *   does not cover an anonymous class). License comments (`/*!`, `@license`)
+ *   stay.
  * - writes a `.br` (brotli, quality 11) and a `.gz` (gzip -9) beside each
  *   compressible file it serves, which the Rust server sends instead of
  *   compressing on the fly when the browser accepts them. Each is written
@@ -55,13 +58,16 @@ async function minifyScripts() {
     const file = path.join(web, name);
     if (!fs.existsSync(file)) continue;
     const source = fs.readFileSync(file, 'utf8');
+    // Not `module: true`: that also mangles the top level (see above). The
+    // parser still reads import/export without it.
     const result = await minify(source, {
-      module: true,
+      module: false,
+      toplevel: false,
       compress: false,
       mangle: true,
       keep_classnames: true,
       keep_fnames: true,
-      format: { comments: false },
+      format: { comments: 'some' },
     });
     fs.writeFileSync(file, result.code);
     console.log(`minified ${name}: ${mb(Buffer.byteLength(source))} -> ${mb(Buffer.byteLength(result.code))}`);

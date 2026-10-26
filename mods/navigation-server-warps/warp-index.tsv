@@ -432,14 +432,18 @@ load	renewal	npc/re/guides/guides_umbala.txt
 load	renewal	npc/re/guides/guides_veins.txt
 load	renewal	npc/re/guides/guides_woe_te.txt
 load	renewal	npc/re/instances/AirshipAssault.txt
+load	renewal	npc/re/instances/AirshipDestruction.txt
+load	renewal	npc/re/instances/BaggotLaboratory.txt
 load	renewal	npc/re/instances/BakonawaLake.txt
 load	renewal	npc/re/instances/BangungotHospital.txt
 load	renewal	npc/re/instances/BuwayaCave.txt
 load	renewal	npc/re/instances/CentralLaboratory.txt
 load	renewal	npc/re/instances/CharlestonCrisis.txt
+load	renewal	npc/re/instances/ConfusedSnakesNest.txt
 load	renewal	npc/re/instances/CorOperation.txt
 load	renewal	npc/re/instances/DeepForest.txt
 load	renewal	npc/re/instances/DevilTower.txt
+load	renewal	npc/re/instances/DragonsTest.txt
 load	renewal	npc/re/instances/EclageInterior.txt
 load	renewal	npc/re/instances/EddaHalfMoonInTheDaylight.txt
 load	renewal	npc/re/instances/FacewormsNest.txt
@@ -451,6 +455,7 @@ load	renewal	npc/re/instances/HeartHunterWarBase.txt
 load	renewal	npc/re/instances/HiddenGarden.txt
 load	renewal	npc/re/instances/InfiniteSpace.txt
 load	renewal	npc/re/instances/IsleOfBios.txt
+load	renewal	npc/re/instances/IwinPatrol.txt
 load	renewal	npc/re/instances/LastRoom.txt
 load	renewal	npc/re/instances/LostFarm.txt
 load	renewal	npc/re/instances/MalangdoCulvert.txt
@@ -470,6 +475,7 @@ load	renewal	npc/re/instances/SealedOs.txt
 load	renewal	npc/re/instances/SkyFortress.txt
 load	renewal	npc/re/instances/TempleOfDemonGod.txt
 load	renewal	npc/re/instances/ThorGunsuBase.txt
+load	renewal	npc/re/instances/TourneyHallOfTrials.txt
 load	renewal	npc/re/instances/TwilightGarden.txt
 load	renewal	npc/re/instances/VillaofDeception.txt
 load	renewal	npc/re/instances/VillaofHighPriest.txt
@@ -505,6 +511,7 @@ load	renewal	npc/re/merchants/enchan_rockridge.txt
 load	renewal	npc/re/merchants/enchan_sage_legacy_17_2.txt
 load	renewal	npc/re/merchants/enchan_verus.txt
 load	renewal	npc/re/merchants/enchantgrade.txt
+load	renewal	npc/re/merchants/episode_19.txt
 load	renewal	npc/re/merchants/Extended_Ammunition.txt
 load	renewal	npc/re/merchants/Extended_Stylist.txt
 load	renewal	npc/re/merchants/flute.txt
@@ -594,6 +601,7 @@ load	renewal	npc/re/quests/quests_illusion_dungeons.txt
 load	renewal	npc/re/quests/quests_17_1.txt
 load	renewal	npc/re/quests/quests_17_2.txt
 load	renewal	npc/re/quests/quests_18.txt
+load	renewal	npc/re/quests/quests_19.txt
 load	renewal	npc/re/quests/quests_aldebaran.txt
 load	renewal	npc/re/quests/quests_dewata.txt
 load	renewal	npc/re/quests/quests_dicastes.txt
@@ -663,6 +671,8 @@ load	renewal	npc/re/jobs/novice/academy.txt
 load	renewal	npc/re/jobs/novice/supernovice_ex.txt
 load	renewal	npc/re/jobs/repair.txt
 load	renewal	npc/re/jobs/doram/spirit_handler.txt
+load	renewal	npc/re/jobs/4-1/dragon_knight.txt
+load	renewal	npc/re/jobs/4-2/imperial_guard.txt
 load	renewal	npc/re/quests/skills/merchant_skills.txt
 load	renewal	npc/re/quests/skills/swordman_skills.txt
 load	renewal	npc/re/mapflag/nopvp.txt
@@ -721,6 +731,8 @@ load	renewal	npc/re/mobs/dungeons/gon_dun.txt
 load	renewal	npc/re/mobs/dungeons/ice_dun.txt
 load	renewal	npc/re/mobs/dungeons/in_sphinx.txt
 load	renewal	npc/re/mobs/dungeons/iz_dun.txt
+load	renewal	npc/re/mobs/dungeons/jor_ab.txt
+load	renewal	npc/re/mobs/dungeons/jor_dun.txt
 load	renewal	npc/re/mobs/dungeons/juperos.txt
 load	renewal	npc/re/mobs/dungeons/kh_dun.txt
 load	renewal	npc/re/mobs/dungeons/lhz_dun.txt
@@ -769,6 +781,7 @@ load	renewal	npc/re/mobs/fields/geffen.txt
 load	renewal	npc/re/mobs/fields/gonryun.txt
 load	renewal	npc/re/mobs/fields/gw_fild.txt
 load	renewal	npc/re/mobs/fields/hugel.txt
+load	renewal	npc/re/mobs/fields/jor_back.txt
 load	renewal	npc/re/mobs/fields/lighthalzen.txt
 load	renewal	npc/re/mobs/fields/louyang.txt
 load	renewal	npc/re/mobs/fields/lutie.txt
@@ -794,6 +807,7 @@ load	renewal	npc/re/warps/cities/einbech.txt
 load	renewal	npc/re/warps/cities/einbroch.txt
 load	renewal	npc/re/warps/cities/lasagna.txt
 load	renewal	npc/re/warps/cities/lighthalzen.txt
+load	renewal	npc/re/warps/cities/icecastle.txt
 load	renewal	npc/re/warps/cities/izlude.txt
 load	renewal	npc/re/warps/cities/malangdo.txt
 load	renewal	npc/re/warps/cities/malaya.txt
@@ -808,6 +822,7 @@ load	renewal	npc/re/warps/dungeons/ecl_dun.txt
 load	renewal	npc/re/warps/dungeons/ein_dun.txt
 load	renewal	npc/re/warps/dungeons/harboro2.txt
 load	renewal	npc/re/warps/dungeons/iz_dun.txt
+load	renewal	npc/re/warps/dungeons/jor_dun.txt
 load	renewal	npc/re/warps/dungeons/mag_dun.txt
 load	renewal	npc/re/warps/dungeons/moc_pryd.txt
 load	renewal	npc/re/warps/dungeons/nif_dun.txt
@@ -823,6 +838,7 @@ load	renewal	npc/re/warps/fields/dic_fild.txt
 load	renewal	npc/re/warps/fields/geffen_fild.txt
 load	renewal	npc/re/warps/fields/gw_fild.txt
 load	renewal	npc/re/warps/fields/hugel_fild.txt
+load	renewal	npc/re/warps/fields/jor_fild.txt
 load	renewal	npc/re/warps/fields/morroc_fild.txt
 load	renewal	npc/re/warps/fields/payon_fild.txt
 load	renewal	npc/re/warps/fields/prontera_fild.txt
@@ -844,6 +860,11 @@ load	renewal	npc/re/warps/other/TrainingZone123.txt
 load	renewal	npc/re/warps/other/un_myst.txt
 load	renewal	npc/re/warps/other/verus.txt
 load	renewal	npc/re/warps/guildcastles.txt
+load	renewal	npc/re/world_sync/spawns.txt
+load	renewal	npc/re/world_sync/warps.txt
+load	renewal	npc/re/world_sync/transports.txt
+load	renewal	npc/re/world_sync/npcs.txt
+load	renewal	npc/re/world_sync/rune_tablet.txt
 load	renewal	npc/custom/population/arena.txt
 load	renewal	npc/custom/population/recruiter.txt
 load	prerenewal	npc/other/Global_Functions.txt
@@ -3785,6 +3806,10 @@ on	Womenfolk#ep16wig01
 file	npc/re/quests/quests_16_2.txt
 on	Hiding researcher#
 on	Naga#16.2rmA
+file	npc/re/quests/quests_19.txt
+warp	prt_cas	174	342	king_room_in_king_room_	prt_cas	322	336
+warp	prt_cas	318	336	king_room_out_king_room	prt_cas	170	342
+warp	jor_ab02	286	87	#to_jor_ab01_	jor_ab01	12	238
 file	npc/re/quests/quests_dicastes.txt
 on	Hibba Agip#ep133_is07
 file	npc/re/quests/quests_eclage.txt
@@ -3936,6 +3961,34 @@ warp	ein_in01	273	273	roomB_roomBGate	ein_in01	274	243
 warp	einbroch	302	331	ein_to_pub	pub_cat	49	27
 warp	pub_cat	44	27	pub_to_ein	einbroch	302	326
 warp	pub_cat	146	105	backroom_exit	pub_cat	100	106
+file	npc/re/warps/cities/icecastle.txt
+warp	icas_in	33	109	#out_house1	icecastle	60	211
+warp	icecastle	62	137	#in_house5	icas_in	249	112
+warp	icas_in	249	109	#out_house5	icecastle	62	134
+warp	icecastle	64	225	#in_house2	icas_in	85	112
+warp	icas_in	85	109	#out_house2	icecastle	67	222
+warp	icecastle	88	241	#in_house3	icas_in	138	112
+warp	icas_in	138	109	#out_house3	icecastle	88	238
+warp	icecastle	159	243	#in_house4	icas_in	191	112
+warp	icas_in	191	109	#out_house4	icecastle	159	241
+warp	icecastle	186	222	#in_barracks	icas_in	108	32
+warp	icas_in	92	60	#in_barracks_L	icas_in	56	60
+warp	icas_in	59	60	#out_barracks)L	icas_in	95	60
+warp	icas_in	125	60	#in_barracks_R	icas_in	161	60
+warp	icas_in	158	60	#out_barracks_R	icas_in	122	60
+warp	icas_in	108	29	#out_barracks	icecastle	186	218
+warp	icas_in	85	257	#in_icas_room_L	icas_in	49	258
+warp	icas_in	53	258	#out_icas_romm_L	icas_in	89	257
+warp	icas_in	193	257	#in_icas_room_R	icas_in	226	258
+warp	icas_in	222	258	#out_icas_romm_R	icas_in	189	257
+warp	icas_in	83	233	#in_dining	icas_in	25	169
+warp	icas_in	25	166	#out_dining	icas_in	83	229
+warp	icas_in	193	233	#in_bedroom	icas_in	253	169
+warp	icas_in	253	166	#icas_in__	icas_in	193	229
+warp	icas_in	138	183	#out_icas	icecastle	208	168
+warp	icecastle	124	171	#in_restaurant	icas_in	243	36
+warp	icas_in	243	33	#out_restaurant	icecastle	123	168
+warp	icecastle	213	175	#to_icas_in	icas_in	138	187
 file	npc/re/warps/cities/izlude.txt
 warp	prt_fild08	371	212	prtf005	izlude	24	98
 warp	izlude	20	98	iz001	prt_fild08	367	212
@@ -4417,6 +4470,12 @@ file	npc/re/warps/dungeons/ein_dun.txt
 warp	ein_dun03	268	283	out_to_dun02	ein_dun02	24	250
 file	npc/re/warps/dungeons/harboro2.txt
 warp	harboro2	284	104	harboro2#harboro1	harboro1	318	124
+file	npc/re/warps/dungeons/jor_dun.txt
+warp	jor_dun02	286	87	#to_jor_dun01_B	jor_dun01	12	238
+warp	jor_dun02	18	31	#to_jor_nest	jor_nest	278	18
+warp	jor_ab01	113	7	#to_jor_back2_C	jor_back2	261	313
+warp	jor_nest	282	18	#jor_nest_to_jor_dun02	jor_dun02	21	32
+warp	jor_dun03	58	48	#hw_ep19re3_	jor_nest	62	255
 file	npc/re/warps/dungeons/mag_dun.txt
 warp	mag_dun03	124	120	mag03a_mag02a	mag_dun02	243	68
 file	npc/re/warps/dungeons/moc_pryd.txt
@@ -4615,6 +4674,22 @@ warp	hu_fild06	28	119	hugel011a	hu_fild05	347	130
 warp	ein_fild01	106	34	EinF01Dn01_EinF05Up01	ein_fild05	172	366
 warp	ein_fild01	234	34	EinF01Dn02_EinF05Up02	ein_fild05	172	366
 warp	ein_fild05	172	371	EinF05Up01_EinF01Dn01	ein_fild01	106	40
+file	npc/re/warps/fields/jor_fild.txt
+warp	jor_tail	219	294	#to_jor_back1_3	jor_back1	222	22
+warp	jor_back1	222	19	#to_tail_3	jor_tail	219	291
+warp	jor_tail	98	287	#to_jor_back1_1	jor_back1	98	13
+warp	jor_back1	98	10	#to_tail_1	jor_tail	98	284
+warp	jor_back1	131	10	#to_tail_2	jor_tail	139	280
+warp	jor_tail	134	281	#to_jor_back1_2	jor_back1	131	13
+warp	jor_back1	385	229	#to_icecastle	icecastle	20	123
+warp	icecastle	17	123	#to_jor_back1_A	jor_back1	380	229
+warp	jor_back1	214	390	#to_jor_back2_A	jor_back2	229	17
+warp	jor_back2	229	12	#to_jor_back1_B	jor_back1	214	387
+warp	jor_back2	9	248	#to_jor_back3_A	jor_back3	364	245
+warp	jor_back3	368	245	#to_jor_back2_B	jor_back2	13	248
+warp	jor_back3	63	326	#to_jor_dun01_A	jor_dun01	113	10
+warp	jor_dun01	113	7	#to_jor_back3_B	jor_back3	65	321
+warp	jor_back3	368	245	#to_jor_back2_D	jor_back2	13	248
 file	npc/re/warps/fields/morroc_fild.txt
 warp	moc_fild01	22	242	mocf005	prt_fild09	380	237
 warp	moc_fild01	239	382	mocf006	prt_fild08	233	20
@@ -5280,6 +5355,462 @@ warp	un_bunker	229	163	Z-0#b_Z-1	un_bunker	159	52
 warp	un_bunker	164	51	Z-1#b_Z-0	un_bunker	233	164
 warp	un_bunker	366	164	Z-0#b_Z-2	un_bunker	31	51
 warp	un_bunker	27	52	Z-2#b_Z-0	un_bunker	361	163
+file	npc/re/world_sync/warps.txt
+warp	bl_death	315	59	ws_bl_death_15901	ba_in01	339	53
+warp	bl_grass	157	16	ws_bl_grass_15899	ba_in01	325	53
+warp	bl_ice	36	81	ws_bl_ice_15895	ba_in01	307	38
+warp	bl_lava	163	14	ws_bl_lava_15897	ba_in01	311	53
+warp	bl_soul	155	12	ws_bl_soul_15903	ba_in01	201	300
+warp	bl_temple	53	82	ws_bl_temple_15907	ba_in01	229	300
+warp	bl_venom	146	19	ws_bl_venom_15905	ba_in01	215	300
+warp	clock_01	79	39	ws_clock_01_16295	c_tower1	241	200
+warp	hero_tra	70	15	ws_hero_tra_15802	hero_lb	136	143
+warp	icas_in2	109	29	ws_icas_in2_14316	icecastle	227	158
+warp	icas_in2	125	60	ws_icas_in2_14317	icas_in2	163	60
+warp	icas_in2	159	60	ws_icas_in2_14318	icas_in2	121	60
+warp	icas_in2	92	60	ws_icas_in2_14319	icas_in2	56	60
+warp	icas_in2	59	60	ws_icas_in2_14320	icas_in2	96	60
+warp	icas_in2	250	109	ws_icas_in2_14322	icecastle	160	203
+warp	icas_in2	33	109	ws_icas_in2_14340	icecastle	51	164
+warp	iz_dun00t	168	173	ws_iz_dun00t_30033	gef_fild07	270	290
+warp	iz_dun00t	39	41	ws_iz_dun00t_30034	iz_dun01t	41	37
+warp	iz_dun00t	352	342	ws_iz_dun00t_30036	iz_dun01t	253	252
+warp	iz_dun01t	41	32	ws_iz_dun01t_30035	iz_dun00t	39	46
+warp	iz_dun01t	253	258	ws_iz_dun01t_30037	iz_dun00t	352	337
+warp	iz_dun01t	118	170	ws_iz_dun01t_30038	iz_dun02t	236	204
+warp	iz_dun02t	236	198	ws_iz_dun02t_30039	iz_dun01t	118	165
+warp	iz_dun02t	339	331	ws_iz_dun02t_30040	iz_dun03t	32	63
+warp	iz_dun03t	29	63	ws_iz_dun03t_30041	iz_dun02t	339	328
+warp	iz_dun03t	264	245	ws_iz_dun03t_30042	iz_dun04t	26	27
+warp	iz_dun04t	26	24	ws_iz_dun04t_30043	iz_dun03t	261	245
+warp	job4_bio	52	30	ws_job4_bio_17326	verus04	52	263
+warp	job4_mag	115	82	ws_job4_mag_17222	job4_mag	115	117
+warp	job4_mag	70	38	ws_job4_mag_17223	ba_maison	186	247
+warp	job4_mag	158	37	ws_job4_mag_17225	ba_maison	186	247
+warp	job4_mag	114	70	ws_job4_mag_17227	ba_maison	186	247
+warp	job4_mag	115	114	ws_job4_mag_17229	job4_mag	110	74
+warp	jor_back4	277	16	ws_jor_back4_14303	jor_back3	159	360
+warp	jor_back4	6	374	ws_jor_back4_14304	jor_back5	340	20
+warp	jor_back5	339	14	ws_jor_back5_14305	jor_back4	10	370
+warp	jor_back5	10	239	ws_jor_back5_14306	jor_back6	388	263
+warp	jor_back6	393	263	ws_jor_back6_14307	jor_back5	16	239
+warp	jor_back6	30	147	ws_jor_back6_14308	jor_root3	367	129
+warp	jor_maze	206	12	ws_jor_maze_14274	jor_sanct	28	286
+warp	jor_maze	198	58	ws_jor_maze_14275	jor_maze	268	116
+warp	jor_maze	268	113	ws_jor_maze_14276	jor_maze	198	54
+warp	jor_maze	264	187	ws_jor_maze_14277	jor_maze	85	256
+warp	jor_maze	89	256	ws_jor_maze_14278	jor_maze	268	187
+warp	jor_maze	46	275	ws_jor_maze_14279	jor_maze	16	16
+warp	jor_maze	16	12	ws_jor_maze_14280	jor_maze	46	271
+warp	jor_maze	88	28	ws_jor_maze_14281	jor_maze	151	281
+warp	jor_maze	151	285	ws_jor_maze_14282	jor_maze	88	32
+warp	jor_maze	182	206	ws_jor_maze_14283	jor_maze	192	153
+warp	jor_maze	192	157	ws_jor_maze_14284	jor_maze	182	210
+warp	jor_maze	164	138	ws_jor_maze_14285	jor_maze	49	162
+warp	jor_maze	53	162	ws_jor_maze_14286	jor_maze	168	138
+warp	jor_maze	50	125	ws_jor_maze_14287	jor_maze	192	106
+warp	jor_maze	192	102	ws_jor_maze_14288	jor_maze	50	121
+warp	jor_maze	34	189	ws_jor_maze_14289	jor_maze	104	156
+warp	jor_maze	104	152	ws_jor_maze_14290	jor_maze	34	185
+warp	jor_maze	104	207	ws_jor_maze_14291	jor_maze	148	28
+warp	jor_maze	148	24	ws_jor_maze_14292	jor_maze	104	203
+warp	jor_maze	140	79	ws_jor_maze_14293	jor_twice	42	55
+warp	jor_maze	136	176	ws_jor_maze_14295	jor_maze	260	46
+warp	jor_maze	260	50	ws_jor_maze_14296	jor_maze	136	180
+warp	jor_maze	14	283	ws_jor_maze_14297	jor_maze	282	246
+warp	jor_maze	282	242	ws_jor_maze_14298	jor_maze	14	279
+warp	jor_maze	217	289	ws_jor_maze_14299	jor_maze	243	156
+warp	jor_maze	243	152	ws_jor_maze_14300	jor_maze	217	285
+warp	jor_root1	32	11	ws_jor_root1_14310	jor_nest	38	270
+warp	jor_root1	59	295	ws_jor_root1_14311	jor_root2	25	17
+warp	jor_root2	25	10	ws_jor_root2_14312	jor_root1	59	290
+warp	jor_root2	25	291	ws_jor_root2_14313	jor_sanct	150	47
+warp	jor_root2	12	172	ws_jor_root2_14804	jor_safty2	199	369
+warp	jor_root2	242	124	ws_jor_root2_14806	jor_safty2	297	368
+warp	jor_root2	149	125	ws_jor_root2_14808	jor_safty2	310	245
+warp	jor_root3	372	129	ws_jor_root3_14309	jor_back6	34	147
+warp	jor_safty2	65	357	ws_jor_safty2_14459	jor_root2	232	248
+warp	jor_safty2	193	31	ws_jor_safty2_14501	jor_maze	15	40
+warp	jor_safty2	320	36	ws_jor_safty2_14505	jor_maze	17	147
+warp	jor_safty2	66	245	ws_jor_safty2_14703	jor_root1	32	70
+warp	jor_safty2	199	371	ws_jor_safty2_14805	jor_root2	14	174
+warp	jor_safty2	295	369	ws_jor_safty2_14807	jor_root2	240	124
+warp	jor_safty2	310	243	ws_jor_safty2_14809	jor_root2	149	123
+warp	jor_sanct	28	291	ws_jor_sanct_14273	jor_maze	206	16
+warp	jor_sanct	150	43	ws_jor_sanct_14314	jor_root2	25	285
+warp	jor_twice	40	52	ws_jor_twice_14294	jor_maze	140	75
+warp	jor_twig	212	109	ws_jor_twig_14323	jor_twice	47	327
+warp	mjo_wst01	204	387	ws_mjo_wst01_15864	ein_fild08	192	53
+warp	moc_fild04	92	381	ws_moc_fild04_20170	prt_fild09	246	19
+warp	odin_past	291	235	ws_odin_past_17410	odin_tem03	280	241
+warp	payon_mem	89	22	ws_payon_mem_29740	payon	171	101
+warp	payon_mem	189	70	ws_payon_mem_29741	payon	171	101
+warp	payon_mem	175	189	ws_payon_mem_29742	payon	171	101
+warp	payon_mem	16	151	ws_payon_mem_29743	payon	171	101
+warp	ra_pol01	297	103	ws_ra_pol01_15860	ra_fild10	348	336
+warp	star_frst	89	25	ws_star_frst_18075	mjolnir_03	232	178
+warp	star_frst	61	122	ws_star_frst_18076	star_in	181	79
+warp	star_frst	150	176	ws_star_frst_18078	star_in	102	72
+warp	star_frst	68	173	ws_star_frst_18080	star_in	139	61
+warp	star_frst	111	173	ws_star_frst_18082	star_in	132	10
+warp	star_frst	29	176	ws_star_frst_18084	star_in	8	82
+warp	star_frst	30	131	ws_star_frst_18086	star_in	12	51
+warp	star_frst	33	106	ws_star_frst_18088	star_in	13	133
+warp	star_frst	60	107	ws_star_frst_18090	star_in	11	12
+warp	star_frst	111	119	ws_star_frst_18092	star_in	177	12
+warp	star_frst	131	80	ws_star_frst_18094	star_in	47	12
+warp	star_frst	90	166	ws_star_frst_18096	star_in	56	56
+warp	star_frst	172	133	ws_star_frst_18098	star_in	92	9
+warp	star_in	180	72	ws_star_in_18077	star_frst	57	116
+warp	star_in	106	72	ws_star_in_18079	star_frst	153	168
+warp	star_in	147	61	ws_star_in_18081	star_frst	72	169
+warp	star_in	130	12	ws_star_in_18083	star_frst	106	169
+warp	star_in	10	80	ws_star_in_18085	star_frst	29	169
+warp	star_in	17	51	ws_star_in_18087	star_frst	35	133
+warp	star_in	13	139	ws_star_in_18089	star_frst	34	112
+warp	star_in	10	17	ws_star_in_18091	star_frst	60	111
+warp	star_in	172	10	ws_star_in_18093	star_frst	107	114
+warp	star_in	42	10	ws_star_in_18095	star_frst	126	88
+warp	star_in	56	50	ws_star_in_18097	star_frst	92	160
+warp	star_in	86	8	ws_star_in_18099	star_frst	167	133
+warp	vr_bob	293	167	ws_vr_bob_14944	vr_bob	92	383
+warp	vr_bob	92	390	ws_vr_bob_14945	vr_bob	293	173
+warp	ab_death1	150	174	ws_ab_death1_28635	ba_void	241	118
+warp	ab_factory1	39	251	ws_ab_factory1_28625	ba_void	42	117
+warp	ab_ground1	288	159	ws_ab_ground1_28641	ba_void	135	202
+warp	ab_ice1	149	31	ws_ab_ice1_28639	ba_void	27	129
+warp	ab_jungle1	150	143	ws_ab_jungle1_28627	ba_void	128	223
+warp	ab_lava1	168	190	ws_ab_lava1_28643	ba_void	135	216
+warp	ab_soul1	149	25	ws_ab_soul1_28631	ba_void	235	137
+warp	ab_temple1	149	258	ws_ab_temple1_28633	ba_void	241	132
+warp	ab_valley1	154	196	ws_ab_valley1_28629	ba_void	208	137
+warp	ab_venom1	260	263	ws_ab_venom1_28637	ba_void	42	129
+warp	ba_void	42	121	ws_ba_void_28624	ab_factory1	41	248
+warp	ba_void	128	227	ws_ba_void_28626	ab_jungle1	150	139
+warp	ba_void	208	141	ws_ba_void_28628	ab_valley1	151	193
+warp	ba_void	235	141	ws_ba_void_28630	ab_soul1	149	28
+warp	ba_void	245	132	ws_ba_void_28632	ab_temple1	149	255
+warp	ba_void	245	118	ws_ba_void_28634	ab_death1	150	171
+warp	ba_void	42	133	ws_ba_void_28636	ab_venom1	258	261
+warp	ba_void	27	133	ws_ba_void_28638	ab_ice1	149	34
+warp	ba_void	139	202	ws_ba_void_28640	ab_ground1	285	159
+warp	ba_void	139	216	ws_ba_void_28642	ab_lava1	166	187
+warp	ba_void	127	58	ws_ba_void_28647	ba_in01	343	299
+warp	ba_void	127	121	ws_ba_void_28648	ba_void	134	194
+warp	ba_void	134	190	ws_ba_void_28649	ba_void	127	117
+warp	ba_void	155	106	ws_ba_void_28650	ba_void	199	136
+warp	ba_void	196	136	ws_ba_void_28651	ba_void	151	105
+warp	ba_void	116	105	ws_ba_void_28652	ba_void	54	128
+warp	ba_void	56	126	ws_ba_void_28653	ba_void	120	105
+warp	ba_void	45	208	ws_ba_void_28654	ba_void	106	222
+warp	ba_void	221	206	ws_ba_void_28655	ba_void	221	139
+warp	ba_void	228	47	ws_ba_void_28656	ba_void	240	112
+warp	ch1_dw	270	294	ws_ch1_dw_19538	hem_dun01	226	212
+warp	ch1_dw	259	352	ws_ch1_dw_19539	ch1_dw	265	65
+warp	ch1_dw	265	60	ws_ch1_dw_19540	ch1_dw	253	349
+warp	ch1_dw	256	69	ws_ch1_dw_19549	ch1_dw	212	64
+warp	ch1_dw	217	64	ws_ch1_dw_19550	ch1_dw	260	69
+warp	ch1_dw	275	69	ws_ch1_dw_19551	ch1_dw	326	54
+warp	ch1_dw	321	54	ws_ch1_dw_19552	ch1_dw	272	69
+warp	ch1_gef_in	28	156	ws_ch1_gef_in_19684	ch1_geffen	101	138
+warp	ch1_gef_in	28	106	ws_ch1_gef_in_19686	ch1_geffen	136	136
+warp	ch1_gef_in	70	132	ws_ch1_gef_in_19688	ch1_geffen	46	88
+warp	ch1_gef_in	70	158	ws_ch1_gef_in_19690	ch1_geffen	76	191
+warp	ch1_gef_in	163	94	ws_ch1_gef_in_19692	ch1_geffen	65	176
+warp	ch1_gef_in	70	48	ws_ch1_gef_in_19694	ch1_geffen	168	170
+warp	ch1_gef_in	41	67	ws_ch1_gef_in_19695	ch1_gef_in	55	65
+warp	ch1_gef_in	25	64	ws_ch1_gef_in_19696	ch1_gef_in	26	33
+warp	ch1_gef_in	25	38	ws_ch1_gef_in_19697	ch1_gef_in	26	69
+warp	ch1_gef_in	67	39	ws_ch1_gef_in_19698	ch1_gef_in	30	26
+warp	ch1_gef_in	67	29	ws_ch1_gef_in_19699	ch1_que01	135	119
+warp	ch1_gef_in	87	65	ws_ch1_gef_in_19701	ch1_gef_in	103	67
+warp	ch1_gef_in	100	67	ws_ch1_gef_in_19702	ch1_gef_in	84	65
+warp	ch1_gef_in	114	60	ws_ch1_gef_in_19703	ch1_gef_in	114	34
+warp	ch1_gef_in	114	37	ws_ch1_gef_in_19704	ch1_gef_in	114	63
+warp	ch1_gef_in	70	83	ws_ch1_gef_in_19705	ch1_gef_in	72	101
+warp	ch1_gef_in	72	98	ws_ch1_gef_in_19706	ch1_gef_in	70	80
+warp	ch1_gef_in	79	107	ws_ch1_gef_in_19707	ch1_gef_in	107	109
+warp	ch1_gef_in	104	109	ws_ch1_gef_in_19708	ch1_gef_in	76	107
+warp	ch1_gef_in	106	181	ws_ch1_gef_in_19710	ch1_geffen	178	63
+warp	ch1_gef_in	113	163	ws_ch1_gef_in_19711	ch1_gef_in	139	169
+warp	ch1_gef_in	136	169	ws_ch1_gef_in_19712	ch1_gef_in	110	163
+warp	ch1_gef_in	138	149	ws_ch1_gef_in_19713	ch1_gef_in	138	165
+warp	ch1_gef_in	166	54	ws_ch1_gef_in_19715	ch1_geffen	138	101
+warp	ch1_gef_in	181	177	ws_ch1_gef_in_19717	ch1_geffen	102	193
+warp	ch1_gef_in	52	65	ws_ch1_gef_in_19853	ch1_gef_in	38	67
+warp	ch1_gef_in	29	22	ws_ch1_gef_in_19863	ch1_gef_in	67	34
+warp	ch1_geffen	120	123	ws_ch1_geffen_19490	hem_dun01	18	86
+warp	ch1_geffen	215	119	ws_ch1_geffen_19679	hem_fild	36	193
+warp	ch1_geffen	98	141	ws_ch1_geffen_19683	ch1_gef_in	28	160
+warp	ch1_geffen	138	138	ws_ch1_geffen_19685	ch1_gef_in	28	110
+warp	ch1_geffen	43	85	ws_ch1_geffen_19687	ch1_gef_in	70	138
+warp	ch1_geffen	73	194	ws_ch1_geffen_19689	ch1_gef_in	70	161
+warp	ch1_geffen	61	180	ws_ch1_geffen_19691	ch1_gef_in	162	97
+warp	ch1_geffen	172	174	ws_ch1_geffen_19693	ch1_gef_in	70	52
+warp	ch1_geffen	182	59	ws_ch1_geffen_19709	ch1_gef_in	106	177
+warp	ch1_geffen	140	99	ws_ch1_geffen_19714	ch1_gef_in	166	50
+warp	ch1_geffen	102	197	ws_ch1_geffen_19716	ch1_gef_in	181	181
+warp	ch1_gfn01	59	173	ws_ch1_gfn01_19781	hem_fild	231	292
+warp	ch1_gfn03	145	27	ws_ch1_gfn03_19777	hem_fild	133	329
+warp	ch1_que01	130	119	ws_ch1_que01_19700	ch1_gef_in	68	33
+warp	ch1_sf01	191	205	ws_ch1_sf01_19413	mu_fild01	89	153
+warp	ch1_sf01	54	205	ws_ch1_sf01_19418	mu_fild01	154	218
+warp	ch1_sf01	274	220	ws_ch1_sf01_19424	mu_fild01	220	241
+warp	ch1_sf01	101	224	ws_ch1_sf01_19432	mu_fild01	194	183
+warp	ch1_sf02	194	34	ws_ch1_sf02_19799	uknw_ruin	270	235
+warp	ch1_sf02	155	169	ws_ch1_sf02_19801	uknw_ruin	155	166
+warp	ch1_sf02	103	52	ws_ch1_sf02_19802	uknw_ruin	149	152
+warp	ch1_sf02	125	273	ws_ch1_sf02_19805	uknw_ruin	255	62
+warp	ch1_sf02	32	53	ws_ch1_sf02_19808	uknw_ruin	93	172
+warp	ch1_sf03	174	246	ws_ch1_sf03_19474	hem_fild	102	155
+warp	ch1_sf03	271	189	ws_ch1_sf03_19504	hem_dun01	85	145
+warp	ch1_sf03	103	169	ws_ch1_sf03_19529	hem_dun01	182	192
+warp	ch1_sf03	127	246	ws_ch1_sf03_19768	hem_fild	180	260
+warp	ch1_vrgef1	28	156	ws_ch1_vrgef1_19984	ch1_vrgef2	101	138
+warp	ch1_vrgef1	70	132	ws_ch1_vrgef1_20044	ch1_vrgef2	46	88
+warp	ch1_vrgef1	28	106	ws_ch1_vrgef1_20050	ch1_vrgef2	136	136
+warp	ch1_vrgef1	70	158	ws_ch1_vrgef1_20052	ch1_vrgef2	76	191
+warp	ch1_vrgef1	163	94	ws_ch1_vrgef1_20054	ch1_vrgef2	65	176
+warp	ch1_vrgef1	70	48	ws_ch1_vrgef1_20056	ch1_vrgef2	168	170
+warp	ch1_vrgef1	52	65	ws_ch1_vrgef1_20057	ch1_vrgef1	38	67
+warp	ch1_vrgef1	41	67	ws_ch1_vrgef1_20058	ch1_vrgef1	55	65
+warp	ch1_vrgef1	25	64	ws_ch1_vrgef1_20059	ch1_vrgef1	26	33
+warp	ch1_vrgef1	25	38	ws_ch1_vrgef1_20060	ch1_vrgef1	26	69
+warp	ch1_vrgef1	29	22	ws_ch1_vrgef1_20061	ch1_vrgef1	67	34
+warp	ch1_vrgef1	67	39	ws_ch1_vrgef1_20062	ch1_vrgef1	30	26
+warp	ch1_vrgef1	87	65	ws_ch1_vrgef1_20063	ch1_vrgef1	103	67
+warp	ch1_vrgef1	100	67	ws_ch1_vrgef1_20064	ch1_vrgef1	84	65
+warp	ch1_vrgef1	114	60	ws_ch1_vrgef1_20065	ch1_vrgef1	114	34
+warp	ch1_vrgef1	114	37	ws_ch1_vrgef1_20066	ch1_vrgef1	114	63
+warp	ch1_vrgef1	70	83	ws_ch1_vrgef1_20067	ch1_vrgef1	72	101
+warp	ch1_vrgef1	72	98	ws_ch1_vrgef1_20068	ch1_vrgef1	70	80
+warp	ch1_vrgef1	79	107	ws_ch1_vrgef1_20069	ch1_vrgef1	107	109
+warp	ch1_vrgef1	104	109	ws_ch1_vrgef1_20070	ch1_vrgef1	76	107
+warp	ch1_vrgef1	106	181	ws_ch1_vrgef1_20072	ch1_vrgef2	178	63
+warp	ch1_vrgef1	113	163	ws_ch1_vrgef1_20073	ch1_vrgef1	139	169
+warp	ch1_vrgef1	136	169	ws_ch1_vrgef1_20074	ch1_vrgef1	110	163
+warp	ch1_vrgef1	138	162	ws_ch1_vrgef1_20075	ch1_vrgef1	138	146
+warp	ch1_vrgef1	138	149	ws_ch1_vrgef1_20076	ch1_vrgef1	138	165
+warp	ch1_vrgef1	166	54	ws_ch1_vrgef1_20078	ch1_vrgef2	138	101
+warp	ch1_vrgef1	181	177	ws_ch1_vrgef1_20080	ch1_vrgef2	102	193
+warp	ch1_vrgef2	43	85	ws_ch1_vrgef2_20043	ch1_vrgef1	70	138
+warp	ch1_vrgef2	138	138	ws_ch1_vrgef2_20049	ch1_vrgef1	28	110
+warp	ch1_vrgef2	73	194	ws_ch1_vrgef2_20051	ch1_vrgef1	70	161
+warp	ch1_vrgef2	61	180	ws_ch1_vrgef2_20053	ch1_vrgef1	162	97
+warp	ch1_vrgef2	172	174	ws_ch1_vrgef2_20055	ch1_vrgef1	70	52
+warp	ch1_vrgef2	182	59	ws_ch1_vrgef2_20071	ch1_vrgef1	106	177
+warp	ch1_vrgef2	140	99	ws_ch1_vrgef2_20077	ch1_vrgef1	166	50
+warp	ch1_vrgef2	102	197	ws_ch1_vrgef2_20079	ch1_vrgef1	181	181
+warp	ch1fild1	122	13	ws_ch1fild1_20108	ygg_roots	151	341
+warp	ch1zero1	140	12	ws_ch1zero1_20109	ch1fild1	104	76
+warp	ch1zero2	147	19	ws_ch1zero2_20110	ch1fild1	104	76
+warp	ch1zero3	215	267	ws_ch1zero3_20111	ch1fild1	104	76
+warp	ch1zero4	245	64	ws_ch1zero4_20112	ch1fild1	104	76
+warp	ch2gms	22	12	ws_ch2gms_20200	deadroot	346	348
+warp	ch2gms	45	34	ws_ch2gms_20201	ch2gms	62	11
+warp	ch2gms	58	12	ws_ch2gms_20202	ch2gms	42	34
+warp	ch2gms	86	14	ws_ch2gms_20203	ch2gms	74	62
+warp	ch2gms	74	58	ws_ch2gms_20204	ch2gms	86	11
+warp	ch2safe2	66	52	ws_ch2safe2_20192	mu_dun01	258	121
+warp	ch2safe3	143	58	ws_ch2safe3_20198	deadroot	72	70
+warp	ch2safe3	45	177	ws_ch2safe3_20211	deadroot	114	171
+warp	ch2safe4	212	123	ws_ch2safe4_20291	ragsruth	144	79
+warp	ch2safe4	31	182	ws_ch2safe4_20353	rgs_dun1	171	45
+warp	ch2safe4	161	179	ws_ch2safe4_20359	rgs_dun1	220	154
+warp	ch2safe4	89	231	ws_ch2safe4_20366	rgs_dun1	104	191
+warp	ch2safe4	226	240	ws_ch2safe4_20373	rgs_dun1	267	85
+warp	ch2safe4	94	177	ws_ch2safe4_20383	rgs_dun1	127	144
+warp	ch2safe4	42	236	ws_ch2safe4_20396	rgs_dun1	41	239
+warp	ch2safe4	224	170	ws_ch2safe4_20404	rgs_dun1	217	257
+warp	ch2safe4	196	34	ws_ch2safe4_20405	ch2safe4	230	172
+warp	cmd_bhole	254	354	ws_cmd_bhole_28671	comodo	175	81
+warp	deadroot	68	72	ws_deadroot_20197	ch2safe3	142	64
+warp	deadroot	349	351	ws_deadroot_20199	ch2gms	22	16
+warp	hem_dun01	13	82	ws_hem_dun01_19682	ch1_geffen	120	116
+warp	hem_dun01	220	210	ws_hem_dun01_26283	ch1_dw	264	294
+warp	hem_dun02	59	171	ws_hem_dun02_19681	hem_fild	329	188
+warp	hem_fild	31	193	ws_hem_fild_19680	ch1_geffen	210	119
+warp	hero_tra	70	150	ws_hero_tra_26266	hero_lb	136	143
+warp	jalbe_in	65	130	ws_jalbe_in_18751	jor_albe	87	216
+warp	jalbe_in	73	141	ws_jalbe_in_18753	jor_albe	96	237
+warp	jalbe_in	65	153	ws_jalbe_in_18754	jalbe_in	65	173
+warp	jalbe_in	65	170	ws_jalbe_in_18755	jalbe_in	65	150
+warp	jalbe_in	79	43	ws_jalbe_in_18757	jor_albe	118	145
+warp	jalbe_in	63	57	ws_jalbe_in_18758	jalbe_in	23	57
+warp	jalbe_in	23	54	ws_jalbe_in_18759	jalbe_in	63	54
+warp	jalbe_in	63	30	ws_jalbe_in_18760	jalbe_in	65	110
+warp	jalbe_in	65	113	ws_jalbe_in_18761	jalbe_in	63	33
+warp	jalbe_in	14	141	ws_jalbe_in_18763	jor_albe	69	138
+warp	jalbe_in	21	153	ws_jalbe_in_18764	jalbe_in	21	173
+warp	jalbe_in	21	170	ws_jalbe_in_18765	jalbe_in	21	150
+warp	jalbe_in	21	130	ws_jalbe_in_18766	jalbe_in	21	110
+warp	jalbe_in	21	113	ws_jalbe_in_18767	jalbe_in	21	133
+warp	jalbe_in	23	33	ws_jalbe_in_18769	jor_albe	200	104
+warp	jalbe_in	114	50	ws_jalbe_in_18771	jor_albe	63	237
+warp	jalbe_in	114	98	ws_jalbe_in_18773	jor_albe	110	88
+warp	jor_albe	86	219	ws_jor_albe_18750	jalbe_in	65	133
+warp	jor_albe	93	237	ws_jor_albe_18752	jalbe_in	70	141
+warp	jor_albe	114	145	ws_jor_albe_18756	jalbe_in	76	43
+warp	jor_albe	72	138	ws_jor_albe_18762	jalbe_in	17	141
+warp	jor_albe	197	101	ws_jor_albe_18768	jalbe_in	23	30
+warp	jor_albe	66	237	ws_jor_albe_18770	jalbe_in	117	50
+warp	jor_albe	113	87	ws_jor_albe_18772	jalbe_in	117	98
+warp	jor_base	240	42	ws_jor_base_18739	jor_raise1	276	386
+warp	jor_mbase	204	196	ws_jor_mbase_18774	mbase_in	89	101
+warp	jor_mbase	222	264	ws_jor_mbase_18784	mbase_in	221	112
+warp	jor_mbase	321	115	ws_jor_mbase_18786	mbase_in	285	124
+warp	jor_mbase	170	248	ws_jor_mbase_18788	mbase_in	375	134
+warp	jor_raise1	301	6	ws_jor_raise1_18737	jor_raise2	118	410
+warp	jor_raise1	276	394	ws_jor_raise1_18738	jor_base	240	46
+warp	jor_raise1	152	323	ws_jor_raise1_18740	jor_tmple1	170	62
+warp	jor_raise1	113	334	ws_jor_raise1_19340	jor_sklf1	298	170
+warp	jor_raise2	118	414	ws_jor_raise2_18736	jor_raise1	301	10
+warp	jor_sklf1	303	170	ws_jor_sklf1_19341	jor_raise1	117	334
+warp	jor_sklf1	40	205	ws_jor_sklf1_19342	jor_sklf2	24	173
+warp	jor_sklf1	40	134	ws_jor_sklf1_19344	jor_sklf2	25	128
+warp	jor_sklf1	299	205	ws_jor_sklf1_19346	jor_sklf2	276	173
+warp	jor_sklf1	299	134	ws_jor_sklf1_19348	jor_sklf2	276	128
+warp	jor_sklf2	20	173	ws_jor_sklf2_19343	jor_sklf1	44	205
+warp	jor_sklf2	20	128	ws_jor_sklf2_19345	jor_sklf1	44	134
+warp	jor_sklf2	280	173	ws_jor_sklf2_19347	jor_sklf1	294	205
+warp	jor_sklf2	280	128	ws_jor_sklf2_19349	jor_sklf1	294	134
+warp	jor_tmple1	170	55	ws_jor_tmple1_18741	jor_raise1	152	319
+warp	jor_tmple1	40	205	ws_jor_tmple1_18742	jor_tmple2	24	173
+warp	jor_tmple1	40	134	ws_jor_tmple1_18744	jor_tmple2	25	128
+warp	jor_tmple1	299	205	ws_jor_tmple1_18746	jor_tmple2	276	173
+warp	jor_tmple1	299	134	ws_jor_tmple1_18748	jor_tmple2	276	128
+warp	jor_tmple2	20	173	ws_jor_tmple2_18743	jor_tmple1	44	205
+warp	jor_tmple2	20	128	ws_jor_tmple2_18745	jor_tmple1	44	134
+warp	jor_tmple2	280	173	ws_jor_tmple2_18747	jor_tmple1	294	205
+warp	jor_tmple2	280	128	ws_jor_tmple2_18749	jor_tmple1	294	134
+warp	kin_in01	96	243	ws_kin_in01_20162	kindlbrk	53	187
+warp	kin_in01	106	250	ws_kin_in01_20163	kin_in01	140	250
+warp	kin_in01	138	250	ws_kin_in01_20164	kin_in01	103	250
+warp	kin_in01	97	174	ws_kin_in01_20166	kindlbrk	192	213
+warp	kin_in01	95	197	ws_kin_in01_20167	kin_in01	163	192
+warp	kin_in01	163	195	ws_kin_in01_20168	kin_in01	95	194
+warp	kin_in01	33	115	ws_kin_in01_20170	kindlbrk	92	138
+warp	kin_in01	99	119	ws_kin_in01_20172	kindlbrk	96	195
+warp	kin_in01	199	243	ws_kin_in01_20174	kindlbrk	116	128
+warp	kin_in01	174	113	ws_kin_in01_20176	kindlbrk	171	188
+warp	kin_in01	30	235	ws_kin_in01_20178	kindlbrk	205	115
+warp	kin_in01	19	185	ws_kin_in01_20180	kindlbrk	220	130
+warp	kin_in01	29	19	ws_kin_in01_20183	kindlbrk	198	146
+warp	kin_in01	86	22	ws_kin_in01_20184	kindlbrk	198	146
+warp	kin_in01	129	49	ws_kin_in01_20186	kindlbrk	218	160
+warp	kindlbrk	44	29	ws_kindlbrk_20160	mu_fild03	361	354
+warp	kindlbrk	55	189	ws_kindlbrk_20161	kin_in01	96	247
+warp	kindlbrk	194	215	ws_kindlbrk_20165	kin_in01	97	177
+warp	kindlbrk	94	140	ws_kindlbrk_20169	kin_in01	33	117
+warp	kindlbrk	96	198	ws_kindlbrk_20171	kin_in01	99	121
+warp	kindlbrk	116	131	ws_kindlbrk_20173	kin_in01	199	245
+warp	kindlbrk	169	190	ws_kindlbrk_20175	kin_in01	174	115
+warp	kindlbrk	205	118	ws_kindlbrk_20177	kin_in01	30	237
+warp	kindlbrk	223	130	ws_kindlbrk_20179	kin_in01	23	185
+warp	kindlbrk	198	149	ws_kindlbrk_20181	kin_in01	86	26
+warp	kindlbrk	221	160	ws_kindlbrk_20185	kin_in01	131	49
+warp	kindlbrk	118	217	ws_kindlbrk_20187	mu_dun01	142	34
+warp	mbase_in	89	98	ws_mbase_in_18775	jor_mbase	204	192
+warp	mbase_in	111	128	ws_mbase_in_18776	mbase_in	165	169
+warp	mbase_in	162	169	ws_mbase_in_18777	mbase_in	108	127
+warp	mbase_in	66	114	ws_mbase_in_18778	mbase_in	22	79
+warp	mbase_in	25	80	ws_mbase_in_18779	mbase_in	70	114
+warp	mbase_in	66	120	ws_mbase_in_18780	mbase_in	22	123
+warp	mbase_in	25	124	ws_mbase_in_18781	mbase_in	70	120
+warp	mbase_in	68	128	ws_mbase_in_18782	mbase_in	22	167
+warp	mbase_in	25	168	ws_mbase_in_18783	mbase_in	71	128
+warp	mbase_in	221	109	ws_mbase_in_18785	jor_mbase	222	260
+warp	mbase_in	282	124	ws_mbase_in_18787	jor_mbase	317	115
+warp	mbase_in	375	137	ws_mbase_in_18789	jor_mbase	170	253
+warp	mbase_in	94	141	ws_mbase_in_18857	mbase_in	117	181
+warp	mbase_in	117	178	ws_mbase_in_18858	mbase_in	94	138
+warp	mbase_in	113	120	ws_mbase_in_18991	mbase_in	166	126
+warp	mbase_in	162	126	ws_mbase_in_18992	mbase_in	109	120
+warp	mbase_in	113	114	ws_mbase_in_19001	mbase_in	165	81
+warp	mbase_in	162	82	ws_mbase_in_19002	mbase_in	109	114
+warp	mbase_in	65	178	ws_mbase_in_19116	mbase_in	85	137
+warp	memohall	205	13	ws_memohall_13548	prt_fild08	148	356
+warp	moc_akhet	190	53	ws_moc_akhet_28661	moc_fild11	188	212
+warp	mu_dun01	138	34	ws_mu_dun01_20188	kindlbrk	115	213
+warp	mu_dun01	95	266	ws_mu_dun01_20189	mu_dun02	94	35
+warp	mu_dun01	262	124	ws_mu_dun01_20191	ch2safe2	72	53
+warp	mu_dun02	94	32	ws_mu_dun02_20190	mu_dun01	92	266
+warp	mu_fild02	11	178	ws_mu_fild02_20156	mu_fild01	387	180
+warp	mu_fild02	391	125	ws_mu_fild02_20157	mu_fild03	17	125
+warp	mu_fild03	13	125	ws_mu_fild03_20158	mu_fild02	387	125
+warp	mu_fild03	365	358	ws_mu_fild03_20159	kindlbrk	48	33
+warp	nif_fild03	246	43	ws_nif_fild03_28667	niflheim	348	272
+warp	ragsruth	147	74	ws_ragsruth_20292	ch2safe4	210	117
+warp	rgs_dun1	171	39	ws_rgs_dun1_26286	ch2safe4	28	174
+warp	rgs_dun1	219	265	ws_rgs_dun1_26287	ch2safe4	230	172
+warp	uknw_ruin	37	246	ws_uknw_ruin_19677	uknw_ruin2	33	246
+warp	uknw_ruin	275	235	ws_uknw_ruin_19800	ch1_sf02	190	39
+warp	uknw_ruin2	37	246	ws_uknw_ruin2_19678	uknw_ruin	33	246
+warp	vr_cas	96	14	ws_vr_cas_27010	vr_cas	138	342
+warp	vr_cas	48	330	ws_vr_cas_27016	vr_cas	251	242
+warp	vr_cas	249	244	ws_vr_cas_27022	vr_cas	48	334
+warp	vr_cas	78	313	ws_vr_cas_27023	vr_cas	78	306
+warp	vr_cas	110	313	ws_vr_cas_27025	vr_cas	110	306
+warp	vr_cas	128	216	ws_vr_cas_27027	vr_cas	303	48
+warp	vr_cas	300	48	ws_vr_cas_27046	vr_cas	127	218
+warp	vr_cas	174	234	ws_vr_cas_27088	vr_cas	247	107
+warp	vr_cas	245	109	ws_vr_cas_27112	vr_cas	174	237
+warp	vr_cas	54	217	ws_vr_cas_27120	vr_cas	388	137
+warp	vr_cas	390	135	ws_vr_cas_27149	vr_cas	58	217
+warp	vr_cas	172	340	ws_vr_cas_27150	vr_cas	322	336
+warp	vr_cas	318	336	ws_vr_cas_27169	vr_cas	170	342
+warp	vr_cas	138	345	ws_vr_cas_27195	vr_cas	96	18
+warp	vr_clo1	218	113	ws_vr_clo1_27510	vr_clo1	219	149
+warp	vr_clo1	127	208	ws_vr_clo1_27555	prt_elib	54	44
+warp	vr_hero00	162	100	ws_vr_hero00_27918	vr_hero00	45	109
+warp	vr_hero00	45	104	ws_vr_hero00_27955	yuno_lib	55	80
+warp	vr_hero00	47	60	ws_vr_hero00_28003	vr_hero00	45	109
+warp	vr_hero00	47	12	ws_vr_hero00_28026	vr_hero00	45	109
+warp	vr_hero01	60	276	ws_vr_hero01_27992	yuno_lib	56	82
+warp	vr_hero01	48	268	ws_vr_hero01_27993	vr_hero00	45	109
+warp	vr_hero01	236	29	ws_vr_hero01_27994	vr_hero00	48	65
+warp	vr_hero02	368	51	ws_vr_hero02_28011	vr_hero00	48	65
+warp	vr_hero02	370	20	ws_vr_hero02_28012	vr_hero01	229	29
+warp	vr_hero02	36	378	ws_vr_hero02_28013	vr_hero00	47	17
+warp	vr_hero03	131	337	ws_vr_hero03_28034	vr_hero00	47	17
+warp	vr_hero03	112	332	ws_vr_hero03_28035	vr_hero02	36	371
+warp	vr_hero03	314	139	ws_vr_hero03_28036	vr_hero00	45	109
+warp	vr_prtd03	238	274	ws_vr_prtd03_28146	vr_prtg	83	10
+warp	vr_prtd03	42	30	ws_vr_prtd03_28147	vr_prtg	83	10
+warp	vr_prtg	31	23	ws_vr_prtg_28114	vr_prtg03	168	12
+warp	vr_prtg	87	6	ws_vr_prtg_28148	yuno_lib	50	80
+warp	vr_prtg03	165	59	ws_vr_prtg03_28118	vr_prtg03	45	47
+warp	vr_prtg03	178	85	ws_vr_prtg03_28122	vr_prtg03	165	54
+warp	vr_prtg03	191	55	ws_vr_prtg03_28123	vr_prtg03	165	54
+warp	vr_prtg03	172	44	ws_vr_prtg03_28124	vr_prtg03	165	54
+warp	vr_prtg03	45	120	ws_vr_prtg03_28125	vr_prtg03	164	177
+warp	vr_prtg03	169	235	ws_vr_prtg03_28126	vr_prtg03	11	200
+warp	vr_zrr02	98	10	ws_vr_zrr02_27889	vr_zrr01	43	129
+warp	vr_zrr02	132	10	ws_vr_zrr02_27890	vr_zrr01	43	129
+warp	vr_zrr02	222	21	ws_vr_zrr02_27891	vr_zrr01	43	129
+warp	vr_zrr02	385	232	ws_vr_zrr02_27892	vr_zrr01	43	129
+warp	vr_zrr02	222	388	ws_vr_zrr02_27893	vr_zrr01	43	129
+warp	vr_zrr03	10	243	ws_vr_zrr03_27894	vr_zrr01	43	129
+warp	vr_zrr03	267	314	ws_vr_zrr03_27895	vr_zrr01	43	129
+warp	vr_zrr03	230	11	ws_vr_zrr03_27896	vr_zrr01	43	129
+warp	ygg_edge	164	140	ws_ygg_edge_19718	ygg_fruit	73	117
+warp	ygg_edge	198	120	ws_ygg_edge_19720	ygg_fruit	121	115
+warp	ygg_edge	139	211	ws_ygg_edge_19722	ygg_fruit	160	118
+warp	ygg_edge	88	184	ws_ygg_edge_19724	ygg_fruit	33	71
+warp	ygg_edge	150	127	ws_ygg_edge_19726	ygg_fruit	69	70
+warp	ygg_edge	72	154	ws_ygg_edge_19728	ygg_fruit	101	71
+warp	ygg_edge	54	183	ws_ygg_edge_19730	ygg_fruit	135	72
+warp	ygg_fruit	71	114	ws_ygg_fruit_19719	ygg_edge	168	139
+warp	ygg_fruit	121	112	ws_ygg_fruit_19721	ygg_edge	195	117
+warp	ygg_fruit	157	116	ws_ygg_fruit_19723	ygg_edge	142	209
+warp	ygg_fruit	31	69	ws_ygg_fruit_19725	ygg_edge	89	188
+warp	ygg_fruit	67	67	ws_ygg_fruit_19727	ygg_edge	149	130
+warp	ygg_fruit	98	69	ws_ygg_fruit_19729	ygg_edge	73	151
+warp	ygg_fruit	132	71	ws_ygg_fruit_19731	ygg_edge	57	191
+warp	ygg_fruit	167	77	ws_ygg_fruit_19732	ygg_edge	0	0
+warp	ygg_roots	151	345	ws_ygg_roots_20107	ch1fild1	120	17
+warp	yuno_lib	52	24	ws_yuno_lib_22241	yuno_in04	115	62
+warp	yuno_lib	30	227	ws_yuno_lib_22245	yuno_in04	115	53
 file	npc/test/infinite_warp.txt
 warp	e_tower	74	116	#inf_warp1_1	e_tower	81	108
 warp	e_tower	81	108	#inf_warp1_2	e_tower	75	84

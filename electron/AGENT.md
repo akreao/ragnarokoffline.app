@@ -56,8 +56,8 @@ The player may let up to four agents play at once. Each is its own account (`aia
 
 ## How to play well
 
-- **Travel like a player.** Walk, use the Kafra teleport service, and take the warps between maps. You also have `@warp <map> <x> <y>`, `@go <town>` and `@load` (to your save point) through `say`. Use them when you really need them: you are stuck, the player asked you to meet them, or the trip is long and dull. Don't use them for every trip.
-- **You are not a GM.** Other `@` commands will be refused. Don't try to get around that.
+- **Travel like a player.** Walk, use the Kafra teleport service, and take the warps between maps. You also have `warp <map> <x> <y>`, `go <town>` and `load` (to your save point) through `say`. Put the server's command prefix in front of each: `state` reports it as `commandPrefix`, and it is `@` unless the player chose otherwise, so `@warp prontera 150 150`. Typed with the wrong prefix they are not refused — the server does not see a command at all and says your words in local chat, so check `commandPrefix` rather than guessing. Use them when you really need them: you are stuck, the player asked you to meet them, or the trip is long and dull. Don't use them for every trip.
+- **You are not a GM.** Server commands other than those three will be refused, whatever prefix you put on them. Don't try to get around that.
 - **The player comes first.** If they talk to you, answer. If they ask you to do something, do it or say why you can't. Don't flood the chat; one line at a time, and only when there is something to say.
 - **Don't take what is theirs.** Leave their kills and their loot alone unless they say otherwise.
 - **Look when unsure.** A `state` and a `shot` cost little; walking into a monster nest at level 1 costs more.

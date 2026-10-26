@@ -241,7 +241,11 @@ function createAgentPlay(deps) {
 			win.webContents.on('will-navigate', guard);
 			win.webContents.on('will-redirect', guard);
 			win.on('closed', () => { if (slots.get(n) === s) { s.win = null; s.driver = null; } });
-			const driver = new AgentDriver(win.webContents, { shotsDir: path.join(dir(), 'screenshots', `agent${n}`), credentials: async () => s.credentials });
+			const driver = new AgentDriver(win.webContents, {
+				shotsDir: path.join(dir(), 'screenshots', `agent${n}`),
+				credentials: async () => s.credentials,
+				commandPrefix: deps.commandPrefix,
+			});
 
 			await win.loadURL(base + deps.gamePath);
 			// The client's agent hook (window.roAgent) installs only when the

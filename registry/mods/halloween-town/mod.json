@@ -1,0 +1,12 @@
+{
+  "name": "halloween-town",
+  "author": "Lil Art",
+  "description": "A Halloween instance in a haunted, night-time Niflheim, solo or with your party. Talk to Casper in Niflheim (185, 190), pick a moon (Blue Moon for 90+, Blood Moon for 100-199, Eclipse for 200+), and stop Blair the witch across three hordes and four bosses within 90 minutes. Every kill pays Halloween Coins, which Jakk (180, 191) trades for costumes, boxes and a Sealed Card Album; Blair's tickets trade for Cash Points. Blue Moon works on Pre-renewal too.",
+  "tags": ["instance", "halloween", "seasonal", "party", "mvp", "npc"],
+  "icon": "images/icon.png",
+  "homepage": "https://github.com/LilArt420/halloweentown",
+  "source": {
+    "github": "LilArt420/halloweentown",
+    "asset": "halloween-town-*.zip"
+  }
+}

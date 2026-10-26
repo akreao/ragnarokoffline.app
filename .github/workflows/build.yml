@@ -489,16 +489,27 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: ragnarok-offline-${{ matrix.platform }}-${{ matrix.arch }}
+          # The installers, and what the app updates itself from
+          # (electron/app-update.js): latest*.yml, a .blockmap per installer,
+          # and on macOS the .zip Squirrel.Mac installs. latest*.yml by name,
+          # not *.yml: builder-debug.yml sits in the same folder.
           path: |
             dist/electron/*.dmg
             dist/electron/*.AppImage
             dist/electron/*.exe
+            dist/electron/*.zip
+            dist/electron/*.blockmap
+            dist/electron/latest*.yml
           if-no-files-found: warn
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: app
     runs-on: ubuntu-latest
+    # contents for the release; actions to start the docs rebuild
+    permissions:
+      contents: write
+      actions: write
     steps:
       # Only the app artifacts. Without a pattern this downloads every artifact
       # in the run, which includes `client` -- the built roBrowser tree, some
@@ -519,23 +530,49 @@ jobs:
           path: source
       - name: The release notes
         id: notes
+        # A download line first, linking this release's own installers so a
+        # player never has to pick one out of the update files, then the notes.
         run: |
-          file="source/release-notes/${GITHUB_REF_NAME#v}.md"
+          version="${GITHUB_REF_NAME#v}"
+          file="source/release-notes/$version.md"
+          base="https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}"
+          {
+            echo "**Download:** [macOS (Apple Silicon)]($base/Ragnarok.Offline-$version-arm64.dmg) · [Windows]($base/Ragnarok.Offline-$version-x64.exe) · [Linux (AppImage)]($base/Ragnarok.Offline-$version-x86_64.AppImage)"
+            echo
+          } > body.md
           if [ -f "$file" ]; then
-            echo "path=$file" >> "$GITHUB_OUTPUT"
+            cat "$file" >> body.md
             echo "generate=false" >> "$GITHUB_OUTPUT"
             echo "Publishing with $file"
           else
+            # The generated notes follow the download line.
             echo "generate=true" >> "$GITHUB_OUTPUT"
             echo "::warning::no $file; publishing with GitHub's generated notes"
           fi
+          echo "path=body.md" >> "$GITHUB_OUTPUT"
       - uses: softprops/action-gh-release@v2
         with:
           # Installers only, named explicitly rather than by a recursive glob,
           # so a new artifact in the run cannot silently become a release asset.
+          # The update files too: latest.yml, latest-mac.yml and
+          # latest-linux.yml name the installers by their file names and
+          # hashes, so they must travel with exactly these files.
           files: |
             artifacts/**/*.dmg
             artifacts/**/*.AppImage
             artifacts/**/*.exe
+            artifacts/**/*.zip
+            artifacts/**/*.blockmap
+            artifacts/**/latest*.yml
           body_path: ${{ steps.notes.outputs.path }}
           generate_release_notes: ${{ steps.notes.outputs.generate }}
+      # The docs site's /download/<platform>/ pages redirect to the newest
+      # installer by its versioned name, read when the site is built, so the
+      # site is rebuilt now that this release exists. A dispatch on main rather
+      # than a reusable workflow: the github-pages environment only deploys
+      # from main. A release made with this token would not start a `release`
+      # workflow, but a dispatch does.
+      - name: Rebuild the download pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run deploy-docs.yml --repo "$GITHUB_REPOSITORY" --ref main -f tag="$GITHUB_REF_NAME"

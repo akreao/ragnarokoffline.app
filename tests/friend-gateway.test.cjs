@@ -259,10 +259,12 @@ test('assets pass validators and 304s through, privately; generated pages stay n
     assert.match(f.observed.at(-1).headers['if-none-match'], /(^|, )"5d41402abc4b2a76"/);
   }
   const code = await f.request('/Online.js', { headers: { cookie } });
-  assert.equal(code.headers['cache-control'], 'private, no-cache'); assert.equal(code.headers.etag, 'W/"4-18f"'); assert.ok(code.headers['last-modified']);
+  assert.equal(code.headers['cache-control'], 'private, no-cache'); assert.equal(code.headers.etag, 'W/"4-18f"');
+  assert.equal(code.headers['last-modified'], undefined, 'nothing for a browser to send If-Modified-Since with');
   assert.equal((await f.request('/Online.js', { headers: { cookie, 'if-none-match': code.headers.etag } })).status, 304);
-  assert.equal((await f.request('/Online.js', { headers: { cookie, 'if-modified-since': code.headers['last-modified'] } })).status, 304);
-  assert.equal(f.observed.at(-1).headers['if-modified-since'], code.headers['last-modified']);
+  // A date that matches upstream must not stand in for an ETag that does not.
+  const stale = await f.request('/Online.js', { headers: { cookie, 'if-none-match': 'W/"3-old"', 'if-modified-since': 'Tue, 07 Oct 2025 10:00:00 GMT' } });
+  assert.equal(stale.status, 200); assert.equal(stale.text, 'code'); assert.equal(f.observed.at(-1).headers['if-modified-since'], undefined);
   for (const url of ['/', '/index.html', '/Config.local.js', '/overlay.id', '/data/a.json']) {
     const r = await f.request(url, { headers: { cookie, 'if-none-match': '"x"' } });
     assert.equal(r.status, 200, url); assert.equal(r.headers['cache-control'], 'private, no-store', url); assert.equal(r.headers.etag, undefined, url); strict(r);
@@ -273,7 +275,7 @@ test('assets pass validators and 304s through, privately; generated pages stay n
   const anonymous = await f.request('/data/sprite/a.spr', { headers: { 'if-none-match': cold.headers.etag } });
   assert.equal(anonymous.status, 401); assert.equal(anonymous.headers['cache-control'], 'private, no-store'); assert.equal(f.observed.length, before);
 });
-test('validators are not sent with a POST, and cookies and other headers still are not forwarded', async t => {
+test('validators are not sent with a POST, and cookies, dates and other headers still are not forwarded', async t => {
   const f = await fixture(t), cookie = await f.login();
   await f.request('/data/sprite/a.spr', { headers: { cookie, 'if-none-match': '"5d41402abc4b2a76"', 'if-modified-since': 'not a date', range: 'bytes=0-1', 'if-match': '"y"' } });
   const sent = f.observed.at(-1).headers;

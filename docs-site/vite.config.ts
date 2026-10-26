@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 import mdx from '@mdx-js/rollup';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
+import downloadPages from './download-pages';
 
 // Wrap the MDX plugin so ?raw imports fall through to Vite's own raw handler
 // and come back as strings rather than components. The copy/download button
@@ -23,6 +24,6 @@ export default defineConfig({
   // paths in index.html/404.html together if the site ever moves to a domain
   // root -- they are the same value in three places by necessity.
   base: '/ragnarokoffline.app/',
-  plugins: [mdxPlugin, react()],
+  plugins: [mdxPlugin, react(), downloadPages()],
   build: { outDir: 'dist' },
 });

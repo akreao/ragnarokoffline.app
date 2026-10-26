@@ -1,12 +1,11 @@
 :host {
-	width: 230px;
-	height: 208px;
+	width: 560px;
 }
 
 #Stylist {
 	position: relative;
 	width: 100%;
-	height: 100%;
+	padding-bottom: 8px;
 	background-color: #d3d0c8;
 	border: 1px solid #7a7768;
 	border-radius: 3px;
@@ -52,63 +51,254 @@
 	clear: both;
 }
 
-#Stylist .panel {
-	padding: 8px 10px;
-}
-
-#Stylist .row {
-	height: 22px;
-	line-height: 22px;
-	white-space: nowrap;
-}
-#Stylist .row .label {
-	display: inline-block;
-	width: 74px;
-}
-#Stylist .row .value {
-	display: inline-block;
-	width: 34px;
-	text-align: center;
-	font-weight: bold;
-}
-
 /* Buttons are drawn rather than sprited: the stylist has no artwork of its
    own in any client generation this app supports, and borrowing another
    window's sprites would break the moment that window's assets move. */
-#Stylist .arrow {
-	width: 20px;
-	height: 17px;
-	padding: 0;
-	font-size: 9px;
-	line-height: 15px;
-	cursor: pointer;
-	border: 1px solid #7a7768;
-	border-radius: 2px;
-	background: linear-gradient(#fdfdfd, #dcdad2);
-}
-#Stylist .arrow:active {
-	background: linear-gradient(#dcdad2, #fdfdfd);
-}
-
-#Stylist .note {
-	margin: 6px 0 8px;
-	line-height: 13px;
-	color: #4a4a4a;
-}
-
-#Stylist .buttons {
-	text-align: right;
-}
-#Stylist .buttons button {
-	min-width: 62px;
+#Stylist button {
 	height: 20px;
-	margin-left: 5px;
+	padding: 0 8px;
 	cursor: pointer;
 	border: 1px solid #7a7768;
 	border-radius: 2px;
 	background: linear-gradient(#fdfdfd, #dcdad2);
+	font-family: inherit;
 	font-size: 11px;
 }
-#Stylist .buttons button:active {
+#Stylist button:active {
 	background: linear-gradient(#dcdad2, #fdfdfd);
+}
+#Stylist button:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+
+#Stylist .main {
+	display: flex;
+	gap: 8px;
+	padding: 8px 8px 6px;
+}
+
+/* The character, drawn at twice its size */
+#Stylist .preview {
+	flex: none;
+	width: 164px;
+}
+#Stylist .stage {
+	height: 248px;
+	border: 1px solid #9c9888;
+	border-radius: 3px;
+	background: radial-gradient(ellipse at 50% 85%, #f6f3e8 0, #d9d4c2 55%, #bdb7a3 100%);
+	position: relative;
+	overflow: hidden;
+}
+#Stylist .stage canvas {
+	position: absolute;
+	left: 2px;
+	top: 4px;
+	width: 160px;
+	height: 240px;
+	image-rendering: pixelated;
+}
+#Stylist .rotate {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-top: 5px;
+	color: #555;
+}
+#Stylist .rotate .turn {
+	width: 30px;
+	padding: 0;
+	font-size: 9px;
+}
+
+/* Tabs and their grids */
+#Stylist .looks {
+	flex: 1;
+	min-width: 0;
+}
+#Stylist .tabs {
+	display: flex;
+	gap: 2px;
+}
+#Stylist .tab {
+	padding: 4px 10px;
+	border: 1px solid #9c9888;
+	border-bottom: none;
+	border-radius: 4px 4px 0 0;
+	background: #c2beb2;
+	color: #555;
+	cursor: pointer;
+}
+#Stylist .tab.on {
+	background: #f3f1ea;
+	color: #202020;
+	font-weight: bold;
+}
+#Stylist .tab .dot {
+	display: inline-block;
+	width: 6px;
+	height: 6px;
+	margin-left: 5px;
+	border-radius: 50%;
+	background: #d0602a;
+	vertical-align: 1px;
+	visibility: hidden;
+}
+#Stylist .tab.changed .dot {
+	visibility: visible;
+}
+#Stylist .tab.hidden {
+	display: none;
+}
+#Stylist .pane {
+	height: 262px;
+	border: 1px solid #9c9888;
+	background: #f3f1ea;
+	padding: 6px;
+	overflow-y: auto;
+	box-sizing: border-box;
+}
+#Stylist .grid {
+	display: grid;
+	gap: 4px;
+	grid-template-columns: repeat(6, 1fr);
+}
+#Stylist .grid.colors {
+	grid-template-columns: repeat(4, 1fr);
+	gap: 6px;
+}
+#Stylist .cell {
+	position: relative;
+	height: 54px;
+	border: 1px solid #c9c5b8;
+	border-radius: 3px;
+	background: #fff;
+	overflow: hidden;
+	cursor: pointer;
+}
+#Stylist .grid.colors .cell {
+	height: 112px;
+}
+#Stylist .cell canvas {
+	position: absolute;
+	left: 50%;
+	top: 0;
+	transform: translateX(-50%);
+	image-rendering: pixelated;
+	pointer-events: none;
+}
+#Stylist .cell:hover {
+	border-color: #8aa6d6;
+}
+#Stylist .cell.on {
+	border: 2px solid #3d6fc4;
+}
+#Stylist .cell .now {
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(90, 90, 90, 0.75);
+	color: #fff;
+	font-size: 9px;
+	line-height: 12px;
+	text-align: center;
+	pointer-events: none;
+}
+
+/* A caption above the picture, which moves down to make room */
+#Stylist .grid.colors .cell.labelled {
+	height: 126px;
+}
+#Stylist .cell.labelled canvas {
+	top: 14px;
+}
+#Stylist .cell .label {
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: 0;
+	color: #555;
+	font-size: 9px;
+	line-height: 12px;
+	text-align: center;
+	pointer-events: none;
+}
+
+/* What is being bought, and how to pay */
+#Stylist .order {
+	margin: 0 8px 6px;
+	padding: 5px 8px;
+	border: 1px solid #9c9888;
+	border-radius: 3px;
+	background: #e7e4da;
+}
+#Stylist .lines {
+	width: 100%;
+	border-collapse: collapse;
+}
+#Stylist .lines td {
+	padding: 1px 0;
+	height: 14px;
+}
+#Stylist .lines td.price {
+	text-align: right;
+}
+#Stylist .lines .none {
+	color: #777;
+}
+#Stylist .pay {
+	display: flex;
+	gap: 8px;
+	margin-top: 5px;
+	padding-top: 5px;
+	border-top: 1px solid #c9c5b8;
+}
+#Stylist .pay.hidden {
+	display: none;
+}
+#Stylist .option {
+	flex: 1;
+	padding: 4px 6px;
+	border: 1px solid #b3ae9e;
+	border-radius: 3px;
+	background: #f3f1ea;
+	cursor: pointer;
+}
+#Stylist .option.on {
+	padding: 3px 5px;
+	border: 2px solid #3d6fc4;
+	background: #fff;
+}
+#Stylist .option.off {
+	opacity: 0.45;
+	cursor: default;
+}
+#Stylist .option span {
+	display: block;
+}
+#Stylist .option .have {
+	color: #666;
+}
+#Stylist .option .short {
+	color: #b02a1a;
+}
+
+#Stylist .foot {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 0 8px;
+}
+#Stylist .foot .undo {
+	padding: 0;
+	border: none;
+	background: none;
+	color: #3d6fc4;
+	text-decoration: underline;
+}
+#Stylist .foot .buttons button {
+	min-width: 62px;
+	margin-left: 5px;
 }

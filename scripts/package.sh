@@ -310,7 +310,14 @@ fi
 # running map-server container, so it has nothing to bundle and cannot go
 # stale against the image.
 echo "==> randomizer"
-if [ -d "$ROOT/examples/mods/randomizer" ]; then
+if [ -n "${RAGNAROK_RANDOMIZER_BIN:-}" ]; then
+    [ -f "$RAGNAROK_RANDOMIZER_BIN" ] && [ -r "$RAGNAROK_RANDOMIZER_BIN" ] || {
+        echo "RAGNAROK_RANDOMIZER_BIN must name a readable binary: $RAGNAROK_RANDOMIZER_BIN" >&2
+        exit 1
+    }
+    cp "$RAGNAROK_RANDOMIZER_BIN" "$PAYLOAD/bin/ro-randomizer$EXE"
+    echo "ro-randomizer $(du -h "$PAYLOAD/bin/ro-randomizer$EXE" | cut -f1)"
+elif [ -d "$ROOT/examples/mods/randomizer" ]; then
     ( cd "$ROOT/examples/mods/randomizer" && cargo test --quiet && cargo build --release --quiet )
     cp "$ROOT/examples/mods/randomizer/target/release/ro-randomizer$EXE" "$PAYLOAD/bin/"
     echo "ro-randomizer $(du -h "$PAYLOAD/bin/ro-randomizer$EXE" | cut -f1)"

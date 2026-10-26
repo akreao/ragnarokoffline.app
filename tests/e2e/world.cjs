@@ -126,6 +126,7 @@ async function main() {
             CLIENT_PUBLIC_URL: `http://127.0.0.1:${ports().asset}`, CLIENT_RESPATH: 'resources/', CLIENT_DATAINI: path.join(state, 'asset-config/DATA.INI'),
             CLIENT_AUTOEXTRACT: 'false', BGM_PATH: fallback('bgm'), AI_PATH: fallback('ai'), DATA_OVERRIDE_PATH: path.join(state, 'assets/.translation/data'),
             ROBROWSER_PATH: path.join(root, 'vendor/roBrowserLegacy/dist/Web'), ENABLE_STATIC_SERVE: 'true', ENABLE_WSPROXY: 'true',
+            WEB_SERVER_TARGET: `127.0.0.1:${ports().web}`,
             WS_ALLOWED_TARGETS: portsModule.gameTargets(ports()).join(',') } });
     console.log(`Owned test game ready at http://127.0.0.1:${ports().asset}/; Ctrl-C stops assets, then run world.cjs down.`);
     const stop = async () => { await server.stop(); process.exit(0); };

@@ -343,81 +343,19 @@ pub(crate) fn with_servers_stopped<T>(
             restarted = false;
         }
     }
+    let mut readiness_error = None;
     if restarted && stopped.len() == 3 {
-        restarted = wait_for_restarted_maps(dk, previous_start.as_deref());
+        readiness_error = crate::readiness::wait(dk, previous_start.as_deref(), std::time::Duration::from_secs(60)).err();
+        restarted = readiness_error.is_none();
     }
     match updated {
         Ok(value) if restarted => Ok(value),
-        Ok(_) => Err(format!("The {what} completed, but game services are not ready. Start the server to reconnect.")),
+        Ok(_) => {
+            let detail = readiness_error.map(|error| format!(": {error}")).unwrap_or_default();
+            Err(format!("The {what} completed, but game services are not ready{detail}. Start the server to reconnect."))
+        },
         Err(error) => Err(error),
     }
-}
-
-// The pinned engine uses normalized RFC3339Nano UTC for both StartedAt and log
-// records. Validate before comparing; unknown timestamp formats fail closed.
-fn timestamp(value: &str) -> Option<&str> {
-    let stamp = value.get(..30)?;
-    for (index, byte) in stamp.bytes().enumerate() {
-        let expected = match index {
-            4 | 7 => Some(b'-'),
-            10 => Some(b'T'),
-            13 | 16 => Some(b':'),
-            19 => Some(b'.'),
-            29 => Some(b'Z'),
-            _ => None,
-        };
-        if expected
-            .map(|e| byte != e)
-            .unwrap_or(!byte.is_ascii_digit())
-        {
-            return None;
-        }
-    }
-    Some(stamp)
-}
-
-fn current_ready_log(log: &str, started: &str) -> bool {
-    let Some(started) = timestamp(started) else {
-        return false;
-    };
-    let mut record_time = None;
-    for line in log.lines() {
-        // One JSON log record can contain several output lines; its timestamp
-        // prefixes the first, and applies to subsequent lines in that record.
-        if let Some(time) = timestamp(line) {
-            record_time = Some(time);
-        }
-        if line.contains("loading complete")
-            && record_time.map(|time| time >= started).unwrap_or(false)
-        {
-            return true;
-        }
-    }
-    false
-}
-
-fn wait_for_restarted_maps(dk: &Docker, previous: Option<&str>) -> bool {
-    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(60);
-    while std::time::Instant::now() < deadline {
-        if let Some(started) = dk.started_at("ragnarok-char") {
-            if Some(started.as_str()) != previous
-                && dk
-                    .timestamped_logs("ragnarok-char")
-                    .iter()
-                    .any(|log| current_ready_log(log, &started))
-            {
-                return true;
-            }
-        }
-        if ["ragnarok-login", "ragnarok-char", "ragnarok-map"]
-            .iter()
-            .any(|service| matches!(dk.state(service).as_deref(), Some("exited" | "dead")))
-        {
-            return false;
-        }
-        std::thread::sleep(std::time::Duration::from_millis(250));
-    }
-    false
 }
 
 /// The one statement an action runs, ending in `SELECT ROW_COUNT()` so the
@@ -574,20 +512,6 @@ pub fn run(cfg: &Config, dk: &Docker) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test]
-    fn restart_readiness_rejects_retained_logs_from_previous_process() {
-        let started = "2026-09-07T11:18:09.738166241Z";
-        let old = "2026-09-07T11:13:18.804860894Z status\nMap-server 0 loading complete.\n";
-        assert!(!current_ready_log(old, started));
-        assert!(!current_ready_log(
-            "Map-server 0 loading complete.\n",
-            started
-        ));
-        let current =
-            format!("{old}2026-09-07T11:18:15.142207452Z status\nMap-server 0 loading complete.\n");
-        assert!(current_ready_log(&current, started));
-        assert!(!current_ready_log(&current, "unknown"));
-    }
     fn request(value: &str) -> Value {
         json::parse(&format!(
             "{{\"password\":{},\"confirmation\":{}}}",

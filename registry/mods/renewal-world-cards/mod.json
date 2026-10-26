@@ -1,0 +1,24 @@
+{
+  "name": "renewal-world-cards",
+  "author": "BlaXun",
+  "description": "The cards of the monsters of renewal's new lands, made pre-renewal cards: never stronger than pre-renewal's best card of the slot for the same bonus, single-skill bonuses at a third, every card checked for abuse, and renewal's card sets at a third. Each drops from its monster at renewal's rate. A boss's card drops only while renewal-world-mvps is on. Needs renewal-world-monsters.",
+  "tags": [
+    "cards",
+    "items",
+    "drops",
+    "level-175",
+    "pre-renewal"
+  ],
+  "homepage": "https://github.com/BlaXun/ro-endgame-world/tree/main/mods/renewal-world-cards",
+  "requires": {
+    "app": ">=1.5.4",
+    "era": "pre-renewal",
+    "mods": [
+      "renewal-world-monsters"
+    ]
+  },
+  "source": {
+    "github": "BlaXun/ro-endgame-world",
+    "asset": "renewal-world-cards-*.zip"
+  }
+}

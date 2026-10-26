@@ -81,6 +81,39 @@
       "files": []
     },
     {
+      "name": "anniversary-24th",
+      "version": "",
+      "author": "akreao",
+      "description": "kRO's 24th anniversary event from 2026. Visit the 24th Anniversary Coin Exchanger in Prontera once a day for 20 Attendance Boxes, each with a gift and anniversary coins, plus a Gift Box with All in One Potions and a Kafra Buff. Trade the coins for potions, buffs, Tokens of Siegfried, Costume Tris Sword, Costume Tan Spear and a Himmelmez wig in your choice of colour. A setting sends the boxes through the game's Attendance Check window instead, as on kRO. Renewal only.",
+      "homepage": "https://github.com/akreao/anniversary-24th",
+      "tags": [
+        "anniversary",
+        "attendance",
+        "costume",
+        "event",
+        "kro",
+        "npc",
+        "renewal"
+      ],
+      "icon": "images/icon.png",
+      "screenshots": [],
+      "requires": {
+        "mods": [],
+        "era": "renewal",
+        "app": ""
+      },
+      "source": {
+        "github": "akreao/anniversary-24th",
+        "asset": "anniversary-24th-*.zip"
+      },
+      "files": [
+        {
+          "path": "images/icon.png",
+          "sha256": "27fe18d1f383925c53fb4e366634463e626d7c1ff853d548c57a5d950f4e6693"
+        }
+      ]
+    },
+    {
       "name": "arpg-equipments",
       "version": "",
       "author": "Iguera",
@@ -183,6 +216,38 @@
         {
           "path": "npc/autoloot.txt",
           "sha256": "ca6a6ec16475f0a6410b997078179e3c859fbdd704af3ca873176f108d1e1603"
+        }
+      ]
+    },
+    {
+      "name": "black-sun",
+      "version": "",
+      "author": "Lil Art",
+      "description": "Black Sun: a solo or party instance on Mt. Mjolnir. James Wolf was bitten by a werewolf in the mountains, and the Black Sun is rising. Talk to his older brother John Wolf in Prontera (113, 190), break the Pack with your cousin-guide Nightwing, climb to the summit and face James, the Black Sun. Every party gets its own copy of the mountain. Base level 200, Renewal.",
+      "homepage": "https://github.com/LilArt420/blacksun",
+      "tags": [
+        "instance",
+        "mvp",
+        "npc",
+        "party",
+        "story",
+        "werewolf"
+      ],
+      "icon": "images/icon.png",
+      "screenshots": [],
+      "requires": {
+        "mods": [],
+        "era": "",
+        "app": ""
+      },
+      "source": {
+        "github": "LilArt420/blacksun",
+        "asset": "black-sun-*.zip"
+      },
+      "files": [
+        {
+          "path": "images/icon.png",
+          "sha256": "c09636b6a419dfdbfa540bb2df7496cf5213eb252c10aa67923c1eebb6546d72"
         }
       ]
     },
@@ -582,6 +647,34 @@
       ]
     },
     {
+      "name": "expanded-classes",
+      "version": "",
+      "author": "BlaXun",
+      "description": "Renewal's expanded advancements in pre-renewal, each the next step of its finished base class, which keeps every skill it has and levels to 175: a Ninja becomes a Kagerou or Oboro, a Gunslinger a Rebellion, a Star Gladiator a Star Emperor, a Soul Linker a Soul Reaper, a Super Novice an Expanded Super Novice. Each has its own gear, measured damage and skill descriptions. Needs level175-core; the third classes are the transcendent-third-classes mod.",
+      "homepage": "https://github.com/BlaXun/ro-endgame-classes/tree/main/mods/expanded-classes",
+      "tags": [
+        "expanded-class",
+        "jobs",
+        "level-175",
+        "lua",
+        "pre-renewal"
+      ],
+      "icon": "",
+      "screenshots": [],
+      "requires": {
+        "mods": [
+          "level175-core"
+        ],
+        "era": "pre-renewal",
+        "app": ">=1.6.7"
+      },
+      "source": {
+        "github": "BlaXun/ro-endgame-classes",
+        "asset": "expanded-classes-*.zip"
+      },
+      "files": []
+    },
+    {
       "name": "exprate-penalty-remover",
       "version": "1.0.0",
       "author": "BlaXun",
@@ -697,6 +790,62 @@
       ]
     },
     {
+      "name": "halloween-town",
+      "version": "",
+      "author": "Lil Art",
+      "description": "A Halloween instance in a haunted, night-time Niflheim, solo or with your party. Talk to Casper in Niflheim (185, 190), pick a moon (Blue Moon for 90+, Blood Moon for 100-199, Eclipse for 200+), and stop Blair the witch across three hordes and four bosses within 90 minutes. Every kill pays Halloween Coins, which Jakk (180, 191) trades for costumes, boxes and a Sealed Card Album; Blair's tickets trade for Cash Points. Blue Moon works on Pre-renewal too.",
+      "homepage": "https://github.com/LilArt420/halloweentown",
+      "tags": [
+        "halloween",
+        "instance",
+        "mvp",
+        "npc",
+        "party",
+        "seasonal"
+      ],
+      "icon": "images/icon.png",
+      "screenshots": [],
+      "requires": {
+        "mods": [],
+        "era": "",
+        "app": ""
+      },
+      "source": {
+        "github": "LilArt420/halloweentown",
+        "asset": "halloween-town-*.zip"
+      },
+      "files": [
+        {
+          "path": "images/icon.png",
+          "sha256": "783ea154637c9f9096654e23fcd71338e13b66a77152b7e828a979fab6347967"
+        }
+      ]
+    },
+    {
+      "name": "level175-core",
+      "version": "",
+      "author": "BlaXun",
+      "description": "What the classes that level past 99 share: above 99 a base stat counts for a third and base DEX gives no cast speed, and skills that read the base level read it only up to 99. A character at 99 or below is untouched. Needed by transcendent-third-classes and expanded-classes.",
+      "homepage": "https://github.com/BlaXun/ro-endgame-classes/tree/main/mods/level175-core",
+      "tags": [
+        "level-175",
+        "lua",
+        "pre-renewal"
+      ],
+      "icon": "",
+      "screenshots": [],
+      "requires": {
+        "mods": [],
+        "era": "pre-renewal",
+        "app": ">=1.6.7"
+      },
+      "source": {
+        "github": "BlaXun/ro-endgame-classes",
+        "asset": "level175-core-*.zip"
+      },
+      "files": []
+    },
+    {
       "name": "map-spawn-rate",
       "version": "1.0.0",
       "author": "BlaXun",
@@ -748,6 +897,39 @@
         {
           "path": "settings/maps.json",
           "sha256": "59a8c09cdbcf23e8f870a484f010087644384cb0fc5be73438cb9969dd9071fc"
+        }
+      ]
+    },
+    {
+      "name": "mega-booster",
+      "version": "",
+      "author": "akreao",
+      "description": "kRO's Mega Booster promotion. New characters get a Booster Box from the Booster Guide in Izlude (Lasagna for Doram), and the Booster Call summons Lime Evenor wherever you are: booster coin and mission shops, Lv 1-80 hunts, Booster Missions from Lv 80, enchants, Level Up Tickets, milestone rewards and the Premium Booster upgrade. Adds the Job Agent, Reset Service and Booster Exchanger in Prontera's Convenience Center and the two Booster Enchanters, with English quest text. Renewal only.",
+      "homepage": "https://github.com/akreao/mega-booster",
+      "tags": [
+        "booster",
+        "kro",
+        "leveling",
+        "npc",
+        "quest",
+        "renewal",
+        "shop"
+      ],
+      "icon": "images/icon.png",
+      "screenshots": [],
+      "requires": {
+        "mods": [],
+        "era": "renewal",
+        "app": ""
+      },
+      "source": {
+        "github": "akreao/mega-booster",
+        "asset": "mega-booster-*.zip"
+      },
+      "files": [
+        {
+          "path": "images/icon.png",
+          "sha256": "73892040edb5145bf08ffd79e8282afdcf43b3040d4d71af57920d14085913e8"
         }
       ]
     },
@@ -1076,6 +1258,149 @@
       ]
     },
     {
+      "name": "renewal-world-cards",
+      "version": "",
+      "author": "BlaXun",
+      "description": "The cards of the monsters of renewal's new lands, made pre-renewal cards: never stronger than pre-renewal's best card of the slot for the same bonus, single-skill bonuses at a third, every card checked for abuse, and renewal's card sets at a third. Each drops from its monster at renewal's rate. A boss's card drops only while renewal-world-mvps is on. Needs renewal-world-monsters.",
+      "homepage": "https://github.com/BlaXun/ro-endgame-world/tree/main/mods/renewal-world-cards",
+      "tags": [
+        "cards",
+        "drops",
+        "items",
+        "level-175",
+        "pre-renewal"
+      ],
+      "icon": "",
+      "screenshots": [],
+      "requires": {
+        "mods": [
+          "renewal-world-monsters"
+        ],
+        "era": "pre-renewal",
+        "app": ">=1.5.4"
+      },
+      "source": {
+        "github": "BlaXun/ro-endgame-world",
+        "asset": "renewal-world-cards-*.zip"
+      },
+      "files": []
+    },
+    {
+      "name": "renewal-world-gear",
+      "version": "",
+      "author": "BlaXun",
+      "description": "Renewal's equipment from the monsters of renewal's new lands, converted for pre-renewal: weapons and armour held to pre-renewal's best of their kind, single-skill bonuses at a third, and renewal's sets of them at a third. Each drops from the monster renewal gives it, at renewal's rate. A boss's items drop only while renewal-world-mvps is on. Needs renewal-world-monsters.",
+      "homepage": "https://github.com/BlaXun/ro-endgame-world/tree/main/mods/renewal-world-gear",
+      "tags": [
+        "drops",
+        "equipment",
+        "items",
+        "level-175",
+        "pre-renewal"
+      ],
+      "icon": "",
+      "screenshots": [],
+      "requires": {
+        "mods": [
+          "renewal-world-monsters"
+        ],
+        "era": "pre-renewal",
+        "app": ">=1.5.4"
+      },
+      "source": {
+        "github": "BlaXun/ro-endgame-world",
+        "asset": "renewal-world-gear-*.zip"
+      },
+      "files": []
+    },
+    {
+      "name": "renewal-world-minibosses",
+      "version": "",
+      "author": "BlaXun",
+      "description": "The minibosses of renewal's new lands, for pre-renewal: King Dramoh, Wild Rider and the gold Scarabas of the Scaraba Hole's third floor, which hatch from the eggs there, with what they summon and their spawns. Converted like the ordinary monsters and set at the level step of their region. Needs renewal-world and renewal-world-monsters.",
+      "homepage": "https://github.com/BlaXun/ro-endgame-world/tree/main/mods/renewal-world-minibosses",
+      "tags": [
+        "bosses",
+        "level-175",
+        "monsters",
+        "pre-renewal",
+        "world"
+      ],
+      "icon": "",
+      "screenshots": [],
+      "requires": {
+        "mods": [
+          "renewal-world",
+          "renewal-world-monsters"
+        ],
+        "era": "pre-renewal",
+        "app": ">=1.6.8"
+      },
+      "source": {
+        "github": "BlaXun/ro-endgame-world",
+        "asset": "renewal-world-minibosses-*.zip"
+      },
+      "files": []
+    },
+    {
+      "name": "renewal-world-monsters",
+      "version": "",
+      "author": "BlaXun",
+      "description": "The ordinary monsters of renewal's new lands, for pre-renewal with levels up to 175. Every monster keeps its renewal level: Malaya, Rockridge and Izlude's fifth floor from 100, Bifrost and El Dicastes up to 145, Eclage, Rockridge's mine and Verus up to 171, the quest areas up to 175; Dewata and Malangdo sit at 70 to 99. Their strength is set by fights on a test server, one level step at a time, against parties of third classes of that level: a region is party content, a step harder than the one below, and never unfair. They drop renewal's loot; its equipment and cards come with renewal-world-gear and renewal-world-cards, its bosses with renewal-world-mvps. Needs renewal-world for the maps, and a mod that takes characters past level 99 to meet the monsters at their level.",
+      "homepage": "https://github.com/BlaXun/ro-endgame-world/tree/main/mods/renewal-world-monsters",
+      "tags": [
+        "level-175",
+        "monsters",
+        "pre-renewal",
+        "world"
+      ],
+      "icon": "",
+      "screenshots": [],
+      "requires": {
+        "mods": [
+          "renewal-world"
+        ],
+        "era": "pre-renewal",
+        "app": ">=1.5.4"
+      },
+      "source": {
+        "github": "BlaXun/ro-endgame-world",
+        "asset": "renewal-world-monsters-*.zip"
+      },
+      "files": []
+    },
+    {
+      "name": "renewal-world-mvps",
+      "version": "",
+      "author": "BlaXun",
+      "description": "The MVPs of renewal's new lands, for pre-renewal: Leak, Kraken, the Scaraba Queens, Spider Chariot, Nightmare Amon Ra and the others, with the monsters only they summon, their MVP rewards and their spawns. Converted like the ordinary monsters and set at the level step of their region. Needs renewal-world, renewal-world-monsters and renewal-world-minibosses (the Gold Queen Scaraba summons the gold Scarabas).",
+      "homepage": "https://github.com/BlaXun/ro-endgame-world/tree/main/mods/renewal-world-mvps",
+      "tags": [
+        "bosses",
+        "level-175",
+        "monsters",
+        "mvp",
+        "pre-renewal",
+        "world"
+      ],
+      "icon": "",
+      "screenshots": [],
+      "requires": {
+        "mods": [
+          "renewal-world",
+          "renewal-world-monsters",
+          "renewal-world-minibosses"
+        ],
+        "era": "pre-renewal",
+        "app": ">=1.6.8"
+      },
+      "source": {
+        "github": "BlaXun/ro-endgame-world",
+        "asset": "renewal-world-mvps-*.zip"
+      },
+      "files": []
+    },
+    {
       "name": "royal-nightmare",
       "version": "",
       "author": "Lil Art",
@@ -1103,6 +1428,37 @@
         {
           "path": "images/icon.png",
           "sha256": "680a9d2920038ab63a2e11ce9f7c3c2c2458b327a7b47a5ce0e1ab0d2d15fab1"
+        }
+      ]
+    },
+    {
+      "name": "rune-tablet",
+      "version": "",
+      "author": "Lil Art",
+      "description": "kRO's Rune Tablet in its official window: register runes in the Encyclopedia, build their sets on the Tablet and upgrade them to +15 at the official rates, and break items down into rune materials, for Episodes 17-21, Chapter 1 and the events. Talk to the Rune Tablet in Prontera (193, 189). Runs on the server's own Rune Tablet (1.6.6+), so registered runes and sets carry over. Renewal.",
+      "homepage": "https://github.com/LilArt420/rune-tablet",
+      "tags": [
+        "crafting",
+        "interface",
+        "npc",
+        "quality-of-life",
+        "rune"
+      ],
+      "icon": "images/icon.png",
+      "screenshots": [],
+      "requires": {
+        "mods": [],
+        "era": "",
+        "app": ""
+      },
+      "source": {
+        "github": "LilArt420/rune-tablet",
+        "asset": "rune-tablet-*.zip"
+      },
+      "files": [
+        {
+          "path": "images/icon.png",
+          "sha256": "6a8132bc61ba71bdaa56400947c2a86ed9587a7208afea98771a79b124d7b20a"
         }
       ]
     },
@@ -1236,6 +1592,36 @@
       ]
     },
     {
+      "name": "transcendent-third-classes",
+      "version": "",
+      "author": "BlaXun",
+      "description": "Renewal's thirteen third classes in pre-renewal, as the step after the classes you know. A transcendent class at base level 99 and job level 70 advances to its third class: it keeps every skill it has, its job level starts again at 1 and runs to 70, and its base level runs to 175. Guillotine Cross, Shadow Chaser, Arch Bishop, Rune Knight (with a Dragon Breeder), Royal Guard, Warlock (with a Spellbook Seller), Sura, Ranger, Minstrel and Wanderer, Genetic, Mechanic (with a Madogear from Einbroch) and Sorcerer (with elemental spirits). Every class has its own gear, dropped by monsters, the shops its skills need, measured damage and skill descriptions. Needs level175-core; the expanded advancements are the expanded-classes mod.",
+      "homepage": "https://github.com/BlaXun/ro-endgame-classes/tree/main/mods/transcendent-third-classes",
+      "tags": [
+        "equipment",
+        "jobs",
+        "level-175",
+        "lua",
+        "pre-renewal",
+        "third-class",
+        "transcendent"
+      ],
+      "icon": "",
+      "screenshots": [],
+      "requires": {
+        "mods": [
+          "level175-core"
+        ],
+        "era": "pre-renewal",
+        "app": ">=1.6.7"
+      },
+      "source": {
+        "github": "BlaXun/ro-endgame-classes",
+        "asset": "transcendent-third-classes-*.zip"
+      },
+      "files": []
+    },
+    {
       "name": "waypoint-system",
       "version": "1.0.0",
       "author": "BlaXun",
@@ -1312,6 +1698,33 @@
       "source": {
         "github": "rhewid/whosell",
         "asset": "whosell-*.zip"
+      },
+      "files": []
+    },
+    {
+      "name": "world-sync-extras",
+      "version": "",
+      "author": "Lil Art",
+      "description": "World Sync's playable content, iRO's missing quests and item names, in blocks you can switch: the Jormungandr saga (Episodes 20 and 21), Chapters 1 and 2 of the Song of the World Tree, Varmundt, the Star Emperor job change, Sanctuary Herosria and its Sunday siege, iRO services like the Devil in the Box, iRO Quests (Bounty Boards, City Investment, Gramps, the 2021 town quests), and names and descriptions for 3,800 items the client calls \"Unknown Item\". The official NPCs still without logic stand where the clients put them, and @npcplace moves any NPC. Renewal, 1.6.9+.",
+      "homepage": "https://github.com/LilArt420/world-sync-extras",
+      "tags": [
+        "episodes",
+        "items",
+        "maps",
+        "npc",
+        "quests",
+        "world"
+      ],
+      "icon": "",
+      "screenshots": [],
+      "requires": {
+        "mods": [],
+        "era": "",
+        "app": ""
+      },
+      "source": {
+        "github": "LilArt420/world-sync-extras",
+        "asset": "world-sync-extras-*.zip"
       },
       "files": []
     }

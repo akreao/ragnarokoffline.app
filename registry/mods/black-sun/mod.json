@@ -1,0 +1,12 @@
+{
+  "name": "black-sun",
+  "author": "Lil Art",
+  "description": "Black Sun: a solo or party instance on Mt. Mjolnir. James Wolf was bitten by a werewolf in the mountains, and the Black Sun is rising. Talk to his older brother John Wolf in Prontera (113, 190), break the Pack with your cousin-guide Nightwing, climb to the summit and face James, the Black Sun. Every party gets its own copy of the mountain. Base level 200, Renewal.",
+  "tags": ["instance", "party", "mvp", "story", "werewolf", "npc"],
+  "icon": "images/icon.png",
+  "homepage": "https://github.com/LilArt420/blacksun",
+  "source": {
+    "github": "LilArt420/blacksun",
+    "asset": "black-sun-*.zip"
+  }
+}

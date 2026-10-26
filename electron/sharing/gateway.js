@@ -253,11 +253,13 @@ class FriendGateway {
     if (this.closed || this.session(req) !== entry) return this.reply(res, 401, { error: 'A current invitation is required' });
     const headers = { host: '127.0.0.1:' + this.upstreamPort };
     for (const name of ['accept', 'accept-encoding', 'content-type']) if (req.headers[name]) headers[name] = req.headers[name];
+    // ETags only. The asset server answers If-Modified-Since even beside an
+    // If-None-Match that does not match (RFC 9110 13.1.3 says ignore it), so
+    // a host whose client went back to an older build -- a downgrade, a
+    // restore -- would 304 a friend's newer copy and keep it for good.
     if (!bytes) {
       const tags = ifNoneMatch(req.headers['if-none-match']);
       if (tags) headers['if-none-match'] = tags;
-      const since = req.headers['if-modified-since'];
-      if (typeof since === 'string' && since.length <= 64 && !Number.isNaN(Date.parse(since))) headers['if-modified-since'] = since;
       // A friend is on the far side of an internet link, where map textures
       // are most of the wait: the asset server sends them its BMPs and JPEGs
       // as lossy WebP, about half the bytes. The host's own client keeps the
@@ -272,7 +274,7 @@ class FriendGateway {
       // Validators go back only on what the browser may keep.
       const output = { ...safeHeaders, 'cache-control': cachePolicy(response.headers['cache-control']) };
       const names = ['content-type', 'content-encoding', 'content-length'];
-      if (output['cache-control'] !== 'private, no-store' && !search) names.push('etag', 'last-modified');
+      if (output['cache-control'] !== 'private, no-store' && !search) names.push('etag');
       for (const name of names) if (response.headers[name]) output[name] = response.headers[name];
       if (/(^|,)\s*accept-encoding\s*(,|$)/i.test(response.headers.vary || '')) output.vary = 'Accept-Encoding';
       // A 304 is the answer to a validator, not a redirect.

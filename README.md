@@ -14,13 +14,33 @@ the assets. macOS, Linux and Windows.
 read [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md). Bugs and feature
 requests are welcome as [issues](../../issues).
 
+## Install
+
+The newest build for each platform. These links always fetch the latest
+release, and the file keeps its version in its name:
+
+| Platform | Download |
+|---|---|
+| macOS (Apple Silicon) | [Download for macOS](https://flux159.github.io/ragnarokoffline.app/download/mac/) |
+| Windows | [Download for Windows](https://flux159.github.io/ragnarokoffline.app/download/windows/) |
+| Linux (AppImage) | [Download for Linux](https://flux159.github.io/ragnarokoffline.app/download/linux/) |
+
+Older versions, and the update files the app downloads by itself, are on the
+[releases page](../../releases).
+
 ## Getting started
 
 **[Watch the setup walkthrough](https://youtu.be/1Ib_KqHDCLA)** — download,
 assets, first launch — or follow the same three steps below.
 
-**1. Download a build.** Grab the latest release for your platform from the
-[releases page](../../releases).
+**1. Download a build** for your platform from [Install](#install).
+
+Once installed, the app keeps itself up to date on macOS, Windows and the Linux
+AppImage: it downloads new versions in the background, and **Settings → General →
+Updates → Restart to install** installs one (a red mark on General says one is
+ready). Nothing installs until you press it, unless you tick *Automatically install
+updates on restart of app*; *Automatic updates* turns the background check off. A
+version older than the first one with this needs one last manual download.
 
 **2. Get the game files for your Ragnarok client.** You will need to obtain these from another source. Put it
 somewhere you can find again; unzipping a full client gives you a folder containing

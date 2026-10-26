@@ -92,3 +92,52 @@ test('a fractional rate is rounded to a whole percentage', () => {
 	assert.equal(mobCountRateConf({ mob_count_rate: 250.4 }), 'mob_count_rate: 250\n');
 	assert.equal(mobCountRateConf({ mob_count_rate: 0.6 }), 'mob_count_rate: 1\n');
 });
+
+// MVP cards, apart from ordinary ones (#648 follow-up). rAthena has had
+// item_rate_card_mvp all along (conf/battle/drops.conf) and the app has always
+// written it -- from the Card drops slider, so the two could not be split.
+const { cardMvpRate } = require('../electron/battle-rates');
+
+// The upgrade must not change anybody's server. The card slider drove MVP
+// cards before this setting existed, so absent and null both have to keep
+// doing that; a default of 100 would have cut MVP card drops on every install
+// with raised card drops, silently.
+test('MVP cards follow the card slider until given a number', () => {
+	for (const item_rate_card_mvp of [undefined, null, 0, '', 'x', NaN, -5]) {
+		assert.equal(cardMvpRate({ ...settings, item_rate_card_mvp }), 1500, String(item_rate_card_mvp));
+		const conf = parse(dropRateConf({ ...settings, item_rate_card_mvp }));
+		assert.equal(conf.item_rate_card_mvp, '1500', String(item_rate_card_mvp));
+	}
+});
+
+test('a number of its own splits MVP cards from the rest', () => {
+	const conf = parse(dropRateConf({ ...settings, item_rate_card_mvp: 200 }));
+	assert.equal(conf.item_rate_card, '1500', 'ordinary cards keep the slider');
+	assert.equal(conf.item_rate_card_mvp, '200', 'MVP cards take their own');
+	// Boss here is rAthena's mini-boss family, which deliberately has no
+	// setting of its own and keeps following Card drops.
+	assert.equal(conf.item_rate_card_boss, '1500', 'mini-boss cards keep the slider');
+	assert.equal(Object.keys(conf).length, 15, 'no key appeared or vanished');
+});
+
+// Below the card rate is the interesting direction: generous cards, rare MVP
+// cards. It must not be clamped up to the slider.
+test('MVP cards can be rarer than ordinary ones', () => {
+	assert.equal(parse(dropRateConf({ ...settings, item_rate_card_mvp: 100 })).item_rate_card_mvp, '100');
+});
+
+test('only MVP cards are split out; every other family still follows its slider', () => {
+	const { FAMILY_RATE } = require('../electron/battle-rates');
+	assert.deepEqual(Object.keys(FAMILY_RATE), ['card_mvp']);
+});
+
+test('the Settings window offers it, and can put it back to following', () => {
+	const page = require('node:fs').readFileSync(
+		require('node:path').join(__dirname, '../src/settings.html'), 'utf8');
+	assert.match(page, /id="item_rate_card_mvp"/, 'no slider');
+	assert.match(page, /'item_rate_card','item_rate_card_mvp','mob_count_rate'/, 'not in RATES');
+	assert.match(page, /id="card_mvp_follows"/, 'no way back to following the card slider');
+	// Ticked must save null, not a copy of today's card rate, or it would stop
+	// following the moment the card slider moved.
+	assert.match(page, /if \(\$\('card_mvp_follows'\)\.checked\) settings\[CARD_MVP\] = null;/);
+});

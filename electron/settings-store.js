@@ -54,6 +54,11 @@ function validate(settings) {
       throw new Error('Cannot read the AI agent setting. Turn it off and on again in Settings.');
     }
   }
+  for (const key of ['auto_update', 'install_update_on_quit']) {
+    if (Object.hasOwn(settings, key) && typeof settings[key] !== 'boolean') {
+      throw new Error('Cannot read the update settings. Turn them off and on again in Settings -> General -> Updates.');
+    }
+  }
   return settings;
 }
 

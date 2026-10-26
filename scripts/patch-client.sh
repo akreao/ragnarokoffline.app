@@ -412,13 +412,16 @@ new = """\t\t\t\tconst hasAttachment = Boolean(_lastState & HasAttachmentState |
 \t\t\t\t\tconst panel = root.querySelector('.panel');
 \t\t\t\t\tif (panel) panel.classList.toggle('has-attachment-controls', showAttachmentControls);
 \t\t\t\t}"""
+# Upstream now shows the buttons with 'block' itself (its 89d91d3f); the
+# control bar below is still ours, so either spelling is the anchor.
+old_block = old.replace("style.display = '';", "style.display = 'block';")
 if "left the button permanently invisible" in s:
     print("EquipmentCommon.js attachment controls already patched")
-elif s.count(old) == 1:
-    p.write_text(s.replace(old, new, 1))
+elif s.count(old) == 1 or s.count(old_block) == 1:
+    p.write_text(s.replace(old if s.count(old) == 1 else old_block, new, 1))
     print("patched EquipmentCommon.js (attachment controls become visible)")
 else:
-    sys.exit("EquipmentCommon.js: attachment visibility no longer matches (%d hits); re-check the patch" % s.count(old))
+    sys.exit("EquipmentCommon.js: attachment visibility no longer matches (%d hits); re-check the patch" % (s.count(old) + s.count(old_block)))
 
 # The V4 controls sit outside the tab tables, so switching away from General
 # must hide their strip explicitly. Restore it only when one of its state-

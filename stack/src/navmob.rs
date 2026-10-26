@@ -153,6 +153,40 @@ pub fn merge_mob_db(text: &[u8], into: &mut BTreeMap<u32, Mob>) {
     }
 }
 
+/// The files `db/mob_db.yml` imports for one era (`Renewal` or `Prerenewal`),
+/// in its order, leaving out `db/import/`: the server merges them that way, so
+/// a later file wins. An import with no `Mode` is in both eras.
+pub fn mob_db_imports(root: &[u8], mode: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut entry: Option<(String, Option<String>)> = None;
+    let push = |e: Option<(String, Option<String>)>, out: &mut Vec<String>| {
+        if let Some((path, m)) = e {
+            if !path.starts_with("db/import/") && m.as_deref().is_none_or(|m| m == mode) {
+                out.push(path);
+            }
+        }
+    };
+    let mut in_footer = false;
+    for line in String::from_utf8_lossy(root).lines() {
+        let trimmed = line.trim();
+        if !line.starts_with(' ') && !trimmed.is_empty() && !trimmed.starts_with('#') {
+            in_footer = trimmed == "Footer:";
+            continue;
+        }
+        if !in_footer {
+            continue;
+        }
+        if let Some(path) = trimmed.strip_prefix("- Path:") {
+            push(entry.take(), &mut out);
+            entry = Some((path.trim().to_string(), None));
+        } else if let (Some(m), Some(e)) = (trimmed.strip_prefix("Mode:"), entry.as_mut()) {
+            e.1 = Some(m.trim().to_string());
+        }
+    }
+    push(entry, &mut out);
+    out
+}
+
 /// The stock index: each era's load order and mob_db, and the spawn lines in
 /// every script under `npc/`.
 #[derive(Default)]
@@ -171,11 +205,14 @@ pub fn build_index(rathena: &Path) -> Result<Index, String> {
         prerenewal: load_order(rathena, "npc/pre-re/scripts_main.conf"),
         ..Index::default()
     };
-    for (path, into) in [("db/re/mob_db.yml", &mut index.mobs_renewal), ("db/pre-re/mob_db.yml", &mut index.mobs_prerenewal)] {
-        let text = fs::read(rathena.join(path)).map_err(|e| format!("reading {path}: {e}"))?;
-        merge_mob_db(&text, into);
+    let root = fs::read(rathena.join("db/mob_db.yml")).map_err(|e| format!("reading db/mob_db.yml: {e}"))?;
+    for (mode, into) in [("Renewal", &mut index.mobs_renewal), ("Prerenewal", &mut index.mobs_prerenewal)] {
+        for path in mob_db_imports(&root, mode) {
+            let text = fs::read(rathena.join(&path)).map_err(|e| format!("reading {path}: {e}"))?;
+            merge_mob_db(&text, into);
+        }
         if into.is_empty() {
-            return Err(format!("no monsters in {path}"));
+            return Err(format!("no {mode} monsters in db/mob_db.yml's imports"));
         }
     }
     let mut scripts = Vec::new();
@@ -445,6 +482,13 @@ mod tests {
         assert_eq!(mobs[&1002].name, b"Angry Poring");
         assert_eq!(mobs[&1002].element, "Water");
         assert_eq!(mobs[&30000].aegis, "MY_MOB");
+    }
+
+    #[test]
+    fn each_era_reads_what_mob_db_yml_imports_in_its_order() {
+        let root = b"Header:\n  Type: MOB_DB\nFooter:\n  Imports:\n  - Path: db/pre-re/mob_db.yml\n    Mode: Prerenewal\n  - Path: db/re/mob_db_world.yml\n    Mode: Renewal\n  - Path: db/re/mob_db.yml\n    Mode: Renewal\n  - Path: db/both.yml\n  - Path: db/import/mob_db.yml\n";
+        assert_eq!(mob_db_imports(root, "Renewal"), ["db/re/mob_db_world.yml", "db/re/mob_db.yml", "db/both.yml"]);
+        assert_eq!(mob_db_imports(root, "Prerenewal"), ["db/pre-re/mob_db.yml", "db/both.yml"]);
     }
 
     #[test]

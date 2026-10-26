@@ -25,9 +25,13 @@ kRO 2022 client. Where something is a hypothesis it says so.
 Every layer is read from each of the mod's **roots** (`Installed::roots`): its
 folder, then the running era's `renewalFolder` / `prerenewalFolder` when
 `mod.json` declares one. The era root is applied after the mod's own under the
-same owner, so its copy of a file replaces the mod's. `scan` works the roots out
-once, from the era marker, and the server layers and the client overlay both
-read them, which keeps the two in step.
+same owner, so its copy of a file replaces the mod's. In `db/`, where every
+mod's copy of a table is merged into one file, that means the mod's own copy is
+left out of the merge, not overwritten afterwards: by then the file holds the
+earlier mods' entries too, and an overwrite took them with it (#538). The same
+goes for a `db/when/<setting>/` part an era folder also has. `scan` works the
+roots out once, from the era marker, and the server layers and the client
+overlay both read them, which keeps the two in step.
 
 `state/modbuild` is rebuilt from scratch on every start, so a removed mod stops
 affecting the server. A stale merge would be indistinguishable from a mod that

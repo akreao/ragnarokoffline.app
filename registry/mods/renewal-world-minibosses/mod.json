@@ -1,0 +1,25 @@
+{
+  "name": "renewal-world-minibosses",
+  "author": "BlaXun",
+  "description": "The minibosses of renewal's new lands, for pre-renewal: King Dramoh, Wild Rider and the gold Scarabas of the Scaraba Hole's third floor, which hatch from the eggs there, with what they summon and their spawns. Converted like the ordinary monsters and set at the level step of their region. Needs renewal-world and renewal-world-monsters.",
+  "tags": [
+    "monsters",
+    "bosses",
+    "world",
+    "level-175",
+    "pre-renewal"
+  ],
+  "homepage": "https://github.com/BlaXun/ro-endgame-world/tree/main/mods/renewal-world-minibosses",
+  "requires": {
+    "app": ">=1.6.8",
+    "era": "pre-renewal",
+    "mods": [
+      "renewal-world",
+      "renewal-world-monsters"
+    ]
+  },
+  "source": {
+    "github": "BlaXun/ro-endgame-world",
+    "asset": "renewal-world-minibosses-*.zip"
+  }
+}

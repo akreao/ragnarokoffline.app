@@ -1,0 +1,23 @@
+{
+  "name": "renewal-world-monsters",
+  "author": "BlaXun",
+  "description": "The ordinary monsters of renewal's new lands, for pre-renewal with levels up to 175. Every monster keeps its renewal level: Malaya, Rockridge and Izlude's fifth floor from 100, Bifrost and El Dicastes up to 145, Eclage, Rockridge's mine and Verus up to 171, the quest areas up to 175; Dewata and Malangdo sit at 70 to 99. Their strength is set by fights on a test server, one level step at a time, against parties of third classes of that level: a region is party content, a step harder than the one below, and never unfair. They drop renewal's loot; its equipment and cards come with renewal-world-gear and renewal-world-cards, its bosses with renewal-world-mvps. Needs renewal-world for the maps, and a mod that takes characters past level 99 to meet the monsters at their level.",
+  "tags": [
+    "monsters",
+    "world",
+    "level-175",
+    "pre-renewal"
+  ],
+  "homepage": "https://github.com/BlaXun/ro-endgame-world/tree/main/mods/renewal-world-monsters",
+  "requires": {
+    "app": ">=1.5.4",
+    "era": "pre-renewal",
+    "mods": [
+      "renewal-world"
+    ]
+  },
+  "source": {
+    "github": "BlaXun/ro-endgame-world",
+    "asset": "renewal-world-monsters-*.zip"
+  }
+}
