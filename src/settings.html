@@ -561,6 +561,11 @@
       <span class="val" style="width:auto; color: var(--dim)">include your party's size</span>
     </label>
     <label>
+      <span>Links</span>
+      <input type="checkbox" id="discord_show_buttons" style="accent-color: var(--accent); flex: none" />
+      <span class="val" style="width:auto; color: var(--dim)">add "Get Ragnarok Offline" and "Join the Discord" buttons</span>
+    </label>
+    <label>
       <span>Application ID</span>
       <input type="text" id="discord-app-id" inputmode="numeric" autocomplete="off" spellcheck="false" placeholder="1234567890123456789" style="flex: 1; min-width: 0" />
       <button id="discord-app-id-save" class="ghost" style="flex: none">Save</button>
@@ -581,7 +586,7 @@
           <b>Save</b>.</li>
     </ol>
     <p class="note">The ID isn't secret, and nothing else needs setting up. Leave it empty to use
-       the one this version of the app comes with, if it has one.</p>
+       the app's own, which shows as "Playing Ragnarok Offline".</p>
   </div>
 
   <h2>Discord announcements</h2>
@@ -3106,7 +3111,7 @@ for (const key of ['auto_update', 'install_update_on_quit']) {
 
 // ---- Discord Rich Presence (electron/discord-presence.js). Saved at once,
 // like the update switches: nothing the server reads is involved.
-const DISCORD_KEYS = ['discord_presence', 'discord_show_name', 'discord_show_map', 'discord_show_party'];
+const DISCORD_KEYS = ['discord_presence', 'discord_show_name', 'discord_show_map', 'discord_show_party', 'discord_show_buttons'];
 function paintDiscordDetails() {
   const on = $('discord_presence').checked;
   for (const key of DISCORD_KEYS.slice(1)) $(key).disabled = !on;

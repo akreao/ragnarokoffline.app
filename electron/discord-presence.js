@@ -95,6 +95,75 @@ function mapLabel(state) {
 	return typeof state.map === 'string' && /^[A-Za-z0-9_@-]{1,32}$/.test(state.map) ? state.map : '';
 }
 
+// Art on the status. These are keys of pictures uploaded to the Discord
+// application (Rich Presence -> Art Assets); docs/DISCORD_PRESENCE.md lists
+// them. A map shows its region's picture: the town, its fields and dungeons.
+const REGIONS = [
+	['prontera', /^(prontera|prt_|prt\d|mjolnir_|ordeal|valkyrie)/],
+	['izlude', /^(izlude|iz_|izlu)/],
+	['geffen', /^(geffen|gef_|gefenia|geffen_)/],
+	['payon', /^(payon|pay_|payg|pay\d)/],
+	['morocc', /^(morocc|moc_|anthell|in_moc|morocc_|que_sign)/],
+	['alberta', /^(alberta|alb_|alb2trea|treasure|tur_dun)/],
+	['aldebaran', /^(aldebaran|alde_|c_tower|clock|aldeg)/],
+	['comodo', /^(comodo|cmd_|beach_dun|kh_)/],
+	['juno', /^(yuno|juperos|jupe_|mag_dun|yuno_)/],
+	['einbroch', /^(einbroch|einbech|ein_)/],
+	['lighthalzen', /^(lighthalzen|lhz_)/],
+	['rachel', /^(rachel|ra_|ice_dun)/],
+	['veins', /^(veins|ve_|thor_v)/],
+	['hugel', /^(hugel|hu_|odin_tem|abbey)/],
+	['glastheim', /^(glast_|gl_)/],
+	['niflheim', /^(niflheim|nif_)/],
+	['amatsu', /^(amatsu|ama_)/],
+	['gonryun', /^(gonryun|gon_)/],
+	['louyang', /^(louyang|lou_)/],
+	['ayothaya', /^(ayothaya|ayo_)/],
+	['umbala', /^(umbala|um_|yggdrasil)/],
+	['moscovia', /^(moscovia|mosk_)/],
+	['brasilis', /^(brasilis|bra_)/],
+	['dewata', /^(dewata|dew_)/],
+	['malangdo', /^(malangdo|mal_)/],
+	['eclage', /^(eclage|ecl_)/],
+	['splendide', /^(splendide|spl_|manuk|man_|mid_camp)/],
+	['guild', /^(prtg_cas|payg_cas|gefg_cas|aldeg_cas|schg_cas|arug_cas)/],
+	['pvp', /^(pvp_|guild_vs)/],
+];
+function regionOf(map) {
+	const id = typeof map === 'string' ? map.toLowerCase() : '';
+	if (!id) return '';
+	// Castles first: their names start like their towns'.
+	for (const [key, re] of [REGIONS.at(-2), REGIONS.at(-1), ...REGIONS.slice(0, -2)]) if (re.test(id)) return key;
+	return '';
+}
+
+// A job's line, for its small icon: every job of the Swordsman tree shows the
+// swordsman icon, and so on. Matched on rAthena's English names.
+const FAMILIES = {
+	novice: ['Novice', 'Super Novice', 'Super Baby', 'Expanded Super Novice', 'Expanded Super Baby', 'Hyper Novice'],
+	swordman: ['Swordsman', 'Knight', 'Crusader', 'Lord Knight', 'Paladin', 'Rune Knight', 'Royal Guard', 'Dragon Knight', 'Imperial Guard'],
+	mage: ['Magician', 'Wizard', 'Sage', 'High Wizard', 'Professor', 'Warlock', 'Sorcerer', 'Arch Mage', 'Elemental Master'],
+	archer: ['Archer', 'Hunter', 'Bard', 'Dancer', 'Sniper', 'Clown', 'Gypsy', 'Ranger', 'Minstrel', 'Wanderer', 'Windhawk', 'Troubadour', 'Trouvere'],
+	acolyte: ['Acolyte', 'Priest', 'Monk', 'High Priest', 'Champion', 'Arch Bishop', 'Sura', 'Cardinal', 'Inquisitor'],
+	merchant: ['Merchant', 'Blacksmith', 'Alchemist', 'Whitesmith', 'Creator', 'Mechanic', 'Genetic', 'Meister', 'Biolo'],
+	thief: ['Thief', 'Assassin', 'Rogue', 'Assassin Cross', 'Stalker', 'Guillotine Cross', 'Shadow Chaser', 'Shadow Cross', 'Abyss Chaser'],
+	taekwon: ['Taekwon', 'Star Gladiator', 'Soul Linker', 'Star Emperor', 'Soul Reaper', 'Sky Emperor', 'Soul Ascetic'],
+	gunslinger: ['Gunslinger', 'Rebellion', 'Night Watch'],
+	ninja: ['Ninja', 'Kagerou', 'Oboro', 'Shinkiro', 'Shiranui'],
+	summoner: ['Summoner', 'Spirit Handler'],
+};
+const FAMILY_OF = new Map(Object.entries(FAMILIES).flatMap(([key, names]) => names.map(n => [n, key])));
+function familyOf(jobName) {
+	const name = String(jobName || '').replace(/^(Baby|High) /, '').replace(/ T$/, '');
+	return FAMILY_OF.get(name) || (name === 'Novice' ? 'novice' : '');
+}
+
+// Links anyone can follow: nothing in them leads into the player's world.
+const BUTTONS = [
+	{ label: 'Get Ragnarok Offline', url: 'https://github.com/Flux159/ragnarokoffline.app' },
+	{ label: 'Join the Discord', url: 'https://discord.gg/jUYC9dMbu5' },
+];
+
 // What the player chose to show, applied to what the game page reported.
 // `state` is null outside the game (login, character select).
 //
@@ -107,6 +176,7 @@ function buildActivity(state, prefs = {}, context = {}) {
 		instance: false,
 	};
 	if (Number.isFinite(context.startedAt)) activity.timestamps = { start: Math.floor(context.startedAt) };
+	if (prefs.buttons) activity.buttons = BUTTONS.map(b => ({ ...b }));
 	if (!state) {
 		activity.details = 'Choosing a character';
 		return activity;
@@ -118,6 +188,16 @@ function buildActivity(state, prefs = {}, context = {}) {
 	const name = prefs.name && typeof state.name === 'string' ? state.name.trim() : '';
 	activity.details = text(name && who ? `${name} · ${who}` : name || who) || 'In game';
 	const where = prefs.map ? mapLabel(state) : '';
+	const region = prefs.map ? regionOf(state.map) : '';
+	if (region) {
+		activity.assets.large_image = `map_${region}`;
+		activity.assets.large_text = text(where) || activity.assets.large_text;
+	}
+	const family = familyOf(job);
+	if (family) {
+		activity.assets.small_image = `job_${family}`;
+		activity.assets.small_text = text(job);
+	}
 	const size = Number.isInteger(state.partySize) ? Math.min(Math.max(state.partySize, 0), PARTY_MAX) : 0;
 	if (prefs.party && size > 0) {
 		activity.state = text(where ? `${where} · In a party` : 'In a party');
@@ -266,4 +346,4 @@ function createPresence({ clientId, log = () => {}, connect = p => net.createCon
 	};
 }
 
-module.exports = { socketPaths, encode, decode, buildActivity, createPresence, PARTY_MAX, MIN_GAP_MS };
+module.exports = { socketPaths, encode, decode, buildActivity, createPresence, regionOf, familyOf, REGIONS, FAMILIES, PARTY_MAX, MIN_GAP_MS };

@@ -1167,6 +1167,8 @@ const SETTINGS_DEFAULTS = {
 	discord_show_name: false,
 	discord_show_map: true,
 	discord_show_party: true,
+	// Two public links on the status: the app's page and its Discord.
+	discord_show_buttons: true,
 	// Discord announcements (discord-webhook.js): also post when the world
 	// comes online and goes offline. The webhook itself is in state/private.
 	discord_announce_world: true,
@@ -1213,8 +1215,8 @@ function getSettings() {
 // only names set_app_preference will write. Everything else in that file
 // changes how the server runs and has to go through Apply.
 const APP_PREFERENCES = new Set(['open_settings_first', 'auto_update', 'install_update_on_quit',
-	'discord_presence', 'discord_show_name', 'discord_show_map', 'discord_show_party', 'discord_announce_world']);
-const DISCORD_PREFERENCES = new Set(['discord_presence', 'discord_show_name', 'discord_show_map', 'discord_show_party']);
+	'discord_presence', 'discord_show_name', 'discord_show_map', 'discord_show_party', 'discord_show_buttons', 'discord_announce_world']);
+const DISCORD_PREFERENCES = new Set(['discord_presence', 'discord_show_name', 'discord_show_map', 'discord_show_party', 'discord_show_buttons']);
 
 // ---------------------------------------------------------------------------
 // Discord Rich Presence
@@ -1224,7 +1226,7 @@ const DISCORD_PREFERENCES = new Set(['discord_presence', 'discord_show_name', 'd
 // the Discord application's, which is public: Discord shows its name as the
 // game. RAGNAROK_OFFLINE_DISCORD_APP_ID overrides it, for testing with an
 // application of your own. Empty means the feature is off.
-const DISCORD_APP_ID = '';
+const DISCORD_APP_ID = '1564743117444354220';
 let discordPresence = null;
 let discordLastState;           // the last state the game window reported
 let discordStartedAt = null;    // when this game session began, for "elapsed"
@@ -1272,6 +1274,7 @@ function refreshDiscordPresence() {
 	const { buildActivity } = require('./discord-presence');
 	discordClient().set(buildActivity(discordLastState, {
 		name: settings.discord_show_name, map: settings.discord_show_map, party: settings.discord_show_party,
+		buttons: settings.discord_show_buttons !== false,
 	}, { joined: getClientPaths().mode === 'join', startedAt: discordStartedAt, jobName: discordJobName }));
 }
 

@@ -39,7 +39,11 @@ test('the status shows job and level, and only what the player allowed', () => {
   assert.equal(all.state, 'Prontera · In a party');
   assert.deepEqual(all.party, { size: [3, 12] });
   assert.deepEqual(all.timestamps, { start: 1000 });
-  assert.equal(all.assets.large_image, 'logo');
+  assert.equal(all.assets.large_image, 'map_prontera');
+  assert.equal(all.assets.large_text, 'Prontera');
+  assert.equal(all.assets.small_image, 'job_thief');
+  assert.equal(all.assets.small_text, 'Assassin Cross');
+  assert.equal(all.buttons, undefined, 'no buttons unless asked');
 
   const none = buildActivity(STATE, { name: false, map: false, party: false }, { jobName });
   assert.equal(none.details, 'Lv 99/50 Assassin Cross');
@@ -308,4 +312,35 @@ test('a player can give their own application id, checked on the way in', () => 
   const html = fs.readFileSync(path.join(__dirname, '..', 'src', 'settings.html'), 'utf8');
   assert.match(html, /id="discord-app-id"/);
   assert.match(html, /discord\.com\/developers\/applications/);
+});
+
+test('maps show their region, jobs their line, and the links are public ones', () => {
+  const { regionOf, familyOf, REGIONS, FAMILIES } = require('../electron/discord-presence');
+  assert.equal(regionOf('prt_fild08'), 'prontera');
+  assert.equal(regionOf('pay_dun04'), 'payon');
+  assert.equal(regionOf('gef_fild10'), 'geffen');
+  assert.equal(regionOf('prtg_cas01'), 'guild');
+  assert.equal(regionOf('iz_dun02'), 'izlude');
+  assert.equal(regionOf('some_custom_map'), '');
+  for (const [key] of REGIONS) assert.match(key, /^[a-z_]{2,24}$/);
+  assert.equal(familyOf('Baby Rune Knight'), 'swordman');
+  assert.equal(familyOf('Guillotine Cross T'), 'thief');
+  assert.equal(familyOf('High Novice'), 'novice');
+  assert.equal(familyOf('Spirit Handler'), 'summoner');
+  assert.equal(familyOf('Wedding'), '');
+  // Every job rAthena names, apart from the outfits, has a line.
+  const body = fs.readFileSync(path.join(__dirname, '..', 'tools', 'control-panel', 'job-names.js'), 'utf8');
+  const names = new Set(Object.values(JSON.parse(body.slice(body.indexOf('{'), body.lastIndexOf('}') + 1))));
+  const outfits = new Set(['Wedding', 'Christmas', 'Summer', 'Hanbok', 'Oktoberfest', 'Gangsi', 'Death Knight', 'Dark Collector']);
+  for (const n of names) if (!outfits.has(n)) assert.ok(familyOf(n), `no line for ${n}`);
+  assert.equal(Object.keys(FAMILIES).length, 11);
+
+  const hidden = buildActivity(STATE, { map: false, buttons: true }, { jobName });
+  assert.equal(hidden.assets.large_image, 'logo', 'a hidden map shows no map art either');
+  assert.equal(hidden.buttons.length, 2);
+  for (const b of hidden.buttons) {
+    assert.match(b.url, /^https:\/\/(github\.com\/Flux159\/|discord\.gg\/)/);
+    assert.ok(b.label.length <= 32);
+  }
+  assert.equal(buildActivity(null, { buttons: true }, {}).buttons.length, 2);
 });
