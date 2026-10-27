@@ -1170,6 +1170,9 @@ const SETTINGS_DEFAULTS = {
 	// Discord announcements (discord-webhook.js): also post when the world
 	// comes online and goes offline. The webhook itself is in state/private.
 	discord_announce_world: true,
+	// The player's own Discord application id, for Rich Presence, when the
+	// build has none or they want their own name on the status. null = none.
+	discord_app_id: null,
 	// Pre-renewal is a different rAthena build, not a runtime option, so this
 	// selects which of the two the supervisor starts. Each mode keeps its own
 	// characters -- see db_volume() in stack/src/cmds.rs for why sharing them
@@ -1227,8 +1230,12 @@ let discordLastState;           // the last state the game window reported
 let discordStartedAt = null;    // when this game session began, for "elapsed"
 let discordJobNames = null;
 
+// The environment wins (testing), then the player's own id from Settings,
+// then the build's.
 function discordAppId() {
-	const id = String(process.env.RAGNAROK_OFFLINE_DISCORD_APP_ID || DISCORD_APP_ID).trim();
+	let saved = null;
+	try { saved = getSettings().discord_app_id; } catch { /* unreadable settings: no saved id */ }
+	const id = String(process.env.RAGNAROK_OFFLINE_DISCORD_APP_ID || saved || DISCORD_APP_ID).trim();
 	return /^\d{15,25}$/.test(id) ? id : '';
 }
 
@@ -3383,7 +3390,17 @@ const handlers = {
 		refreshDiscordPresence();
 		return true;
 	},
-	discord_presence_status: () => ({ ...(discordPresence ? discordPresence.status() : { connected: false }), configured: Boolean(discordAppId()),
+	// Settings -> General -> Discord: the player's own application id. A new
+	// id means a new handshake, so the old connection is closed first.
+	discord_set_app_id: ({ id }) => {
+		const value = String(id || '').trim();
+		if (value && !/^\d{15,25}$/.test(value)) throw new Error('An application ID is a long number, like 1234567890123456789. Copy it from the General Information page of your app.');
+		require('./settings-store').write(path.join(stateDir(), 'settings.json'), { discord_app_id: value || null }, SETTINGS_DEFAULTS);
+		if (discordPresence) { discordPresence.stop(); discordPresence = null; }
+		refreshDiscordPresence();
+		return true;
+	},
+	discord_presence_status: () => ({ fromEnvironment: Boolean(process.env.RAGNAROK_OFFLINE_DISCORD_APP_ID), builtIn: Boolean(DISCORD_APP_ID), ...(discordPresence ? discordPresence.status() : { connected: false }), configured: Boolean(discordAppId()),
 		inGame: discordLastState !== undefined }),
 	// Settings -> General -> Discord announcements. The URL goes in, never
 	// back out: the page sees whether one is set and its last four characters.
@@ -4120,7 +4137,7 @@ const HEADLESS_PAGE_HANDLERS = new Set([
 	'app_update_status', 'app_update_check', 'app_update_install',
 	// Settings -> Discord: there is no game window here, so presence reports
 	// itself absent; announcements work the same as in the app.
-	'discord_presence_status', 'discord_webhook_status', 'discord_webhook_set', 'discord_webhook_clear', 'discord_webhook_test',
+	'discord_presence_status', 'discord_set_app_id', 'discord_webhook_status', 'discord_webhook_set', 'discord_webhook_clear', 'discord_webhook_test',
 	'client_folders', 'copy_diagnostics', 'data_location', 'db_backup', 'db_backup_full', 'db_inspect',
 	'db_inspect_full', 'db_restore', 'db_restore_full', 'game_status', 'get_client_paths', 'client_detected', 'get_mode',
 	'get_settings', 'get_vm_ram_mib', 'host_facts', 'host_ram_mib', 'hosting_check', 'install_mod',
