@@ -46,7 +46,7 @@ function socketPaths({ platform = process.platform, env = process.env } = {}) {
 	for (let i = 0; i < 10; i++) {
 		for (const base of bases) {
 			for (const sub of subdirs) {
-				const p = path.join(base, sub, `discord-ipc-${i}`);
+				const p = path.posix.join(base, sub, `discord-ipc-${i}`);
 				if (!seen.has(p)) { seen.add(p); out.push(p); }
 			}
 		}
