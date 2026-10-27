@@ -143,9 +143,11 @@ function createPresence({ clientId, log = () => {}, connect = p => net.createCon
 	let retryTimer = null;
 	let nonce = 0;
 	let loggedMissing = false;
+	let shownLogged = false;
 
 	function reset() {
 		ready = false;
+		shownLogged = false;
 		sentJson = null;
 		if (socket) { try { socket.destroy(); } catch { /* ignored */ } }
 		socket = null;
@@ -208,6 +210,12 @@ function createPresence({ clientId, log = () => {}, connect = p => net.createCon
 			flush();
 		} else if (data.evt === 'ERROR') {
 			log(`discord: ${data.cmd || 'command'} refused: ${data.data?.message || 'no reason'}`);
+		} else if (data.cmd === 'SET_ACTIVITY' && !shownLogged) {
+			// Once per connection: Discord took it. If nothing shows on the
+			// profile after this, the cause is on Discord's side (Activity
+			// Privacy, or a client that ignores RPC).
+			shownLogged = true;
+			log(`discord: status accepted (${data.data ? `"${data.data.details || ''}"` : 'cleared'})`);
 		}
 	}
 
