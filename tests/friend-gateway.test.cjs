@@ -92,6 +92,21 @@ test('expired invitations and sessions stop HTTP and active WS access', async t 
   assert.equal((await f.request('/data/a.spr', { headers: { cookie } })).status, 401);
   await closed;
 });
+test('a map link the friend has gone silent on is ended, other links are not', async t => {
+  const lines = [], f = await fixture(t, { log: line => lines.push(line), friendSilenceLimit: 200 }), cookie = await f.login();
+  const map = await f.socket(cookie, undefined, '/ws/127.0.0.1:5121'); map.resume();
+  const login = await f.socket(cookie); login.resume();
+  await once(map, 'close');
+  for (let i = 0; i < 100 && !lines.length; i++) await new Promise(resolve => setTimeout(resolve, 10));
+  assert.match(lines.at(-1), /^friend link \/ws\/127\.0\.0\.1:5121 ended after \d+ s: nothing from the friend for 0 s \(their connection dropped without a goodbye\);/);
+  assert.equal(login.destroyed, false);
+  // A friend who keeps talking stays connected.
+  const busy = await f.socket(cookie, undefined, '/ws/127.0.0.1:5121'); busy.resume();
+  const ping = Buffer.from([0x82, 0x82, 1, 2, 3, 4, 0x7e ^ 1, 0x01 ^ 2]);
+  for (let i = 0; i < 8; i++) { busy.write(ping); await new Promise(resolve => setTimeout(resolve, 60)); }
+  assert.equal(busy.destroyed, false);
+  login.destroy(); busy.destroy();
+});
 test('an ended friend link logs which side ended it', async t => {
   const lines = [], f = await fixture(t, { log: line => lines.push(line) }), cookie = await f.login();
   const ended = async () => { for (let i = 0; i < 100 && lines.length === count; i++) await new Promise(resolve => setTimeout(resolve, 10)); count = lines.length; return lines.at(-1); };
