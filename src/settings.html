@@ -537,6 +537,36 @@
        install updates on restart of app</b> to have an ordinary quit install it instead.</p>
   </div>
 
+  <h2>Discord</h2>
+  <div class="panel" id="discord-panel">
+    <div class="row"><span class="name">Status</span><span class="state" id="s-discord">—</span></div>
+    <label>
+      <span>Rich Presence</span>
+      <input type="checkbox" id="discord_presence" style="accent-color: var(--accent); flex: none" />
+      <span class="val" style="width:auto; color: var(--dim)">show what you're playing on your Discord profile</span>
+    </label>
+    <label>
+      <span>Character name</span>
+      <input type="checkbox" id="discord_show_name" style="accent-color: var(--accent); flex: none" />
+      <span class="val" style="width:auto; color: var(--dim)">include your character's name</span>
+    </label>
+    <label>
+      <span>Map</span>
+      <input type="checkbox" id="discord_show_map" style="accent-color: var(--accent); flex: none" />
+      <span class="val" style="width:auto; color: var(--dim)">include the map you're on</span>
+    </label>
+    <label>
+      <span>Party</span>
+      <input type="checkbox" id="discord_show_party" style="accent-color: var(--accent); flex: none" />
+      <span class="val" style="width:auto; color: var(--dim)">include your party's size</span>
+    </label>
+    <p class="note" id="discord-status" hidden style="margin:8px 0 0; color: var(--text)"></p>
+    <p class="note">Your Discord friends see your job and level, and whatever you tick above, for
+       as long as the game window is open. It needs the Discord desktop app running on this
+       computer. Players who join you from a web browser don't get it; joining through this
+       app does.</p>
+  </div>
+
   <h2>Server</h2>
   <div class="panel">
     <div class="row"><span class="name">Assets &amp; client (:3338)</span><span class="state" id="s-assets">—</span></div>
@@ -3032,6 +3062,46 @@ for (const key of ['auto_update', 'install_update_on_quit']) {
   };
 }
 
+// ---- Discord Rich Presence (electron/discord-presence.js). Saved at once,
+// like the update switches: nothing the server reads is involved.
+const DISCORD_KEYS = ['discord_presence', 'discord_show_name', 'discord_show_map', 'discord_show_party'];
+function paintDiscordDetails() {
+  const on = $('discord_presence').checked;
+  for (const key of DISCORD_KEYS.slice(1)) $(key).disabled = !on;
+}
+async function refreshDiscord() {
+  let st;
+  try { st = await invoke('discord_presence_status'); }
+  catch { st = { headless: true }; }
+  if (st.headless) {
+    // The headless admin page has no game window and no Discord to talk to.
+    $('discord-panel').hidden = true;
+    $('discord-panel').previousElementSibling.hidden = true;
+    return;
+  }
+  let label;
+  if (!st.configured) label = 'Not set up in this build';
+  else if (!$('discord_presence').checked) label = 'Off';
+  else if (st.connected) label = 'Connected to Discord';
+  else label = 'Waiting for the game and Discord';
+  paint($('s-discord'), st.configured && (st.connected || !$('discord_presence').checked), label);
+}
+for (const key of DISCORD_KEYS) {
+  $(key).onchange = async () => {
+    const on = $(key).checked;
+    try {
+      await invoke('set_app_preference', { key, value: on });
+      $('discord-status').hidden = true;
+    } catch (error) {
+      $(key).checked = !on;
+      setNote('discord-status', `Could not save that: ${error.message || String(error)}`, 'bad');
+      $('discord-status').hidden = false;
+    }
+    paintDiscordDetails();
+    refreshDiscord();
+  };
+}
+
 // Mod names, descriptions and refusal reasons are written by whoever made the
 // mod, and land in innerHTML. Nothing about a mod folder is trusted markup.
 function esc(s) {
@@ -3947,6 +4017,9 @@ invoke('get_settings').then(s => {
   // would refuse, shows '@' -- which is what it is running on.
   $('command_symbol').value = COMMAND_SYMBOLS.includes(s.command_symbol) ? s.command_symbol : '@';
   $('open_settings_first').checked = !!s.open_settings_first;
+  for (const key of DISCORD_KEYS) $(key).checked = !!s[key];
+  paintDiscordDetails();
+  refreshDiscord();
   $('move_prediction').checked = !!s.move_prediction;
   $('instant_map_changes').checked = !!s.instant_map_changes;
   $('population_enable').checked = !!s.population_enable;
