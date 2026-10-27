@@ -3343,7 +3343,8 @@ const handlers = {
 		refreshDiscordPresence();
 		return true;
 	},
-	discord_presence_status: () => ({ ...(discordPresence ? discordPresence.status() : { connected: false }), configured: Boolean(discordAppId()) }),
+	discord_presence_status: () => ({ ...(discordPresence ? discordPresence.status() : { connected: false }), configured: Boolean(discordAppId()),
+		inGame: discordLastState !== undefined }),
 	host_ram_mib: () => Math.floor(require('os').totalmem() / (1024 * 1024)),
 	// Whether idle guest memory comes back. vz (macOS) balloons; the krun
 	// backend behind Windows and Linux does not, and is not expected to, so on

@@ -3083,7 +3083,8 @@ async function refreshDiscord() {
   if (!st.configured) label = 'Not set up in this build';
   else if (!$('discord_presence').checked) label = 'Off';
   else if (st.connected) label = 'Connected to Discord';
-  else label = 'Waiting for the game and Discord';
+  else if (!st.inGame) label = 'Waiting for the game window to report in';
+  else label = 'Discord not found. Is the Discord desktop app running?';
   paint($('s-discord'), st.configured && (st.connected || !$('discord_presence').checked), label);
 }
 for (const key of DISCORD_KEYS) {
