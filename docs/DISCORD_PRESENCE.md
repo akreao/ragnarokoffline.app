@@ -62,11 +62,38 @@ Job and level are always shown while presence is on.
 3. Copy the **Application ID**. It isn't secret.
 4. Paste it into **Settings → General → Discord → Application ID** and press
    **Save**. Each player can use their own, and the status then says "Playing
-   <their application's name>". A build can also ship one in `DISCORD_APP_ID`
-   in `electron/main.js`. `RAGNAROK_OFFLINE_DISCORD_APP_ID` overrides both,
+   <their application's name>". Otherwise the app's own ID is used
+   (`DISCORD_APP_ID` in `electron/main.js`). `RAGNAROK_OFFLINE_DISCORD_APP_ID` overrides both,
    which is handy for testing.
 
    With no ID anywhere, the feature is off, and Settings asks for one.
+
+## Art
+
+Upload these under **Rich Presence → Art Assets** in the Discord application,
+using exactly these names. Only `logo` is needed. The app asks Discord which
+pictures the application has (the same public list the developer portal shows)
+and shows the logo in place of any that are missing, so a partial set is fine.
+
+`scripts/make-discord-art.py` makes the whole set from the game's own files:
+the town minimaps for the regions, and each job line's first job, standing with
+a default head, for the jobs. Run it while the app is running, since it reads
+them from the asset server, then upload what it saves.
+
+- `logo`: shown when the map is hidden, or has no picture of its own.
+- One picture per region, shown as the large image. Each town's fields and
+  dungeons share its picture (`prt_fild08` shows `map_prontera`):
+  `map_prontera`, `map_izlude`, `map_geffen`, `map_payon`, `map_morocc`, `map_alberta`, `map_aldebaran`, `map_comodo`, `map_juno`, `map_einbroch`, `map_lighthalzen`, `map_rachel`, `map_veins`, `map_hugel`, `map_glastheim`, `map_niflheim`, `map_amatsu`, `map_gonryun`, `map_louyang`, `map_ayothaya`, `map_umbala`, `map_moscovia`, `map_brasilis`, `map_dewata`, `map_malangdo`, `map_eclage`, `map_splendide`, `map_guild`, `map_pvp`.
+- One icon per job line, shown as the small image, with the job's name on
+  hover: `job_novice`, `job_swordman`, `job_mage`, `job_archer`,
+  `job_acolyte`, `job_merchant`, `job_thief`, `job_taekwon`, `job_gunslinger`,
+  `job_ninja`, `job_summoner`. Every job uses the icon of the line it comes
+  from, so Rune Knight shows `job_swordman`.
+
+The regions are `REGIONS` in `electron/discord-presence.js`, and the job lines
+are `FAMILIES`. The status can also carry two public links, "Get Ragnarok
+Offline" and "Join the Discord", which Settings → Links turns off. Neither
+leads into the player's world.
 
 ## Linux
 

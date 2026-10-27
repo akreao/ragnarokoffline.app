@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 const { EventEmitter } = require('node:events');
 const fs = require('node:fs');
 const path = require('node:path');
-const { socketPaths, encode, decode, buildActivity, createPresence, MIN_GAP_MS } = require('../electron/discord-presence');
+const { socketPaths, encode, decode, buildActivity, createPresence, fetchAssetNames, MIN_GAP_MS } = require('../electron/discord-presence');
 
 test('frames round-trip, and a partial frame waits for the rest', () => {
   const a = encode(1, { cmd: 'SET_ACTIVITY', n: 1 });
@@ -39,7 +39,11 @@ test('the status shows job and level, and only what the player allowed', () => {
   assert.equal(all.state, 'Prontera · In a party');
   assert.deepEqual(all.party, { size: [3, 12] });
   assert.deepEqual(all.timestamps, { start: 1000 });
-  assert.equal(all.assets.large_image, 'logo');
+  assert.equal(all.assets.large_image, 'map_prontera');
+  assert.equal(all.assets.large_text, 'Prontera');
+  assert.equal(all.assets.small_image, 'job_thief');
+  assert.equal(all.assets.small_text, 'Assassin Cross');
+  assert.equal(all.buttons, undefined, 'no buttons unless asked');
 
   const none = buildActivity(STATE, { name: false, map: false, party: false }, { jobName });
   assert.equal(none.details, 'Lv 99/50 Assassin Cross');
@@ -308,4 +312,56 @@ test('a player can give their own application id, checked on the way in', () => 
   const html = fs.readFileSync(path.join(__dirname, '..', 'src', 'settings.html'), 'utf8');
   assert.match(html, /id="discord-app-id"/);
   assert.match(html, /discord\.com\/developers\/applications/);
+});
+
+test('maps show their region, jobs their line, and the links are public ones', () => {
+  const { regionOf, familyOf, REGIONS, FAMILIES } = require('../electron/discord-presence');
+  assert.equal(regionOf('prt_fild08'), 'prontera');
+  assert.equal(regionOf('pay_dun04'), 'payon');
+  assert.equal(regionOf('gef_fild10'), 'geffen');
+  assert.equal(regionOf('prtg_cas01'), 'guild');
+  assert.equal(regionOf('iz_dun02'), 'izlude');
+  assert.equal(regionOf('some_custom_map'), '');
+  for (const [key] of REGIONS) assert.match(key, /^[a-z_]{2,24}$/);
+  assert.equal(familyOf('Baby Rune Knight'), 'swordman');
+  assert.equal(familyOf('Guillotine Cross T'), 'thief');
+  assert.equal(familyOf('High Novice'), 'novice');
+  assert.equal(familyOf('Spirit Handler'), 'summoner');
+  assert.equal(familyOf('Wedding'), '');
+  // Every job rAthena names, apart from the outfits, has a line.
+  const body = fs.readFileSync(path.join(__dirname, '..', 'tools', 'control-panel', 'job-names.js'), 'utf8');
+  const names = new Set(Object.values(JSON.parse(body.slice(body.indexOf('{'), body.lastIndexOf('}') + 1))));
+  const outfits = new Set(['Wedding', 'Christmas', 'Summer', 'Hanbok', 'Oktoberfest', 'Gangsi', 'Death Knight', 'Dark Collector']);
+  for (const n of names) if (!outfits.has(n)) assert.ok(familyOf(n), `no line for ${n}`);
+  assert.equal(Object.keys(FAMILIES).length, 11);
+
+  const hidden = buildActivity(STATE, { map: false, buttons: true }, { jobName });
+  assert.equal(hidden.assets.large_image, 'logo', 'a hidden map shows no map art either');
+  assert.equal(hidden.buttons.length, 2);
+  for (const b of hidden.buttons) {
+    assert.match(b.url, /^https:\/\/(github\.com\/Flux159\/|discord\.gg\/)/);
+    assert.ok(b.label.length <= 32);
+  }
+  assert.equal(buildActivity(null, { buttons: true }, {}).buttons.length, 2);
+});
+
+test('a picture the application has not uploaded is left out, so the logo shows', async () => {
+  const state = { map: 'gon_fild01', mapName: 'Kunlun Field', job: 24, baseLevel: 50, jobLevel: 20 };
+  const jobName = () => 'Gunslinger';
+  const all = buildActivity(state, { map: true }, { jobName, assets: null });
+  assert.equal(all.assets.large_image, 'map_gonryun');
+  assert.equal(all.assets.small_image, 'job_gunslinger');
+  const some = buildActivity(state, { map: true }, { jobName, assets: new Set(['logo', 'map_prontera']) });
+  assert.equal(some.assets.large_image, 'logo');
+  assert.equal(some.assets.small_image, undefined);
+
+  let asked;
+  const names = await fetchAssetNames('1564743117444354220', {
+    fetch: async url => { asked = url; return { ok: true, json: async () => [{ name: 'logo' }, { name: 'job_mage' }, {}] }; },
+  });
+  assert.match(asked, /\/oauth2\/applications\/1564743117444354220\/assets$/);
+  assert.deepEqual([...names].sort(), ['job_mage', 'logo']);
+  assert.equal(await fetchAssetNames('1564743117444354220', { fetch: async () => ({ ok: false }) }), null);
+  assert.equal(await fetchAssetNames('1564743117444354220', { fetch: async () => { throw new Error('offline'); } }), null);
+  assert.equal(await fetchAssetNames('not-an-id', { fetch: async () => { throw new Error('asked'); } }), null);
 });

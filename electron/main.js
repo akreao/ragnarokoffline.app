@@ -1167,6 +1167,8 @@ const SETTINGS_DEFAULTS = {
 	discord_show_name: false,
 	discord_show_map: true,
 	discord_show_party: true,
+	// Two public links on the status: the app's page and its Discord.
+	discord_show_buttons: true,
 	// Discord announcements (discord-webhook.js): also post when the world
 	// comes online and goes offline. The webhook itself is in state/private.
 	discord_announce_world: true,
@@ -1213,8 +1215,8 @@ function getSettings() {
 // only names set_app_preference will write. Everything else in that file
 // changes how the server runs and has to go through Apply.
 const APP_PREFERENCES = new Set(['open_settings_first', 'auto_update', 'install_update_on_quit',
-	'discord_presence', 'discord_show_name', 'discord_show_map', 'discord_show_party', 'discord_announce_world']);
-const DISCORD_PREFERENCES = new Set(['discord_presence', 'discord_show_name', 'discord_show_map', 'discord_show_party']);
+	'discord_presence', 'discord_show_name', 'discord_show_map', 'discord_show_party', 'discord_show_buttons', 'discord_announce_world']);
+const DISCORD_PREFERENCES = new Set(['discord_presence', 'discord_show_name', 'discord_show_map', 'discord_show_party', 'discord_show_buttons']);
 
 // ---------------------------------------------------------------------------
 // Discord Rich Presence
@@ -1224,11 +1226,12 @@ const DISCORD_PREFERENCES = new Set(['discord_presence', 'discord_show_name', 'd
 // the Discord application's, which is public: Discord shows its name as the
 // game. RAGNAROK_OFFLINE_DISCORD_APP_ID overrides it, for testing with an
 // application of your own. Empty means the feature is off.
-const DISCORD_APP_ID = '';
+const DISCORD_APP_ID = '1564743117444354220';
 let discordPresence = null;
 let discordLastState;           // the last state the game window reported
 let discordStartedAt = null;    // when this game session began, for "elapsed"
 let discordJobNames = null;
+let discordAssets = { id: '', names: null, at: 0, pending: false }; // the app's uploaded art
 
 // The environment wins (testing), then the player's own id from Settings,
 // then the build's.
@@ -1269,10 +1272,27 @@ function refreshDiscordPresence() {
 		if (discordPresence) discordPresence.set(null);
 		return;
 	}
-	const { buildActivity } = require('./discord-presence');
+	const { buildActivity, fetchAssetNames } = require('./discord-presence');
+	// Which pictures the application has, looked up once per id and every ten
+	// minutes after; until known, every key is tried.
+	const id = discordAppId();
+	if (discordAssets.id !== id) discordAssets = { id, names: null, at: 0, pending: false };
+	if (!discordAssets.pending && Date.now() - discordAssets.at > 10 * 60 * 1000) {
+		const asked = discordAssets;
+		asked.pending = true;
+		fetchAssetNames(id).then(names => {
+			asked.pending = false;
+			asked.at = Date.now();
+			if (discordAssets !== asked) return;
+			const before = asked.names ? [...asked.names].sort().join() : null;
+			if (names) asked.names = names;
+			if (names && [...names].sort().join() !== before) refreshDiscordPresence();
+		});
+	}
 	discordClient().set(buildActivity(discordLastState, {
 		name: settings.discord_show_name, map: settings.discord_show_map, party: settings.discord_show_party,
-	}, { joined: getClientPaths().mode === 'join', startedAt: discordStartedAt, jobName: discordJobName }));
+		buttons: settings.discord_show_buttons !== false,
+	}, { joined: getClientPaths().mode === 'join', startedAt: discordStartedAt, jobName: discordJobName, assets: discordAssets.names }));
 }
 
 // ---------------------------------------------------------------------------
