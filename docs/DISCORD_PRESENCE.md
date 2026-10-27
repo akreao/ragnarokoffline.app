@@ -60,15 +60,13 @@ Job and level are always shown while presence is on.
 2. Under **Rich Presence → Art Assets**, upload the logo with the key `logo`
    (at least 512×512).
 3. Copy the **Application ID**. It isn't secret.
-4. Either put it in `DISCORD_APP_ID` in `electron/main.js`, or, for a test, set
-   it when you start the app:
+4. Paste it into **Settings → General → Discord → Application ID** and press
+   **Save**. Each player can use their own, and the status then says "Playing
+   <their application's name>". A build can also ship one in `DISCORD_APP_ID`
+   in `electron/main.js`. `RAGNAROK_OFFLINE_DISCORD_APP_ID` overrides both,
+   which is handy for testing.
 
-   ```fish
-   set -x RAGNAROK_OFFLINE_DISCORD_APP_ID 123456789012345678
-   npm start
-   ```
-
-   With no ID, the feature is off, and Settings says "Not set up in this build".
+   With no ID anywhere, the feature is off, and Settings asks for one.
 
 ## Linux
 

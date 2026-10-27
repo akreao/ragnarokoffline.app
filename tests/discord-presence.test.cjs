@@ -289,3 +289,23 @@ test('the discord-announcements mod writes [discord] lines and skips AI characte
     assert.ok(!new RegExp(`GAME_PAGE_HANDLERS = new Set\\(\\[[^\\]]*'${name}'`).test(main), `${name} is not for the game page`);
   }
 });
+
+test('a player can give their own application id, checked on the way in', () => {
+  const main = fs.readFileSync(path.join(__dirname, '..', 'electron', 'main.js'), 'utf8');
+  assert.match(main, /discord_app_id: null/);
+  assert.match(main, /discord_set_app_id: \(\{ id \}\)/);
+  assert.ok(!/GAME_PAGE_HANDLERS = new Set\(\[[^\]]*'discord_set_app_id'/.test(main), 'not for the game page');
+  // Environment first, then the saved id, then the build's.
+  assert.match(main, /process\.env\.RAGNAROK_OFFLINE_DISCORD_APP_ID \|\| saved \|\| DISCORD_APP_ID/);
+  const settings = require('../electron/settings-store');
+  const os = require('node:os');
+  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'discord-id-')), 'settings.json');
+  assert.equal(settings.write(file, { discord_app_id: '123456789012345678' }, {}).discord_app_id, '123456789012345678');
+  assert.equal(settings.write(file, { discord_app_id: null }, {}).discord_app_id, null);
+  for (const bad of ['abc', '123', 123456789012345678, '1234567890123456789012345678']) {
+    assert.throws(() => settings.write(file, { discord_app_id: bad }, {}), /application ID/, String(bad));
+  }
+  const html = fs.readFileSync(path.join(__dirname, '..', 'src', 'settings.html'), 'utf8');
+  assert.match(html, /id="discord-app-id"/);
+  assert.match(html, /discord\.com\/developers\/applications/);
+});
