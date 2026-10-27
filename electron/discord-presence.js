@@ -169,7 +169,10 @@ const BUTTONS = [
 //
 // state: { map, mapName, name, job, baseLevel, jobLevel, partySize }
 // prefs: { name, map, party } booleans
-// context: { joined, startedAt, jobName(id) }
+// context: { joined, startedAt, jobName(id), assets }
+//   assets: the art keys the Discord application has (fetchAssetNames), or
+//   null when unknown. A picture it lacks is left out, so the status shows the
+//   logo instead of a blank square.
 function buildActivity(state, prefs = {}, context = {}) {
 	const activity = {
 		assets: { large_image: 'logo', large_text: context.joined ? 'Playing on a friend\'s world' : 'Playing on their own world' },
@@ -188,13 +191,14 @@ function buildActivity(state, prefs = {}, context = {}) {
 	const name = prefs.name && typeof state.name === 'string' ? state.name.trim() : '';
 	activity.details = text(name && who ? `${name} · ${who}` : name || who) || 'In game';
 	const where = prefs.map ? mapLabel(state) : '';
+	const has = key => !(context.assets instanceof Set) || context.assets.has(key);
 	const region = prefs.map ? regionOf(state.map) : '';
-	if (region) {
+	if (region && has(`map_${region}`)) {
 		activity.assets.large_image = `map_${region}`;
 		activity.assets.large_text = text(where) || activity.assets.large_text;
 	}
 	const family = familyOf(job);
-	if (family) {
+	if (family && has(`job_${family}`)) {
 		activity.assets.small_image = `job_${family}`;
 		activity.assets.small_text = text(job);
 	}
@@ -346,4 +350,19 @@ function createPresence({ clientId, log = () => {}, connect = p => net.createCon
 	};
 }
 
-module.exports = { socketPaths, encode, decode, buildActivity, createPresence, regionOf, familyOf, REGIONS, FAMILIES, PARTY_MAX, MIN_GAP_MS };
+// The art keys an application has uploaded. Discord lists them for anyone
+// (no sign-in), the same list the developer portal shows. Null on failure.
+async function fetchAssetNames(clientId, { fetch: fetchImpl = globalThis.fetch, timeoutMs = 10000 } = {}) {
+	if (!/^\d{15,25}$/.test(String(clientId || ''))) return null;
+	try {
+		const res = await fetchImpl(`https://discord.com/api/v10/oauth2/applications/${clientId}/assets`, { signal: AbortSignal.timeout(timeoutMs) });
+		if (!res.ok) return null;
+		const list = await res.json();
+		if (!Array.isArray(list)) return null;
+		return new Set(list.map(a => a && typeof a.name === 'string' ? a.name : '').filter(Boolean));
+	} catch {
+		return null;
+	}
+}
+
+module.exports = { fetchAssetNames, socketPaths, encode, decode, buildActivity, createPresence, regionOf, familyOf, REGIONS, FAMILIES, PARTY_MAX, MIN_GAP_MS };

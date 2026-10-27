@@ -71,8 +71,14 @@ Job and level are always shown while presence is on.
 ## Art
 
 Upload these under **Rich Presence → Art Assets** in the Discord application,
-using exactly these names. A missing one may show as a blank picture, so upload
-the whole set, or at least `logo`.
+using exactly these names. Only `logo` is needed. The app asks Discord which
+pictures the application has (the same public list the developer portal shows)
+and shows the logo in place of any that are missing, so a partial set is fine.
+
+`scripts/make-discord-art.py` makes the whole set from the game's own files:
+the town minimaps for the regions, and each job line's first job, standing with
+a default head, for the jobs. Run it while the app is running, since it reads
+them from the asset server, then upload what it saves.
 
 - `logo`: shown when the map is hidden, or has no picture of its own.
 - One picture per region, shown as the large image. Each town's fields and

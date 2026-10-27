@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 const { EventEmitter } = require('node:events');
 const fs = require('node:fs');
 const path = require('node:path');
-const { socketPaths, encode, decode, buildActivity, createPresence, MIN_GAP_MS } = require('../electron/discord-presence');
+const { socketPaths, encode, decode, buildActivity, createPresence, fetchAssetNames, MIN_GAP_MS } = require('../electron/discord-presence');
 
 test('frames round-trip, and a partial frame waits for the rest', () => {
   const a = encode(1, { cmd: 'SET_ACTIVITY', n: 1 });
@@ -343,4 +343,25 @@ test('maps show their region, jobs their line, and the links are public ones', (
     assert.ok(b.label.length <= 32);
   }
   assert.equal(buildActivity(null, { buttons: true }, {}).buttons.length, 2);
+});
+
+test('a picture the application has not uploaded is left out, so the logo shows', async () => {
+  const state = { map: 'gon_fild01', mapName: 'Kunlun Field', job: 24, baseLevel: 50, jobLevel: 20 };
+  const jobName = () => 'Gunslinger';
+  const all = buildActivity(state, { map: true }, { jobName, assets: null });
+  assert.equal(all.assets.large_image, 'map_gonryun');
+  assert.equal(all.assets.small_image, 'job_gunslinger');
+  const some = buildActivity(state, { map: true }, { jobName, assets: new Set(['logo', 'map_prontera']) });
+  assert.equal(some.assets.large_image, 'logo');
+  assert.equal(some.assets.small_image, undefined);
+
+  let asked;
+  const names = await fetchAssetNames('1564743117444354220', {
+    fetch: async url => { asked = url; return { ok: true, json: async () => [{ name: 'logo' }, { name: 'job_mage' }, {}] }; },
+  });
+  assert.match(asked, /\/oauth2\/applications\/1564743117444354220\/assets$/);
+  assert.deepEqual([...names].sort(), ['job_mage', 'logo']);
+  assert.equal(await fetchAssetNames('1564743117444354220', { fetch: async () => ({ ok: false }) }), null);
+  assert.equal(await fetchAssetNames('1564743117444354220', { fetch: async () => { throw new Error('offline'); } }), null);
+  assert.equal(await fetchAssetNames('not-an-id', { fetch: async () => { throw new Error('asked'); } }), null);
 });

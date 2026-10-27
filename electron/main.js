@@ -1231,6 +1231,7 @@ let discordPresence = null;
 let discordLastState;           // the last state the game window reported
 let discordStartedAt = null;    // when this game session began, for "elapsed"
 let discordJobNames = null;
+let discordAssets = { id: '', names: null, at: 0, pending: false }; // the app's uploaded art
 
 // The environment wins (testing), then the player's own id from Settings,
 // then the build's.
@@ -1271,11 +1272,27 @@ function refreshDiscordPresence() {
 		if (discordPresence) discordPresence.set(null);
 		return;
 	}
-	const { buildActivity } = require('./discord-presence');
+	const { buildActivity, fetchAssetNames } = require('./discord-presence');
+	// Which pictures the application has, looked up once per id and every ten
+	// minutes after; until known, every key is tried.
+	const id = discordAppId();
+	if (discordAssets.id !== id) discordAssets = { id, names: null, at: 0, pending: false };
+	if (!discordAssets.pending && Date.now() - discordAssets.at > 10 * 60 * 1000) {
+		const asked = discordAssets;
+		asked.pending = true;
+		fetchAssetNames(id).then(names => {
+			asked.pending = false;
+			asked.at = Date.now();
+			if (discordAssets !== asked) return;
+			const before = asked.names ? [...asked.names].sort().join() : null;
+			if (names) asked.names = names;
+			if (names && [...names].sort().join() !== before) refreshDiscordPresence();
+		});
+	}
 	discordClient().set(buildActivity(discordLastState, {
 		name: settings.discord_show_name, map: settings.discord_show_map, party: settings.discord_show_party,
 		buttons: settings.discord_show_buttons !== false,
-	}, { joined: getClientPaths().mode === 'join', startedAt: discordStartedAt, jobName: discordJobName }));
+	}, { joined: getClientPaths().mode === 'join', startedAt: discordStartedAt, jobName: discordJobName, assets: discordAssets.names }));
 }
 
 // ---------------------------------------------------------------------------
