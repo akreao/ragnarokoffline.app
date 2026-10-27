@@ -1167,6 +1167,9 @@ const SETTINGS_DEFAULTS = {
 	discord_show_name: false,
 	discord_show_map: true,
 	discord_show_party: true,
+	// Discord announcements (discord-webhook.js): also post when the world
+	// comes online and goes offline. The webhook itself is in state/private.
+	discord_announce_world: true,
 	// Pre-renewal is a different rAthena build, not a runtime option, so this
 	// selects which of the two the supervisor starts. Each mode keeps its own
 	// characters -- see db_volume() in stack/src/cmds.rs for why sharing them
@@ -1207,7 +1210,7 @@ function getSettings() {
 // only names set_app_preference will write. Everything else in that file
 // changes how the server runs and has to go through Apply.
 const APP_PREFERENCES = new Set(['open_settings_first', 'auto_update', 'install_update_on_quit',
-	'discord_presence', 'discord_show_name', 'discord_show_map', 'discord_show_party']);
+	'discord_presence', 'discord_show_name', 'discord_show_map', 'discord_show_party', 'discord_announce_world']);
 const DISCORD_PREFERENCES = new Set(['discord_presence', 'discord_show_name', 'discord_show_map', 'discord_show_party']);
 
 // ---------------------------------------------------------------------------
@@ -1263,6 +1266,43 @@ function refreshDiscordPresence() {
 	discordClient().set(buildActivity(discordLastState, {
 		name: settings.discord_show_name, map: settings.discord_show_map, party: settings.discord_show_party,
 	}, { joined: getClientPaths().mode === 'join', startedAt: discordStartedAt, jobName: discordJobName }));
+}
+
+// ---------------------------------------------------------------------------
+// Discord announcements
+// ---------------------------------------------------------------------------
+// While the host has pasted a channel webhook, the map server's log is
+// followed and every `[discord] ` line a script writes is posted there
+// (discord-webhook.js; the bundled discord-announcements mod writes them).
+let discordWebhook = null;
+function discordWebhookParts() {
+	if (!discordWebhook) {
+		const hooks = require('./discord-webhook');
+		const store = hooks.store(stateDir());
+		let cached = store.read();
+		const getUrl = () => cached && cached.url;
+		const sender = hooks.createSender({ getUrl, log: appLog });
+		const streams = require('./log-stream').createLogStreams({
+			stateDir, nebulaLogsDir: () => path.join(dataRoot(), 'nebula', 'logs'),
+			stackBin, stackEnv, redact: text => text, retryMs: 6000,
+		});
+		const announcer = hooks.createAnnouncer({
+			subscribe: streams.subscribe, getUrl, sender, log: appLog,
+			getOptions: () => { try { return { world: getSettings().discord_announce_world !== false }; } catch { return {}; } },
+		});
+		discordWebhook = {
+			store, sender, announcer, streams,
+			current: () => cached,
+			set(url) { cached = store.write(url); announcer.refresh(); },
+			clear() { store.clear(); cached = null; announcer.refresh(); },
+		};
+	}
+	return discordWebhook;
+}
+function discordWebhookStatus() {
+	const parts = discordWebhookParts();
+	const cur = parts.current();
+	return { set: Boolean(cur), hint: cur ? cur.hint : '', following: parts.announcer.following() };
 }
 
 // Only plain numbers and short strings get through: on a joined world this
@@ -3345,6 +3385,17 @@ const handlers = {
 	},
 	discord_presence_status: () => ({ ...(discordPresence ? discordPresence.status() : { connected: false }), configured: Boolean(discordAppId()),
 		inGame: discordLastState !== undefined }),
+	// Settings -> General -> Discord announcements. The URL goes in, never
+	// back out: the page sees whether one is set and its last four characters.
+	discord_webhook_status: () => discordWebhookStatus(),
+	discord_webhook_set: ({ url }) => { discordWebhookParts().set(url); return discordWebhookStatus(); },
+	discord_webhook_clear: () => { discordWebhookParts().clear(); return discordWebhookStatus(); },
+	discord_webhook_test: async ({ url } = {}) => {
+		const parts = discordWebhookParts();
+		const given = url ? require('./discord-webhook').parseWebhook(url) : parts.current();
+		if (!given) throw new Error(url ? 'That is not a Discord webhook link.' : 'Paste a webhook link first.');
+		return parts.sender.test(given.url);
+	},
 	host_ram_mib: () => Math.floor(require('os').totalmem() / (1024 * 1024)),
 	// Whether idle guest memory comes back. vz (macOS) balloons; the krun
 	// backend behind Windows and Linux does not, and is not expected to, so on
@@ -4067,8 +4118,9 @@ const HEADLESS_PAGE_HANDLERS = new Set([
 	// Settings -> Updates: headless reports itself off ("headless") and has
 	// nothing to install, so these only describe that.
 	'app_update_status', 'app_update_check', 'app_update_install',
-	// Settings -> Discord: there is no game window here, so it reports itself absent.
-	'discord_presence_status',
+	// Settings -> Discord: there is no game window here, so presence reports
+	// itself absent; announcements work the same as in the app.
+	'discord_presence_status', 'discord_webhook_status', 'discord_webhook_set', 'discord_webhook_clear', 'discord_webhook_test',
 	'client_folders', 'copy_diagnostics', 'data_location', 'db_backup', 'db_backup_full', 'db_inspect',
 	'db_inspect_full', 'db_restore', 'db_restore_full', 'game_status', 'get_client_paths', 'client_detected', 'get_mode',
 	'get_settings', 'get_vm_ram_mib', 'host_facts', 'host_ram_mib', 'hosting_check', 'install_mod',
@@ -4238,6 +4290,8 @@ app.whenReady().then(() => {
 	}
 	setAboutPanel();
 	Menu.setApplicationMenu(buildMenu());
+	// Discord announcements follow the map server only while a webhook is set.
+	try { discordWebhookParts().announcer.refresh(); } catch (e) { appLog(`discord webhook: ${e.message}`); }
 	// Only the listener and its files: the agent's window waits for an agent.
 	try {
 		const s = getSettings();
@@ -4359,6 +4413,21 @@ app.on('before-quit', e => {
 	e.preventDefault();
 	tearingDown = true;
 	if (discordPresence) discordPresence.stop();
+	// Best effort, while the server stops: the post is under way long before
+	// the teardown ends, and nothing waits on it.
+	if (discordWebhook && discordWebhook.current()) {
+		let world = true;
+		try { world = getSettings().discord_announce_world !== false; } catch { /* default */ }
+		if (world && discordWebhook.announcer.following()) {
+			fetch(discordWebhook.current().url, {
+				method: 'POST', headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ content: '🔴 The world is offline.', username: 'Ragnarok Offline', allowed_mentions: { parse: [] } }),
+				signal: AbortSignal.timeout(5000),
+			}).catch(() => {});
+		}
+		discordWebhook.announcer.stop();
+		discordWebhook.streams.stopAll();
+	}
 	if (HEADLESS) appLog('headless: stopping the server before exiting…');
 	for (const win of BrowserWindow.getAllWindows()) {
 		if (!win.isDestroyed()) win.setTitle(`${productName()} — shutting down…`);
