@@ -119,3 +119,16 @@ this user. Settings shows only its last four characters. Posts are batched
 every two seconds, and Discord's 429 responses are waited out. Mentions are
 turned off, so a line can't ping `@everyone`. Headless hosts get the same
 section in their admin page.
+
+### Chat
+
+The bundled **discord-chat** mod adds an in-game `#discord` channel. What
+players say in it is posted to the same webhook under each character's name,
+with Discord formatting shown as typed. The server half is the rAthena
+extension `channel_log`, which writes each message in that channel to the map
+server's log as `[channel] #discord<tab>name<tab>message`. The mod turns it on,
+and the app picks those lines up alongside the `[discord]` ones. When Discord
+refuses a character's name as a display name, the message is posted under the
+app's name, starting with the character's.
+See `mods/discord-chat/README.md` for how players use the channel.
+

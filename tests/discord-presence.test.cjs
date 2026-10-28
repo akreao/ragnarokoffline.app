@@ -365,3 +365,53 @@ test('a picture the application has not uploaded is left out, so the logo shows'
   assert.equal(await fetchAssetNames('1564743117444354220', { fetch: async () => { throw new Error('offline'); } }), null);
   assert.equal(await fetchAssetNames('not-an-id', { fetch: async () => { throw new Error('asked'); } }), null);
 });
+
+test('#discord channel lines are chat, posted under the character, with markdown shown as typed', async () => {
+  const said = hooks.announcement('[Info]: [channel] #discord\tSteve\tanyone up for *Orc* Dungeon?');
+  assert.deepEqual(said, { username: 'Steve', content: 'anyone up for \\*Orc\\* Dungeon?', name: 'Steve' });
+  assert.equal(hooks.announcement('[Info]: [channel] #discord\tSteve\tx', { chat: false }), null);
+  assert.equal(hooks.announcement('[Info]: [channel] #discord\tSteve\t   '), null);
+  assert.equal(hooks.displayName('Discord Dan @home'), 'D.iscord Dan home');
+  assert.equal(hooks.displayName('::'), 'Player');
+
+  const posts = [];
+  const t = fakeTimers();
+  const sender = hooks.createSender({ getUrl: () => HOOK, timers: t.timers,
+    fetch: async (url, opts) => { posts.push(JSON.parse(opts.body)); return { ok: true, status: 204 }; } });
+  sender.add({ username: 'Steve', content: 'hi', name: 'Steve' });
+  sender.add({ username: 'Steve', content: 'anyone?', name: 'Steve' });
+  sender.add('**Ann** logged in.');
+  sender.add({ username: 'Ann', content: 'me!', name: 'Ann' });
+  for (let i = 0; i < 3; i++) await t.run();
+  assert.deepEqual(posts.map(p => [p.username, p.content]), [
+    ['Steve', 'hi\nanyone?'], ['Ragnarok Offline', '**Ann** logged in.'], ['Ann', 'me!'],
+  ]);
+  assert.ok(posts.every(p => p.allowed_mentions.parse.length === 0));
+});
+
+test('a name Discord refuses is put in the message instead', async () => {
+  const posts = [];
+  const t = fakeTimers();
+  const sender = hooks.createSender({ getUrl: () => HOOK, timers: t.timers,
+    fetch: async (url, opts) => {
+      const body = JSON.parse(opts.body);
+      posts.push(body);
+      return body.username === 'Ragnarok Offline' ? { ok: true, status: 204 } : { ok: false, status: 400 };
+    } });
+  sender.add({ username: 'Odd', content: 'hello', name: 'Odd_1' });
+  await t.run();
+  assert.equal(posts.length, 2);
+  assert.equal(posts[1].content, '**Odd\\_1:** hello');
+});
+
+test('the discord-chat mod makes #discord and turns on channel_log for it', () => {
+  const dir = path.join(__dirname, '..', 'mods', 'discord-chat');
+  const mod = JSON.parse(fs.readFileSync(path.join(dir, 'mod.json'), 'utf8'));
+  assert.equal(mod.default, 'off');
+  const ext = fs.readFileSync(path.join(dir, 'db', 'extension_db.yml'), 'utf8');
+  assert.match(ext, /Id: channel_log\n\s+Enabled: true/);
+  assert.match(ext, /Value: "#discord"/);
+  const npc = fs.readFileSync(path.join(dir, 'npc', 'discord-chat.txt'), 'utf8');
+  assert.match(npc, /channel_create "#discord", "\[Discord\]", "null", \.@opt;/);
+  assert.match(npc, /F_ModSetting", "discord-chat", "autojoin"/);
+});

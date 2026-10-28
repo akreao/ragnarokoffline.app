@@ -1,0 +1,18 @@
+//===== Ragnarok Offline: discord-chat =====================================
+//= Makes the #discord channel. What players say in it is written to the map
+//= server's log by the channel_log extension (db/extension_db.yml), and the
+//= app posts it to the host's Discord webhook. See README.md.
+//===========================================================================
+-	script	DiscordChat	-1,{
+	end;
+OnInit:
+	if (!getextension("channel_log"))
+		debugmes "discord-chat: this server has no channel_log extension, so #discord stays in game.";
+	.@opt = CHAN_OPT_BASE;
+	if (callfunc("F_ModSetting", "discord-chat", "autojoin", 1))
+		.@opt = .@opt | CHAN_OPT_AUTOJOIN;
+	// Settings change with a server restart, so this runs once. After
+	// @reloadscript the channel is still there and this reports it.
+	channel_create "#discord", "[Discord]", "null", .@opt;
+	end;
+}

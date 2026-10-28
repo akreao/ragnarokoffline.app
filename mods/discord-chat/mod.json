@@ -1,0 +1,11 @@
+{
+  "name": "discord-chat",
+  "version": "1.0.0",
+  "author": "Ragnarok Offline",
+  "description": "An in-game #discord chat channel whose messages are posted to your Discord channel, under each character's name. Needs a channel webhook in Settings -> General -> Discord announcements. Off until you turn it on.",
+  "default": "off",
+  "requires": { "app": ">=1.7.1", "era": "any" },
+  "settings": [
+    { "key": "autojoin", "type": "boolean", "default": true, "label": "Everyone joins #discord when they log in", "description": "Off: players join with @join #discord." }
+  ]
+}

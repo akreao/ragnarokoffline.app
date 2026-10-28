@@ -1,0 +1,12 @@
+# Turns on the server's channel_log extension: each message a player sends in
+# #discord is written to the map server's log, where the app picks it up.
+Header:
+  Type: EXTENSION_DB
+  Version: 1
+
+Body:
+  - Id: channel_log
+    Enabled: true
+    Values:
+      - Key: channel
+        Value: "#discord"
