@@ -418,10 +418,20 @@ if MARKER=$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null); then
 else
     MARKER=dev
 fi
+# And what the tree holds, because a commit does not decide it alone: the
+# server images are downloaded (update-and-run.sh --force-images) and the
+# client rebuilt (--force-client) without a commit, and under the bare hash
+# the app kept running the copy it had already installed, old images and all.
+# Sorted paths and contents, so the same tree gives the same marker anywhere.
+if command -v sha256sum >/dev/null 2>&1; then SUM=(sha256sum); else SUM=(shasum -a 256); fi
+CONTENT=$(cd "$PAYLOAD" && find . -type f | LC_ALL=C sort | while IFS= read -r f; do
+    printf '%s %s\n' "$f" "$("${SUM[@]}" < "$f" | cut -c1-64)"
+done | "${SUM[@]}" | cut -c1-8)
+MARKER="$MARKER+$CONTENT"
 echo "$MARKER" > "$PAYLOAD/VERSION"
 
 # The release version, which is a different thing from the build marker above:
-# VERSION changes on every commit and exists so the app knows to re-materialise
+# VERSION changes with every commit and every change to the tree, and exists so the app knows to re-materialise
 # this tree, APP_VERSION is the number a human sees and a mod's
 # `"requires": {"app": ">=1.0.6"}` is compared against.
 #
