@@ -122,7 +122,7 @@ them from the asset server, then upload what it saves.
 - One icon per job line, shown as the small image, with the job's name on
   hover: `job_novice`, `job_swordman`, `job_mage`, `job_archer`,
   `job_acolyte`, `job_merchant`, `job_thief`, `job_taekwon`, `job_gunslinger`,
-  `job_ninja`, `job_summoner`. Every job uses the icon of the line it comes
+  `job_ninja`, `job_summoner`, `job_druid`. Every job uses the icon of the line it comes
   from, so Rune Knight shows `job_swordman`.
 
 The regions are `REGIONS` in `electron/discord-presence.js`, and the job lines

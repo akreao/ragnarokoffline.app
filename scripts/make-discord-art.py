@@ -47,6 +47,7 @@ JOBS = {
     'gunslinger': (HUMAN, '\xB0\xC7\xB3\xCA', 2),
     'ninja': (HUMAN, '\xB4\xD1\xC0\xDA', 2),
     'summoner': (DORAM, 'summoner', 1),
+    'druid': (HUMAN, 'druid', 2),
 }
 MALE = '\xb3\xb2'                   # 남
 BODY = '\xb8\xf6\xc5\xeb'          # 몸통
