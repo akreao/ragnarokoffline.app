@@ -102,7 +102,7 @@ const classicNavigationHtml = String.raw`<div class="Navigation">
 			<div class="map-header"><div class="location-title"></div></div>
 			<div class="services-toggle-container"><label><input type="checkbox" class="services-toggle" /> Services</label></div>
 			<div class="map-display"></div>
-			<button class="move-button" disabled>✣ MOVE</button>
+			<div class="airship-bar"><button class="move-button airship-move" disabled>✣ MOVE</button></div>
 		</div>
 	</div>
 	<div class="footer">
@@ -177,6 +177,8 @@ const classicNavigationCss = String.raw`:host { top: 120px; left: 120px; width: 
 .Navigation .map-display { width:364px; height:299px; position:relative; background:#000; border:1px solid #777; box-sizing:border-box; }
 .Navigation .map-display canvas { width:100%; height:100%; display:block; }
 .Navigation .move-button { width:364px; height:20px; margin-top:2px; border:1px solid #aaa; background:linear-gradient(#fff,#ddd); color:#777; font-size:11px; }
+.Navigation .move-button:not(:disabled) { color:#000; cursor:pointer; }
+.Navigation .move-button:not(:disabled):hover { background:linear-gradient(#fff,#e8e8e8); }
 .Navigation .footer { position:absolute; left:0; bottom:0; width:390px; height:24px; z-index:5; box-sizing:border-box; border:1px solid #aaa; border-top-color:#ccc; background:linear-gradient(#fff,#ededed); }
 .Navigation .minimize-label { position:absolute; left:5px; top:5px; font-size:10px; }
 .Navigation .minimize-label input { width:10px; height:10px; margin:0 2px 0 0; vertical-align:-1px; }
@@ -205,8 +207,10 @@ replaceNavigationRawAssignment('Navigation_default$1', classicNavigationCss);
 // The bundler numbers a module-level name that another module also uses
 // (`_ctx$2`), and the number moves whenever a module anywhere in the client
 // adds or drops one -- the 2026-10-15 client pin made it `_ctx$3`. Match the
-// declaration with any number rather than one build's.
-const navigationVarsMatches = patched.match(/var Navigation, _arrow, _toolDealer, _weaponDealer, _armorDealer, _blacksmith, _guide, _inn, _kafra, _map, _ctx(?:\$\d+)?, _towninfo, _markers, _path, _lastPathUpdate, _pathUpdateThrottle, _pathUpdateLock, _pathFindingWorker, _mapData, _targetData, _finalTargetData, _isMapClickTarget, _blinking, _fadeInterval, _originalColor, _documentClickHandler, Navigation_default;/g) || [];
+// declaration with any number rather than one build's. The client's own
+// module-level constants are hoisted into the same list ahead of Navigation
+// (PRIVATE_AIRSHIP_PACKETVER since the Private Airship PR), so allow those too.
+const navigationVarsMatches = patched.match(/var (?:[\w$]+, )*Navigation, _arrow, _toolDealer, _weaponDealer, _armorDealer, _blacksmith, _guide, _inn, _kafra, _map, _ctx(?:\$\d+)?, _towninfo, _markers, _path, _lastPathUpdate, _pathUpdateThrottle, _pathUpdateLock, _pathFindingWorker, _mapData, _targetData, _finalTargetData, _isMapClickTarget, _blinking, _fadeInterval, _originalColor, _documentClickHandler, Navigation_default;/g) || [];
 if (navigationVarsMatches.length !== 1) throw Error('Navigation variable declaration not found');
 const navigationVarsNeedle = navigationVarsMatches[0];
 const groundPathImplementation = String.raw`var _navigationGroundPathProgram = null;
