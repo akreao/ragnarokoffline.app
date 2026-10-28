@@ -365,3 +365,148 @@ test('a picture the application has not uploaded is left out, so the logo shows'
   assert.equal(await fetchAssetNames('1564743117444354220', { fetch: async () => { throw new Error('offline'); } }), null);
   assert.equal(await fetchAssetNames('not-an-id', { fetch: async () => { throw new Error('asked'); } }), null);
 });
+
+test('#discord channel lines are chat, posted under the character, with markdown shown as typed', async () => {
+  const said = hooks.announcement('[Info]: [channel] #discord\tSteve\tanyone up for *Orc* Dungeon?');
+  assert.deepEqual(said, { username: 'Steve', content: 'anyone up for \\*Orc\\* Dungeon?', name: 'Steve' });
+  assert.equal(hooks.announcement('[Info]: [channel] #discord\tSteve\tx', { chat: false }), null);
+  assert.equal(hooks.announcement('[Info]: [channel] #discord\tSteve\t   '), null);
+  assert.equal(hooks.displayName('Discord Dan @home'), 'D.iscord Dan home');
+  assert.equal(hooks.displayName('::'), 'Player');
+
+  const posts = [];
+  const t = fakeTimers();
+  const sender = hooks.createSender({ getUrl: () => HOOK, timers: t.timers,
+    fetch: async (url, opts) => { posts.push(JSON.parse(opts.body)); return { ok: true, status: 204 }; } });
+  sender.add({ username: 'Steve', content: 'hi', name: 'Steve' });
+  sender.add({ username: 'Steve', content: 'anyone?', name: 'Steve' });
+  sender.add('**Ann** logged in.');
+  sender.add({ username: 'Ann', content: 'me!', name: 'Ann' });
+  for (let i = 0; i < 3; i++) await t.run();
+  assert.deepEqual(posts.map(p => [p.username, p.content]), [
+    ['Steve', 'hi\nanyone?'], ['Ragnarok Offline', '**Ann** logged in.'], ['Ann', 'me!'],
+  ]);
+  assert.ok(posts.every(p => p.allowed_mentions.parse.length === 0));
+});
+
+test('a name Discord refuses is put in the message instead', async () => {
+  const posts = [];
+  const t = fakeTimers();
+  const sender = hooks.createSender({ getUrl: () => HOOK, timers: t.timers,
+    fetch: async (url, opts) => {
+      const body = JSON.parse(opts.body);
+      posts.push(body);
+      return body.username === 'Ragnarok Offline' ? { ok: true, status: 204 } : { ok: false, status: 400 };
+    } });
+  sender.add({ username: 'Odd', content: 'hello', name: 'Odd_1' });
+  await t.run();
+  assert.equal(posts.length, 2);
+  assert.equal(posts[1].content, '**Odd\\_1:** hello');
+});
+
+test('the discord-chat mod makes #discord and turns on channel_log for it', () => {
+  const dir = path.join(__dirname, '..', 'mods', 'discord-chat');
+  const mod = JSON.parse(fs.readFileSync(path.join(dir, 'mod.json'), 'utf8'));
+  assert.equal(mod.default, 'off');
+  const ext = fs.readFileSync(path.join(dir, 'db', 'extension_db.yml'), 'utf8');
+  assert.match(ext, /Id: channel_log\r?\n\s+Enabled: true/);
+  assert.match(ext, /Value: "#discord"/);
+  const npc = fs.readFileSync(path.join(dir, 'npc', 'discord-chat.txt'), 'utf8');
+  assert.match(npc, /channel_create "#discord", "#discord", "null", \.@opt;/);
+  // Replies: read on a timer from where the app writes them, said with
+  // channel_chat (which channel_log never sees, so nothing loops).
+  assert.match(npc, /FROM host_messages WHERE channel = 'discord' AND id > " \+ \.last/);
+  assert.match(npc, /channel_chat "#discord", \.@who\$\[\.@i\] \+ " \(Discord\) : "/);
+  assert.match(npc, /F_ModSetting", "discord-chat", "autojoin"/);
+});
+
+// Discord to game (electron/discord-bot.js)
+const bot = require('../electron/discord-bot');
+// A made-up token in the right shape, put together here so secret scanners
+// don't take it for a real one.
+const TOKEN = ['x'.repeat(26), 'y'.repeat(6), 'z'.repeat(34) + '89AB'].join('.');
+
+test('a bot token is checked and stored privately', () => {
+  assert.equal(bot.parseToken('not a token'), null);
+  assert.equal(bot.parseToken(`Bot ${TOKEN}`).token, TOKEN);
+  const dir = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'bot-'));
+  const s = bot.store(dir);
+  assert.throws(() => s.write('nope'), /bot token/);
+  assert.equal(s.write(TOKEN).hint, '…89AB');
+  assert.equal(s.read().token, TOKEN);
+  if (process.platform !== 'win32') assert.equal(fs.statSync(path.join(dir, 'private', 'discord-bot.json')).mode & 0o777, 0o600);
+  s.clear();
+  assert.equal(s.read(), null);
+});
+
+test('Discord messages become plain game chat', () => {
+  const m = {
+    content: 'hey <@42>, café “now” <:pog:123> 🎉\nsee <#9>',
+    mentions: [{ id: '42', username: 'steve', global_name: 'Stevé' }],
+    attachments: [{}],
+    author: { username: 'ann', global_name: 'Ann Ñ' }, member: { nick: null },
+  };
+  assert.equal(bot.gameText(m), 'hey @Steve, cafe "now" :pog: ? see #channel [a file]');
+  assert.equal(bot.speaker(m), 'Ann N');
+  assert.equal(bot.speaker({ author: { username: 'x' }, member: { nick: 'The Nick' } }), 'The Nick');
+  assert.equal(bot.gameText({ content: 'a'.repeat(300) }).length, 200);
+  assert.equal(bot.gameText({ content: '' }), '');
+});
+
+test('the bridge reads the webhook\'s channel from now on and skips its own posts', async () => {
+  const HOOK = 'https://discord.com/api/webhooks/123456789012345678/abcdefghijklmnopqrstuvwxyz';
+  const asked = [];
+  const delivered = [];
+  let page = [];
+  const reply = body => ({ ok: true, status: 200, json: async () => body });
+  const b = bot.createBridge({
+    getToken: () => TOKEN, getWebhookUrl: () => HOOK,
+    deliver: async (name, text) => { delivered.push([name, text]); },
+    fetch: async (url, opts) => {
+      asked.push([url, opts.headers.authorization || '']);
+      if (url === HOOK) return reply({ channel_id: '555' });
+      if (url.endsWith('limit=1')) return reply([{ id: '1000' }]);
+      return reply(page);
+    },
+  });
+  await b.round();
+  assert.deepEqual(asked[0], [HOOK, ''], 'the webhook link needs no token');
+  assert.match(asked[1][0], /\/channels\/555\/messages\?limit=1$/);
+  assert.equal(asked[1][1], `Bot ${TOKEN}`);
+  assert.equal(b.status().state, 'reading');
+  assert.deepEqual(delivered, [], 'nothing from before the start');
+  page = [
+    { id: '1003', type: 0, content: 'second', author: { username: 'ann' } },
+    { id: '1001', type: 0, content: 'from the game', webhook_id: '1', author: { username: 'Steve', bot: true } },
+    { id: '1002', type: 0, content: 'first', author: { username: 'ann' } },
+    { id: '1004', type: 7, content: '', author: { username: 'bob' } },
+  ];
+  await b.round();
+  assert.match(asked[2][0], /after=1000$/);
+  assert.deepEqual(delivered, [['ann', 'first'], ['ann', 'second']]);
+  page = [];
+  await b.round();
+  assert.match(asked[3][0], /after=1004$/);
+});
+
+test('a refused token or an unreadable channel says what to fix', async () => {
+  const HOOK = 'https://discord.com/api/webhooks/123456789012345678/abcdefghijklmnopqrstuvwxyz';
+  let status = 401;
+  const logs = [];
+  const b = bot.createBridge({
+    getToken: () => TOKEN, getWebhookUrl: () => HOOK, deliver: async () => {}, log: m => logs.push(m),
+    fetch: async url => (url === HOOK ? { ok: true, status: 200, json: async () => ({ channel_id: '5' }) } : { ok: false, status }),
+  });
+  await b.round();
+  assert.match(b.status().detail, /refused the bot token/);
+  const calls = logs.length;
+  await b.round();
+  assert.equal(logs.length, calls, 'a refused token is not tried again');
+  b.reset();
+  status = 403;
+  await b.round();
+  assert.match(b.status().detail, /View Channel and Read Message History/);
+  const off = bot.createBridge({ getToken: () => null, getWebhookUrl: () => HOOK, deliver: async () => {}, fetch: async () => { throw new Error('asked'); } });
+  await off.round();
+  assert.equal(off.status().state, 'off');
+});

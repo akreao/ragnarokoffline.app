@@ -1326,6 +1326,37 @@ function discordWebhookParts() {
 	}
 	return discordWebhook;
 }
+// The other way, Discord to game (discord-bot.js): with a bot token set, the
+// webhook's channel is read and each new message is handed to the server's
+// scripts (`host-message`), which the discord-chat mod says in #discord.
+let discordBot = null;
+function discordBotParts() {
+	if (!discordBot) {
+		const bot = require('./discord-bot');
+		const store = bot.store(stateDir());
+		let cached = store.read();
+		const bridge = bot.createBridge({
+			getToken: () => cached && cached.token,
+			getWebhookUrl: () => { const hook = discordWebhookParts().current(); return hook && hook.url; },
+			deliver: (name, text) => runStack(['host-message', 'discord', name, text]),
+			log: appLog,
+		});
+		discordBot = {
+			bridge,
+			current: () => cached,
+			set(token) { cached = store.write(token); bridge.reset(); bridge.start(); },
+			clear() { store.clear(); cached = null; bridge.reset(); },
+		};
+		if (cached) bridge.start();
+	}
+	return discordBot;
+}
+function discordBotStatus() {
+	const parts = discordBotParts();
+	const cur = parts.current();
+	return { set: Boolean(cur), hint: cur ? cur.hint : '', ...parts.bridge.status() };
+}
+
 function discordWebhookStatus() {
 	const parts = discordWebhookParts();
 	const cur = parts.current();
@@ -3427,6 +3458,11 @@ const handlers = {
 	discord_webhook_status: () => discordWebhookStatus(),
 	discord_webhook_set: ({ url }) => { discordWebhookParts().set(url); return discordWebhookStatus(); },
 	discord_webhook_clear: () => { discordWebhookParts().clear(); return discordWebhookStatus(); },
+	// Settings -> General -> Discord announcements -> Replies from Discord.
+	// Like the webhook, the token goes in and never back out.
+	discord_bot_status: () => discordBotStatus(),
+	discord_bot_set: ({ token }) => { discordBotParts().set(token); return discordBotStatus(); },
+	discord_bot_clear: () => { discordBotParts().clear(); return discordBotStatus(); },
 	discord_webhook_test: async ({ url } = {}) => {
 		const parts = discordWebhookParts();
 		const given = url ? require('./discord-webhook').parseWebhook(url) : parts.current();
@@ -4158,6 +4194,7 @@ const HEADLESS_PAGE_HANDLERS = new Set([
 	// Settings -> Discord: there is no game window here, so presence reports
 	// itself absent; announcements work the same as in the app.
 	'discord_presence_status', 'discord_set_app_id', 'discord_webhook_status', 'discord_webhook_set', 'discord_webhook_clear', 'discord_webhook_test',
+	'discord_bot_status', 'discord_bot_set', 'discord_bot_clear',
 	'client_folders', 'copy_diagnostics', 'data_location', 'db_backup', 'db_backup_full', 'db_inspect',
 	'db_inspect_full', 'db_restore', 'db_restore_full', 'game_status', 'get_client_paths', 'client_detected', 'get_mode',
 	'get_settings', 'get_vm_ram_mib', 'host_facts', 'host_ram_mib', 'hosting_check', 'install_mod',
@@ -4329,6 +4366,8 @@ app.whenReady().then(() => {
 	Menu.setApplicationMenu(buildMenu());
 	// Discord announcements follow the map server only while a webhook is set.
 	try { discordWebhookParts().announcer.refresh(); } catch (e) { appLog(`discord webhook: ${e.message}`); }
+	// And Discord to game, while a bot token is set.
+	try { discordBotParts(); } catch (e) { appLog(`discord bot: ${e.message}`); }
 	// Only the listener and its files: the agent's window waits for an agent.
 	try {
 		const s = getSettings();
@@ -4465,6 +4504,7 @@ app.on('before-quit', e => {
 		discordWebhook.announcer.stop();
 		discordWebhook.streams.stopAll();
 	}
+	if (discordBot) discordBot.bridge.stop();
 	if (HEADLESS) appLog('headless: stopping the server before exiting…');
 	for (const win of BrowserWindow.getAllWindows()) {
 		if (!win.isDestroyed()) win.setTitle(`${productName()} — shutting down…`);

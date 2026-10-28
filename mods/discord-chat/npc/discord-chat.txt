@@ -1,0 +1,40 @@
+//===== Ragnarok Offline: discord-chat =====================================
+//= Makes the #discord channel and joins it to a Discord channel:
+//= - game to Discord: what players say in #discord is written to the map
+//=   server's log by the channel_log extension (db/extension_db.yml), and
+//=   the app posts it to the host's Discord webhook;
+//= - Discord to game: with a bot token set in Settings, the app writes what
+//=   is said in Discord to the host_messages table, and this script says it
+//=   here. channel_chat does not go through channel_log, so nothing loops.
+//= See README.md.
+//===========================================================================
+-	script	DiscordChat	-1,{
+	end;
+OnInit:
+	if (!getextension("channel_log"))
+		debugmes "discord-chat: this server has no channel_log extension, so #discord stays in game.";
+	// Start from the newest message: what was said while the server was
+	// down stays in Discord.
+	if (query_sql("SELECT COALESCE(MAX(id), 0) FROM host_messages", .@max) < 0) {
+		debugmes "discord-chat: no host_messages table (an older app), so replies from Discord won't show.";
+	} else {
+		.last = .@max;
+		initnpctimer;
+	}
+	.@opt = CHAN_OPT_BASE;
+	if (callfunc("F_ModSetting", "discord-chat", "autojoin", 1))
+		.@opt = .@opt | CHAN_OPT_AUTOJOIN;
+	// Settings change with a server restart, so this runs once. After
+	// @reloadscript the channel is still there and this reports it.
+	channel_create "#discord", "#discord", "null", .@opt;
+	end;
+
+OnTimer2000:
+	.@n = query_sql("SELECT id, sender, text FROM host_messages WHERE channel = 'discord' AND id > " + .last + " ORDER BY id LIMIT 10", .@id, .@who$, .@say$);
+	for (.@i = 0; .@i < .@n; .@i++) {
+		.last = .@id[.@i];
+		channel_chat "#discord", .@who$[.@i] + " (Discord) : " + .@say$[.@i];
+	}
+	initnpctimer;
+	end;
+}

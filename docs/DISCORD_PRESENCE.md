@@ -119,3 +119,31 @@ this user. Settings shows only its last four characters. Posts are batched
 every two seconds, and Discord's 429 responses are waited out. Mentions are
 turned off, so a line can't ping `@everyone`. Headless hosts get the same
 section in their admin page.
+
+### Chat
+
+The bundled **discord-chat** mod adds an in-game `#discord` channel. What
+players say in it is posted to the same webhook under each character's name,
+with Discord formatting shown as typed. The server half is the rAthena
+extension `channel_log`, which writes each message in that channel to the map
+server's log as `[channel] #discord<tab>name<tab>message`. The mod turns it on,
+and the app picks those lines up alongside the `[discord]` ones. When Discord
+refuses a character's name as a display name, the message is posted under the
+app's name, starting with the character's.
+See `mods/discord-chat/README.md` for how players use the channel.
+
+Replies go the other way when the host also sets a **bot token** (Settings →
+General → Discord announcements → Replies from Discord). A webhook can only
+post, so reading takes a bot with the Message Content intent, added to the
+server. `electron/discord-bot.js` asks the webhook which channel it posts to,
+then reads that channel every three seconds over Discord's REST API, starting
+from the newest message. It skips webhook and bot posts, so the game's own
+lines never come back. Each new message is turned into plain ASCII, since the
+client can't show Unicode, and handed to the server with
+`ragnarok-stack host-message discord <name> <text>`. That inserts it into the
+`host_messages` table (kept to the last 500 rows), which the supervisor
+creates at start, before the mods' read-only login gets its grants. The
+discord-chat mod's script reads the table every two seconds and says each
+message in `#discord` with `channel_chat`. The token is stored like the
+webhook, in `state/private/discord-bot.json`, readable only by this user.
+

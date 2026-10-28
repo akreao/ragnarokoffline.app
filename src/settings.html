@@ -611,7 +611,32 @@
        channel's <b>Edit Channel &rarr; Integrations &rarr; Webhooks</b>, make one and copy its
        link, then paste it here. Then turn on the <b>discord-announcements</b> mod under
        <b>Mods</b> to choose the events: logins, level milestones, MVP kills and War of
-       Emperium. Anyone with the link can post in that channel, so keep it to yourself.</p>
+       Emperium. Turn on the <b>discord-chat</b> mod too, and what players say in the in-game
+       <b>#discord</b> channel is posted there under each character's name. Anyone with the
+       link can post in that channel, so keep it to yourself.</p>
+    <div class="row" style="margin-top:14px"><span class="name">Replies from Discord</span><span class="state" id="s-discord-bot">—</span></div>
+    <label>
+      <span>Bot token</span>
+      <input type="password" id="discord-bot-token" autocomplete="off" spellcheck="false" placeholder="paste the bot's token" style="flex: 1; min-width: 0" />
+    </label>
+    <div class="row actions" style="padding-top:10px; justify-content: flex-start">
+      <button id="discord-bot-save">Save</button>
+      <button id="discord-bot-clear" class="ghost">Remove</button>
+    </div>
+    <p class="note" id="discord-bot-status" hidden style="margin:8px 0 0; color: var(--text)"></p>
+    <p class="note">With the <b>discord-chat</b> mod on, what people write in the webhook's
+       Discord channel can show in game, in <b>#discord</b>. A webhook can only post, so this
+       needs a bot:</p>
+    <ol class="note" style="margin:4px 0 0 18px; padding:0">
+      <li>At <b>discord.com/developers/applications</b>, open your application (or make one)
+          and go to <b>Bot</b>.</li>
+      <li>Switch on <b>Message Content Intent</b>, then <b>Reset Token</b> and copy it.</li>
+      <li>Under <b>OAuth2 &rarr; URL Generator</b>, tick <b>bot</b>, then <b>View Channels</b> and
+          <b>Read Message History</b>. Open the link it makes and add the bot to your server.</li>
+      <li>Paste the token here and press <b>Save</b>.</li>
+    </ol>
+    <p class="note">The token lets anyone act as your bot, so keep it to yourself. Accents and
+       emoji show as plain letters or <b>?</b> in game, which can't show them.</p>
   </div>
 
   <h2>Server</h2>
@@ -3204,6 +3229,38 @@ $('discord-hook-clear').onclick = async () => {
     discordHookNote('Removed. Nothing more is posted.');
   } catch (error) { discordHookNote(error.message || String(error), 'bad'); }
 };
+// ---- Replies from Discord (electron/discord-bot.js). The token, like the
+// webhook link, goes to the app and is never read back.
+const DISCORD_BOT_STATES = { reading: 'Reading the channel', off: 'Waiting for a webhook and a token', error: 'Not working' };
+function paintDiscordBot(st) {
+  const text = !st.set ? 'Not set' : `Set (${st.hint}) · ${DISCORD_BOT_STATES[st.state] || st.state}`;
+  paint($('s-discord-bot'), st.set && st.state === 'reading', text);
+  $('discord-bot-clear').disabled = !st.set;
+  if (st.set && st.state === 'error' && st.detail) discordBotNote(st.detail, 'bad');
+}
+async function refreshDiscordBot() {
+  try { paintDiscordBot(await invoke('discord_bot_status')); } catch { /* an older shell: leave it */ }
+}
+function discordBotNote(message, kind = '') {
+  setNote('discord-bot-status', message, kind);
+  $('discord-bot-status').hidden = false;
+}
+$('discord-bot-save').onclick = async () => {
+  const token = $('discord-bot-token').value.trim();
+  if (!token) { discordBotNote('Paste the bot token first.', 'bad'); return; }
+  try {
+    paintDiscordBot(await invoke('discord_bot_set', { token }));
+    $('discord-bot-token').value = '';
+    discordBotNote('Saved. Say something in the Discord channel, and it shows in #discord in a few seconds.', 'good');
+    setTimeout(refreshDiscordBot, 8000);
+  } catch (error) { discordBotNote(error.message || String(error), 'bad'); }
+};
+$('discord-bot-clear').onclick = async () => {
+  try {
+    paintDiscordBot(await invoke('discord_bot_clear'));
+    discordBotNote('Removed. Discord is no longer read.');
+  } catch (error) { discordBotNote(error.message || String(error), 'bad'); }
+};
 $('discord_announce_world').onchange = async () => {
   const on = $('discord_announce_world').checked;
   try { await invoke('set_app_preference', { key: 'discord_announce_world', value: on }); }
@@ -4131,6 +4188,7 @@ invoke('get_settings').then(s => {
   refreshDiscord();
   $('discord_announce_world').checked = s.discord_announce_world !== false;
   refreshDiscordHook();
+  refreshDiscordBot();
   $('move_prediction').checked = !!s.move_prediction;
   $('instant_map_changes').checked = !!s.instant_map_changes;
   $('population_enable').checked = !!s.population_enable;
