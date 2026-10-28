@@ -409,7 +409,7 @@ test('the discord-chat mod makes #discord and turns on channel_log for it', () =
   const mod = JSON.parse(fs.readFileSync(path.join(dir, 'mod.json'), 'utf8'));
   assert.equal(mod.default, 'off');
   const ext = fs.readFileSync(path.join(dir, 'db', 'extension_db.yml'), 'utf8');
-  assert.match(ext, /Id: channel_log\n\s+Enabled: true/);
+  assert.match(ext, /Id: channel_log\r?\n\s+Enabled: true/);
   assert.match(ext, /Value: "#discord"/);
   const npc = fs.readFileSync(path.join(dir, 'npc', 'discord-chat.txt'), 'utf8');
   assert.match(npc, /channel_create "#discord", "#discord", "null", \.@opt;/);
