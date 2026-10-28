@@ -181,5 +181,10 @@ window.JOB_NAMES = {
  "4306": "Night Watch",
  "4307": "Hyper Novice",
  "4308": "Spirit Handler",
- "4316": "Sky Emperor"
+ "4316": "Sky Emperor",
+ "4351": "Druid",
+ "4352": "Baby Druid",
+ "4353": "Karnos",
+ "4354": "Baby Karnos",
+ "4355": "Alitea"
 };
