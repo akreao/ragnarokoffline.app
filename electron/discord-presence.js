@@ -151,6 +151,7 @@ const FAMILIES = {
 	gunslinger: ['Gunslinger', 'Rebellion', 'Night Watch'],
 	ninja: ['Ninja', 'Kagerou', 'Oboro', 'Shinkiro', 'Shiranui'],
 	summoner: ['Summoner', 'Spirit Handler'],
+	druid: ['Druid', 'Karnos', 'Alitea'],
 };
 const FAMILY_OF = new Map(Object.entries(FAMILIES).flatMap(([key, names]) => names.map(n => [n, key])));
 function familyOf(jobName) {

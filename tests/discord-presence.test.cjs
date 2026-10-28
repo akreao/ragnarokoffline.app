@@ -333,7 +333,8 @@ test('maps show their region, jobs their line, and the links are public ones', (
   const names = new Set(Object.values(JSON.parse(body.slice(body.indexOf('{'), body.lastIndexOf('}') + 1))));
   const outfits = new Set(['Wedding', 'Christmas', 'Summer', 'Hanbok', 'Oktoberfest', 'Gangsi', 'Death Knight', 'Dark Collector']);
   for (const n of names) if (!outfits.has(n)) assert.ok(familyOf(n), `no line for ${n}`);
-  assert.equal(Object.keys(FAMILIES).length, 11);
+  assert.equal(Object.keys(FAMILIES).length, 12);
+  assert.equal(familyOf('Baby Karnos'), 'druid');
 
   const hidden = buildActivity(STATE, { map: false, buttons: true }, { jobName });
   assert.equal(hidden.assets.large_image, 'logo', 'a hidden map shows no map art either');
