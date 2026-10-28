@@ -54,7 +54,7 @@ use std::env;
 use std::path::PathBuf;
 use std::process::exit;
 
-const USAGE: &str = "usage: ragnarok-stack host-check|capture-crashes|hosting-check [--lan]|secure-services [--lan] [--ram MiB]|mods|mod-enable NAME|mod-disable NAME|mod-forget NAME|mod-data-reset NAME|mod-check DIR|up [--lan] [--ram MiB]|down|repair [--lan] [--ram MiB]|status|logs [service] [tail]|logs --follow <map|char|login|db> [--tail N]|agent <command> [args]|export-table <name>|ports\n\
+const USAGE: &str = "usage: ragnarok-stack host-check|capture-crashes|hosting-check [--lan]|secure-services [--lan] [--ram MiB]|mods|mod-enable NAME|mod-disable NAME|mod-forget NAME|mod-data-reset NAME|mod-check DIR|host-message CHANNEL SENDER TEXT|up [--lan] [--ram MiB]|down|repair [--lan] [--ram MiB]|status|logs [service] [tail]|logs --follow <map|char|login|db> [--tail N]|agent <command> [args]|export-table <name>|ports\n\
                      \x20      db tables|describe <table>|rows|apply (JSON on stdin for rows and apply)\n\
                      \x20      backup [--full] <file>|restore [--full] <file>\n\
                      \x20      sql [--write] [--file <path>] [<statement>]\n\
@@ -303,6 +303,13 @@ fn main() {
         // has downloaded and staged -- checked by the same manifest reader
         // `mods` uses, so an update that would stop loading is refused
         // before it replaces a copy that works.
+        // The Discord chat bridge: one message for scripts to read
+        // (host_messages). No lock: it is a single insert beside a running
+        // world, like a read.
+        "host-message" => match (args.get(1), args.get(2), args.get(3)) {
+            (Some(channel), Some(sender), Some(text)) => cmds::host_message(&dk, channel, sender, text),
+            _ => Err("channel, sender and text required".into()),
+        },
         "mod-check" => match args.get(1) {
             Some(dir) => mods::check_dir(std::path::Path::new(dir)).map(|version| println!("ok\t{version}")),
             None => Err("folder required".into()),

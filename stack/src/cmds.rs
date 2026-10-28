@@ -1545,6 +1545,56 @@ const MOD_STORE_TABLE_SQL: &str = "CREATE TABLE IF NOT EXISTS `mod_store` (
   PRIMARY KEY (`mod_name`, `scope`, `owner`, `path`)
 ) ENGINE=MyISAM;";
 
+/// Messages from the host's side for NPC scripts to pick up. The app's
+/// Discord chat bridge writes what is said in the Discord channel here, and
+/// the discord-chat mod's script reads it with `query_sql` and says it in
+/// `#discord`. Only `host-message` writes it; scripts read it through the
+/// mods' read-only login, which covers it because it is made before the
+/// grants. Bytes, not text: the sender decides the encoding the client gets.
+const HOST_MESSAGES_TABLE_SQL: &str = "CREATE TABLE IF NOT EXISTS `host_messages` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `channel` varchar(32) CHARACTER SET ascii NOT NULL,
+  `sender` varbinary(64) NOT NULL,
+  `text` varbinary(255) NOT NULL,
+  `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `channel_id` (`channel`, `id`)
+) ENGINE=MyISAM;";
+
+/// How many messages are kept; older ones are deleted as new ones arrive.
+const HOST_MESSAGES_KEEP: u32 = 500;
+
+/// The statements `host-message` runs, or why the message is refused.
+fn host_message_sql(channel: &str, sender: &str, text: &str) -> Result<String, String> {
+    if channel.is_empty() || channel.len() > 32 || !channel.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_') {
+        return Err("a channel is 1 to 32 lowercase letters, digits or underscores".into());
+    }
+    let clean = |value: &str, max: usize, what: &str| -> Result<String, String> {
+        let value: String = value.chars().filter(|c| !c.is_control()).collect();
+        let value = value.trim();
+        if value.is_empty() { return Err(format!("the {what} is empty")); }
+        let mut end = value.len().min(max);
+        while !value.is_char_boundary(end) { end -= 1; }
+        Ok(value[..end].to_string())
+    };
+    let sender = clean(sender, 64, "sender")?;
+    let text = clean(text, 255, "message")?;
+    Ok(format!(
+        "{HOST_MESSAGES_TABLE_SQL}\nINSERT INTO `host_messages` (`channel`, `sender`, `text`) VALUES ('{channel}', 0x{}, 0x{});\n\
+         DELETE FROM `host_messages` WHERE `id` + {HOST_MESSAGES_KEEP} <= LAST_INSERT_ID();",
+        crate::database::hex(sender.as_bytes()),
+        crate::database::hex(text.as_bytes()),
+    ))
+}
+
+/// `ragnarok-stack host-message <channel> <sender> <text>`: one message for
+/// the scripts, while the world runs. It touches nothing the map server keeps
+/// in memory, so unlike `sql --write` it needs no stop.
+pub fn host_message(dk: &Docker, channel: &str, sender: &str, text: &str) -> Result<(), String> {
+    let sql = host_message_sql(channel, sender, text)?;
+    dk.private_sql(&sql).map(|_| ()).map_err(|e| format!("could not pass the message on: {e}"))
+}
+
 /// The limits file, and the battle config's `import:` of it. battle_conf.txt is
 /// the shell's (it rewrites it from Settings before every start), so the line
 /// is put back here each time rather than written once.
@@ -1810,6 +1860,9 @@ pub fn up(cfg: &Config, dk: &Docker, lan: bool, ram_mib: Option<u32>) -> Result<
     // server starts with the store off and says so; the game is unaffected.
     if let Err(e) = dk.private_sql(MOD_STORE_TABLE_SQL) {
         eprintln!("warning: mods can't keep data this time: preparing the mod store's table: {e}");
+    }
+    if let Err(e) = dk.private_sql(HOST_MESSAGES_TABLE_SQL) {
+        eprintln!("warning: messages from the app (the Discord chat bridge) can't reach scripts this time: {e}");
     }
     if let Some(password) = mod_reader.as_deref() {
         // Root's login: the managed one once migrated, else the install's
@@ -3320,6 +3373,20 @@ mod tests {
         let batches = mod_reader_grant_sql(&many);
         assert_eq!(batches.len(), 3, "batched under the SQL input limit");
         assert!(batches.iter().all(|b| b.len() < crate::docker::SQL_INPUT_LIMIT));
+    }
+
+    #[test]
+    fn host_messages_are_hex_literals_and_checked() {
+        let sql = host_message_sql("discord", "Ann (Discord)", "it's me; DROP TABLE login --").unwrap();
+        assert!(sql.contains("VALUES ('discord', 0x416E6E2028446973636F726429, 0x"));
+        assert!(!sql.contains("DROP TABLE login"), "the text only ever arrives hex-encoded");
+        assert!(sql.contains("LAST_INSERT_ID()"));
+        assert!(host_message_sql("Discord", "a", "b").is_err());
+        assert!(host_message_sql("discord'", "a", "b").is_err());
+        assert!(host_message_sql("discord", " \n", "b").is_err());
+        assert!(host_message_sql("discord", "a", "").is_err());
+        let long = host_message_sql("discord", "a", &"é".repeat(200)).unwrap();
+        assert!(long.contains(&format!("0x{},", "C3A9".repeat(127))) || long.contains(&format!("0x{});", "C3A9".repeat(127))), "cut on a character boundary");
     }
 
     #[test]

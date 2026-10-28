@@ -132,3 +132,18 @@ refuses a character's name as a display name, the message is posted under the
 app's name, starting with the character's.
 See `mods/discord-chat/README.md` for how players use the channel.
 
+Replies go the other way when the host also sets a **bot token** (Settings →
+General → Discord announcements → Replies from Discord). A webhook can only
+post, so reading takes a bot with the Message Content intent, added to the
+server. `electron/discord-bot.js` asks the webhook which channel it posts to,
+then reads that channel every three seconds over Discord's REST API, starting
+from the newest message. It skips webhook and bot posts, so the game's own
+lines never come back. Each new message is turned into plain ASCII, since the
+client can't show Unicode, and handed to the server with
+`ragnarok-stack host-message discord <name> <text>`. That inserts it into the
+`host_messages` table (kept to the last 500 rows), which the supervisor
+creates at start, before the mods' read-only login gets its grants. The
+discord-chat mod's script reads the table every two seconds and says each
+message in `#discord` with `channel_chat`. The token is stored like the
+webhook, in `state/private/discord-bot.json`, readable only by this user.
+
