@@ -1,6 +1,6 @@
 // The only adapter between the versioned plugin API and roBrowser internals.
 // Imported by Online, never by GUIComponent or NetworkManager (avoids cycles).
-import Runtime from './ExtensionRuntime.mjs';
+import Runtime, { hitDamage } from './ExtensionRuntime.mjs';
 import { install as installAgentHook } from './AgentHook.mjs';
 import * as Graphics from './GraphicsPasses.mjs';
 import * as Gltf from './GltfModels.mjs';
@@ -29,6 +29,7 @@ import PACKET from 'Network/PacketStructure.js';
 import PACKETVER from 'Network/PacketVerManager.js';
 import UIManager from 'UI/UIManager.js';
 import SkillTargetSelection from 'UI/Components/SkillTargetSelection/SkillTargetSelection.js';
+import Cursor from 'UI/CursorManager.js';
 import Entity from 'Renderer/Entity/Entity.js';
 
 const visible = component => Boolean(component?.__active && component._host?.getClientRects().length &&
@@ -261,6 +262,20 @@ function cancelTargeting() {
     settleTargeting(null);
 }
 
+// --- Friendly monsters -----------------------------------------------------
+// A monster the player's party owns (api.monsters.friendly): a pet a mod
+// spawned for a companion. The client gives every monster the attack cursor
+// (EntityControl.onMouseOver), and attackNearest would walk up and swing at
+// it. Counted, so two mods marking the same one both have to let it go.
+const friendlyMonsters = new Map();
+function markFriendly(gid, on) {
+    const count = friendlyMonsters.get(gid) || 0;
+    if (on) friendlyMonsters.set(gid, count + 1);
+    else if (count > 1) friendlyMonsters.set(gid, count - 1);
+    else friendlyMonsters.delete(gid);
+}
+const isFriendly = entity => Boolean(entity && entity.objecttype === Entity.TYPE_MOB && friendlyMonsters.has(entity.GID));
+
 // Send an @command the way the chat box does for the player's own input: a
 // public-chat packet the server reads as an atcommand. Atcommands only (@ or #),
 // so a plugin cannot put words in the player's mouth, and the server authorises
@@ -305,6 +320,18 @@ export function init() {
         if (activePick && !settingPick) settleTargeting(null);
         return clientSet.apply(this, arguments);
     };
+    // A friendly monster under the mouse gets the plain cursor, as a pet does
+    // (the client sets the attack one in onMouseOver, just before this). The
+    // map calls this every frame and setType restarts the cursor's animation,
+    // so switch only once.
+    const clientOver = EntityManager.setOverEntity;
+    EntityManager.setOverEntity = function (target) {
+        const result = clientOver.apply(this, arguments);
+        if (isFriendly(target) && !Camera.action?.active && Cursor.getActualType() !== Cursor.ACTION.DEFAULT) {
+            Cursor.setType(Cursor.ACTION.DEFAULT);
+        }
+        return result;
+    };
     // Emit item:use so mods can react to a consumable being used. The id is the
     // item type (ITID), resolved from the live inventory at send time -- before
     // the server consumes the stack. Wrapping the send keeps this independent of
@@ -318,6 +345,60 @@ export function init() {
             }
         } catch { /* a hook must never break the packet send */ }
         return send.apply(this, arguments);
+    };
+    // Emit combat:damage for every hit the client is told about, mods' DPS
+    // meters and the like. The map engine hooks these packets after init()
+    // (once per map-server connection), so wrap the callback as it is hooked
+    // rather than editing Entity.js. The client handles the packet either way.
+    const actPackets = new Set([PACKET.ZC.NOTIFY_ACT, PACKET.ZC.NOTIFY_ACT2, PACKET.ZC.NOTIFY_ACT3].filter(Boolean));
+    const skillPackets = new Set([PACKET.ZC.NOTIFY_SKILL, PACKET.ZC.NOTIFY_SKILL2, PACKET.ZC.NOTIFY_SKILL_POSITION].filter(Boolean));
+    // Who the player's party is, from the same packets PartyFriends reads (its
+    // own list is private): the full list, a join, a leave. A player's AID is
+    // its entity GID, so the damage packets' source can be looked up here.
+    const partyList = new Set([PACKET.ZC.GROUP_LIST, PACKET.ZC.GROUP_LIST2, PACKET.ZC.GROUP_LIST3].filter(Boolean));
+    const partyJoin = new Set([PACKET.ZC.ADD_MEMBER_TO_GROUP, PACKET.ZC.ADD_MEMBER_TO_GROUP2, PACKET.ZC.ADD_MEMBER_TO_GROUP3, PACKET.ZC.ADD_MEMBER_TO_GROUP4].filter(Boolean));
+    const partyLeave = PACKET.ZC.DELETE_MEMBER_FROM_GROUP;
+    const party = new Set();
+    const trackParty = (packet, pkt) => {
+        if (partyList.has(packet)) { party.clear(); (pkt.groupInfo || []).forEach(m => party.add(m.AID)); }
+        else if (partyJoin.has(packet)) party.add(pkt.AID);
+        else if (packet === partyLeave) { if (pkt.AID === Session.AID) party.clear(); else party.delete(pkt.AID); }
+    };
+    // Whose hit it was, as combat:damage's `by`.
+    const sourceKind = source => {
+        if (source === Session.Entity?.GID) return 'me';
+        if (Session.homunId && source === Session.homunId) return 'homun';
+        if (Session.mercId && source === Session.mercId) return 'merc';
+        if (party.has(source)) return 'party';
+        if (friendlyMonsters.has(source)) return 'companion-pet';
+        return 'other';
+    };
+    const hookPacket = Network.hookPacket;
+    Network.hookPacket = function (packet, callback) {
+        if (packet && (partyList.has(packet) || partyJoin.has(packet) || packet === partyLeave) && typeof callback === 'function') {
+            const handle = callback;
+            callback = function (pkt) {
+                try { trackParty(packet, pkt); } catch { /* a hook must never break the packet handler */ }
+                return handle.apply(this, arguments);
+            };
+        }
+        const skill = skillPackets.has(packet);
+        if ((skill || actPackets.has(packet)) && typeof callback === 'function') {
+            const handle = callback;
+            callback = function (pkt) {
+                try {
+                    const amount = hitDamage(pkt, { skill });
+                    if (amount > 0) {
+                        const source = skill ? pkt.AID : pkt.GID;
+                        const by = sourceKind(source);
+                        const name = by === 'me' || by === 'other' ? '' : String(EntityManager.get(source)?.display?.name || '');
+                        Runtime.damage({ source, target: skill ? pkt.targetID : pkt.targetGID, amount, skill: skill ? pkt.SKID : 0, own: by === 'me', by, name });
+                    }
+                } catch { /* a hook must never break the packet handler */ }
+                return handle.apply(this, arguments);
+            };
+        }
+        return hookPacket.call(this, packet, callback);
     };
     Runtime.configure({
         inputState,
@@ -367,8 +448,12 @@ export function init() {
             if (!player || !inputState().canMove) return false;
             const MOB = player.constructor.TYPE_MOB;
             let target = EntityManager.getFocusEntity();
-            if (!target || target.objecttype !== MOB || target.action === target.ACTION.DIE) {
+            if (!target || target.objecttype !== MOB || target.action === target.ACTION.DIE || isFriendly(target)) {
                 target = EntityManager.getClosestEntity(player, MOB);
+                // A friendly monster nearest: the nearest of the others in sight.
+                if (isFriendly(target)) {
+                    target = EntityManager.getEntitiesSortedByDistance?.(player, MOB)?.find(entity => !isFriendly(entity)) || null;
+                }
             }
             if (!target) return false;
             const path = [];
@@ -400,6 +485,8 @@ export function init() {
         beginTargeting,
         cancelTargeting,
         serverCommand,
+        // api.monsters.friendly; defined above.
+        markFriendly,
         // Graphics passes (api.graphics); GraphicsPasses.mjs.
         registerPass: Graphics.registerPass,
         graphicsHook: Graphics.hook,

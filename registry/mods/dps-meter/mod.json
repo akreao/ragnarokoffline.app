@@ -1,0 +1,14 @@
+{
+  "name": "dps-meter",
+  "version": "1.0.0",
+  "author": "popkdodge",
+  "description": "A small in-game window with your damage per second over the current fight, the total damage and your biggest hit, with a Reset button. Counts your hits and your companions' (homunculus, mercenary, party members and AI companions), attacks and skills alike, with each one's share.",
+  "requires": { "app": ">=1.7.5", "era": "any" },
+  "tags": ["client", "combat", "quality-of-life"],
+  "homepage": "https://github.com/Flux159/ragnarokoffline.app/tree/main/registry/mods/dps-meter",
+  "settings": [
+    { "key": "show_button", "type": "boolean", "default": true, "label": "Show the DPS button in game", "description": "The window still opens with Alt+N." },
+    { "key": "count_party", "type": "boolean", "default": true, "label": "Count companions' damage", "description": "Your homunculus, mercenary, party members (AI companions too) and their pets, each on its own line with the total on top. Off counts only your own character." },
+    { "key": "fight_timeout", "type": "number", "default": 5, "min": 1, "max": 60, "label": "Seconds without a hit that end a fight", "description": "The next hit after this starts a new fight, and the fight's DPS starts again from zero. Total and biggest hit carry on until Reset." }
+  ]
+}

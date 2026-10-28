@@ -504,6 +504,39 @@
       "files": []
     },
     {
+      "name": "dps-meter",
+      "version": "1.0.0",
+      "author": "popkdodge",
+      "description": "A small in-game window with your damage per second over the current fight, the total damage and your biggest hit, with a Reset button. Counts your hits and your companions' (homunculus, mercenary, party members and AI companions), attacks and skills alike, with each one's share.",
+      "homepage": "https://github.com/Flux159/ragnarokoffline.app/tree/main/registry/mods/dps-meter",
+      "tags": [
+        "client",
+        "combat",
+        "quality-of-life"
+      ],
+      "icon": "",
+      "screenshots": [],
+      "requires": {
+        "mods": [],
+        "era": "any",
+        "app": ">=1.7.5"
+      },
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "bd1ee4c44367bc52c1c58a72f2c136aec705e08ec0fba67faecfa3e0dc0bfd61"
+        },
+        {
+          "path": "client/index.js",
+          "sha256": "0572c64097e30574cd37894758e543413658b924e7415c5f2d1789a224c7f67d"
+        },
+        {
+          "path": "mod.json",
+          "sha256": "0e53164964c09400f65ebaab05c911c84d324c047379879bc47cbdcf78a487d7"
+        }
+      ]
+    },
+    {
       "name": "droprate-penalty-remover",
       "version": "1.0.1",
       "author": "Leptis",

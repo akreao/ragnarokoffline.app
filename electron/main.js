@@ -453,15 +453,24 @@ function readIfExists(p) {
 // Not just the sandboxed filesystem: Config.local.js and the plugin bundles
 // are ordinary HTTP requests, and a stale one of those loads the previous
 // mod's client code, or a plugin the player has since switched off.
-async function dropStaleClientCache() {
+//
+// Every session has a cache of its own, so each gets its own stamp. The game
+// window uses the default session; each AI agent's window has a partition
+// (agent-play.js) and passes its name. With one stamp for all of them, the
+// player's launch marked every cache current while clearing only its own, and
+// an agent went on playing with files from before the mods changed: an
+// itemInfo table a later release had fixed still failed to parse in the
+// agent's window, and every item it named went with it.
+async function dropStaleClientCache(partition = null) {
 	const want = readIfExists(path.join(stateDir(), 'assets', 'overlay.id')).trim();
 	// No fingerprint means link-assets has not run, and dropping a warm cache
 	// on a guess would just make the launch slower.
 	if (!want) return;
-	const stamp = path.join(stateDir(), 'client-cache.id');
+	const name = partition ? `client-cache.${partition.replace(/^persist:/, '')}.id` : 'client-cache.id';
+	const stamp = path.join(stateDir(), name);
 	if (readIfExists(stamp).trim() === want) return;
 	try {
-		const ses = session.defaultSession;
+		const ses = partition ? session.fromPartition(partition) : session.defaultSession;
 		await ses.clearStorageData({ storages: ['filesystem', 'cachestorage'] });
 		await ses.clearCache();
 	} catch (e) {
@@ -1563,6 +1572,7 @@ function agentPlay() {
 			// prontera" in local chat instead of travelling.
 			commandPrefix: () => require('./command-symbol').symbol(getSettings().command_symbol),
 			hosting: () => getClientPaths().mode !== 'join',
+			dropStaleClientCache,
 			log: appLog,
 		});
 	}
@@ -1592,18 +1602,25 @@ function openSettingsFirst() {
 // every group is lifted to the player's number.
 //
 // Raise-only because the stock values are not a flat line -- 99 for first and
-// second jobs, 130 for third and summoner, 80 for baby. Any rule that mapped
+// second jobs, 130 for third, fourth and summoner, 80 for baby. Any rule that mapped
 // one number onto all of them while still allowing a decrease either nerfed
 // third jobs on an untouched install or quietly raised baby classes from 80.
 // Nobody asking for "max stats" wants either, and nobody has asked to lower
 // them at all.
 const ASPD_STOCK = { max_aspd: 190, max_third_aspd: 193, max_summoner_aspd: 193 };
+// Every max_*_parameter in conf/battle/player.conf, at its value there: a group
+// left out keeps its stock cap however high the setting goes (rebirth, trans
+// third, baby third and fourth jobs all did until 1.7.3).
 const PARAM_STOCK = {
 	max_parameter: 99,
+	max_trans_parameter: 99,
 	max_third_parameter: 130,
+	max_third_trans_parameter: 130,
 	max_baby_parameter: 80,
+	max_baby_third_parameter: 117,
 	max_extended_parameter: 130,
 	max_summoner_parameter: 130,
+	max_fourth_parameter: 130,
 };
 
 // 100..199; rAthena refuses anything outside and falls back to its default,
@@ -1668,8 +1685,8 @@ function generatedBattleConf(s) {
 		// may go in it is rAthena's and not obvious -- see
 		// electron/command-symbol.js.
 		require('./command-symbol').commandSymbolConf(s) +
-		// One cap in the UI, several keys here, because rAthena caps third,
-		// baby, extended and summoner classes separately and a player who
+		// One cap in the UI, several keys here, because rAthena caps rebirth,
+		// third, fourth, baby, extended and summoner classes separately and a player who
 		// raises "the" limit means all of them -- setting only max_parameter
 		// leaves every third-job character on the stock 130.
 		//

@@ -342,10 +342,51 @@ jobs:
             echo "::warning::Building an unsigned Windows installer — signing runs only in the release environment (main or a v* tag) with its AZURE_* variables set."
         shell: bash
 
-      # The version the official action pins, so the two move together.
+      # The module, and the three NuGet packages it would otherwise install
+      # the first time it signs, fetched directly at pinned versions and
+      # hashes. Install-Module and the module's own Install-Package both go
+      # through the runner's PowerShellGet/PackageManagement, which has failed
+      # with "Unable to find repository 'PSGallery'" on the same image that
+      # passed the day before (v1.7.2, v1.7.5), retries and
+      # Register-PSRepository included. A plain HTTPS download doesn't depend
+      # on it, and the module skips its own install when the packages are
+      # already in %LOCALAPPDATA%\ArtifactSigning (NugetInstall.psm1).
+      # The module's version is the one the official action pins; the
+      # packages' are the ones that version of the module asks for. Moving
+      # either means new versions and hashes here.
       - name: Install the Artifact Signing module
         if: matrix.platform == 'win' && env.HAS_AZURE == 'true'
-        run: Install-Module -Name ArtifactSigning -RequiredVersion 0.1.20 -Force -Repository PSGallery -Scope CurrentUser
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          function Install-Pinned($url, $sha256, $dest) {
+            $file = Join-Path $env:RUNNER_TEMP ([IO.Path]::GetFileName($dest) + '.nupkg')
+            Invoke-WebRequest -Uri $url -OutFile $file -MaximumRetryCount 5 -RetryIntervalSec 15
+            $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $file).Hash.ToLowerInvariant()
+            if ($actual -ne $sha256) { throw "$url has SHA-256 $actual, expected $sha256" }
+            if (Test-Path $dest) { Remove-Item -Recurse -Force $dest }
+            [IO.Compression.ZipFile]::ExtractToDirectory($file, $dest)
+            Write-Host "installed $url -> $dest"
+          }
+          $modules = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'PowerShell\Modules'
+          Install-Pinned 'https://www.powershellgallery.com/api/v2/package/ArtifactSigning/0.1.20' `
+            'ff7f77717752a640103b12dc176099761f472b96b4da2b9b2362e0a46a172810' `
+            (Join-Path $modules 'ArtifactSigning\0.1.20')
+          $packages = Join-Path $env:LOCALAPPDATA 'ArtifactSigning'
+          foreach ($p in @(
+            @('Microsoft.Windows.SDK.BuildTools', '10.0.26100.4188', '180deb372659029864c10a0c04787833234d64aacd1d2c0661d2c00295d8e022', 'bin\10.0.26100.0\x64\signtool.exe'),
+            @('Microsoft.ArtifactSigning.Client', '1.0.128', '74bd7d27e6ce1051409c38d9b46bc8df0400ecd643d51ffbf2ac00869061e40b', 'bin\x64\Azure.CodeSigning.Dlib.dll'),
+            @('sign', '0.9.1-beta.26227.3', '34fd0d4aeabdbc363a48883881865b4dd65e6c11ba916028082fa23f3e1b1ba1', 'tools\net8.0\any\sign.dll')
+          )) {
+            $name, $version, $sha256, $check = $p
+            $lower = $name.ToLowerInvariant()
+            $dest = Join-Path $packages "$name\$name.$version"
+            Install-Pinned "https://api.nuget.org/v3-flatcontainer/$lower/$version/$lower.$version.nupkg" $sha256 $dest
+            if (-not (Test-Path (Join-Path $dest $check))) { throw "$name $version has no $check" }
+          }
+          # What sign-win.js will do, so a broken install fails here, by name.
+          Import-Module ArtifactSigning -RequiredVersion 0.1.20
+          Get-Command Invoke-ArtifactSigning | Out-Null
         shell: pwsh
 
       - name: Import signing certificate
