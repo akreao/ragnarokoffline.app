@@ -25,10 +25,15 @@ if (original.includes(PATCH_MARKER)) {
   throw Error('This Online.js already contains the navigation patch.');
 }
 let patched = original;
+// The tables must be arrays: the loader copies each Lua array in with
+// Object.assign, and an object keeps no .length. akreao/roBrowserLegacy#381
+// makes them arrays in the client itself; older pins still need it done here.
 for (const name of ['NaviMapTable','NaviMobTable','NaviNpcTable','NaviLinkTable','NaviLinkDistanceTable','NaviNpcDistanceTable']) {
   const needle = name + ' = {};';
+  const fixed = name + ' = [];';
+  if (patched.split(fixed).length === 2 && !patched.includes(needle)) continue;
   if (patched.split(needle).length !== 2) throw Error('Unexpected initialization: ' + name);
-  patched = patched.replace(needle, name + ' = [];');
+  patched = patched.replace(needle, fixed);
 }
 const start = patched.indexOf('function loadLuaValue(');
 const stop = patched.indexOf('\n/**', start);
@@ -40,9 +45,12 @@ loader = loader.replace(escapePattern, () => String.raw`local function escape_st
                                     return string.format('\\u%04x', string.byte(c))
                                 end))
                             end`);
+// The same fix in the client (akreao/roBrowserLegacy#381) is left as it is.
+const arrayFixed = /is_array = is_array and count == highest/;
 const arrayPattern = /local is_array = true\s+local index = 1\s+for k, _ in pairs\(value\) do[\s\S]*?index = index \+ 1\s+end/;
-if (!arrayPattern.test(loader)) throw Error('Array detection not found');
-loader = loader.replace(arrayPattern, `local is_array = true
+if (!arrayFixed.test(loader)) {
+  if (!arrayPattern.test(loader)) throw Error('Array detection not found');
+  loader = loader.replace(arrayPattern, `local is_array = true
                                     local count, highest = 0, 0
                                     for k, _ in pairs(value) do
                                         if type(k) ~= "number" or k < 1 or k % 1 ~= 0 then
@@ -53,6 +61,7 @@ loader = loader.replace(arrayPattern, `local is_array = true
                                         highest = math.max(highest, k)
                                     end
                                     is_array = is_array and count == highest`);
+}
 const decodeNeedle = 'result = JSON.parse(userStringDecoder.decode(value));';
 if (loader.split(decodeNeedle).length !== 2) throw Error('Navigation JSON decode call not found');
 loader = loader.replace(decodeNeedle, 'result = JSON.parse(userStringDecoder.decode(value, userCharpage));');
