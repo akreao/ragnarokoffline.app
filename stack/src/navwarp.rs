@@ -5,7 +5,8 @@
 //! player's GRF (`navi_link_krpri.lub`). Its portals (type 200) are kRO's: a
 //! pre-renewal town's are where kRO's renewal town has them, and a mod's map
 //! has none. With the mod on, the server's portals -- the `warp` and `warp2`
-//! lines of the scripts the map server loads -- are written to
+//! lines of the scripts the map server loads, and the touch scripts that warp
+//! you (`script_portals`) -- are written to
 //! `navi_link_server.lub`, and the client's navigation patch puts them in
 //! place of the GRF's portals. The GRF's other links are kept: sailors,
 //! signposts and airship steps are scripts that warp when spoken to, which
@@ -61,10 +62,18 @@ fn number(field: &str) -> Option<u32> {
     field[..field.find(|c: char| !c.is_ascii_digit()).unwrap_or(field.len())].parse().ok()
 }
 
-/// The portals in a script:
+/// The portals in a script: its `warp` and `warp2` lines, then the portals
+/// its scripts make (`script_portals`).
+pub fn parse_warps(text: &[u8]) -> Vec<Warp> {
+    let mut warps = warp_lines(text);
+    warps.extend(script_portals(text));
+    warps
+}
+
+/// The `warp` and `warp2` lines:
 /// `map,x,y,facing<TAB>warp|warp2<TAB>name<TAB>spanx,spany,dest,dx,dy`.
 /// Instance maps, at either end, are left out.
-pub fn parse_warps(text: &[u8]) -> Vec<Warp> {
+fn warp_lines(text: &[u8]) -> Vec<Warp> {
     script_lines(text)
         .into_iter()
         .filter_map(|line| {
@@ -97,6 +106,119 @@ pub fn parse_warps(text: &[u8]) -> Vec<Warp> {
             Some(Warp { map: map.to_string(), x, y, name, dest: dest.to_string(), dx, dy })
         })
         .collect()
+}
+
+/// The most places one touch script may send you and still be a portal. Past
+/// that it is a teleport service (Eden's exit sends you back where you came
+/// from), and a route cannot know which one you would get.
+const MAX_SCRIPT_DESTS: usize = 5;
+
+/// The portals scripts make. Many of rAthena's portals are not `warp` lines
+/// but `script` NPCs with a touch area (`sprite,spanx,spany,{`) that warp you
+/// when you step on them, often after a quest check: Payon Cave's fourth
+/// floor, Thanatos Tower, the Rachel sanctuary, Juperos, Eclage's gate. kRO
+/// lists them as portals, so leaving them out cuts those maps off from
+/// routing. Each one is a row per map its script warps to by a literal name,
+/// at the first coordinates it gives for that map; `Random` and `SavePoint`
+/// are not places. Instance maps, at either end, are left out, as are scripts
+/// with more than `MAX_SCRIPT_DESTS` destinations.
+pub fn script_portals(text: &[u8]) -> Vec<Warp> {
+    let text = without_comments(&String::from_utf8_lossy(text));
+    let mut out = Vec::new();
+    let mut offset = 0;
+    for line in text.split_inclusive('\n') {
+        let start = offset;
+        offset += line.len();
+        if line.starts_with([' ', '\t']) {
+            continue;
+        }
+        let mut fields = line.trim_end_matches(['\r', '\n']).splitn(4, '\t');
+        let (Some(place), Some("script"), Some(name), Some(rest)) = (fields.next(), fields.next(), fields.next(), fields.next())
+        else {
+            continue;
+        };
+        let Some(brace) = rest.find('{') else { continue };
+        let span: Vec<&str> = rest[..brace].split(',').map(str::trim).collect();
+        let [_, sx, sy, ""] = span.as_slice() else { continue };
+        if sx.parse::<u32>().is_err() || sy.parse::<u32>().is_err() {
+            continue;
+        }
+        let mut at = place.split(',');
+        let (Some(map), Some(Ok(x)), Some(Ok(y))) = (at.next().map(str::trim), at.next().map(|v| v.trim().parse()), at.next().map(|v| v.trim().parse()))
+        else {
+            continue;
+        };
+        if !valid_map(map) {
+            continue;
+        }
+        let open = start + line.find('{').expect("rest is in the line");
+        let body = &text[open..open + block_len(&text[open..])];
+        let name = name.rsplit("::").next().unwrap_or(name).trim().to_string();
+        let mut dests: Vec<Warp> = Vec::new();
+        for (dest, dx, dy) in warp_commands(body) {
+            if !dests.iter().any(|w| w.dest == dest) {
+                dests.push(Warp { map: map.to_string(), x, y, name: name.clone(), dest, dx, dy });
+            }
+        }
+        if dests.len() <= MAX_SCRIPT_DESTS {
+            out.extend(dests);
+        }
+    }
+    out
+}
+
+/// The length of the `{ ... }` block `text` starts with, through its closing
+/// brace (or to the end, when it has none); braces in strings do not count.
+fn block_len(text: &str) -> usize {
+    let (mut depth, mut in_string, mut escaped) = (0usize, false, false);
+    for (i, c) in text.char_indices() {
+        if in_string {
+            match c {
+                _ if escaped => escaped = false,
+                '\\' => escaped = true,
+                '"' | '\n' => in_string = false,
+                _ => {}
+            }
+            continue;
+        }
+        match c {
+            '"' => in_string = true,
+            '{' => depth += 1,
+            '}' => {
+                depth = depth.saturating_sub(1);
+                if depth == 0 {
+                    return i + 1;
+                }
+            }
+            _ => {}
+        }
+    }
+    text.len()
+}
+
+/// Every `warp "map",x,y` (or `warp("map",x,y)`) in a script body with a
+/// literal map and coordinates, leaving out `Random`, `SavePoint` and
+/// instance maps. `warpparty` and the like are other commands.
+fn warp_commands(body: &str) -> Vec<(String, u32, u32)> {
+    let mut out = Vec::new();
+    let mut rest = body;
+    while let Some(at) = rest.find("warp") {
+        let before = rest[..at].chars().next_back();
+        rest = &rest[at + 4..];
+        if before.is_some_and(|c| c.is_ascii_alphanumeric() || c == '_') || !rest.starts_with([' ', '\t', '(', '"']) {
+            continue;
+        }
+        let Some(dest) = quoted_name(rest) else { continue };
+        let after = rest.trim_start_matches([' ', '\t', '(']);
+        let mut args = after[dest.len() + 2..].splitn(3, ',');
+        args.next();
+        let (Some(dx), Some(dy)) = (args.next().and_then(number), args.next().and_then(number)) else { continue };
+        if dest.eq_ignore_ascii_case("random") || dest.eq_ignore_ascii_case("savepoint") || !valid_map(&dest) {
+            continue;
+        }
+        out.push((dest, dx, dy));
+    }
+    out
 }
 
 /// What a script does to NPCs by name, as far as routing cares: `off`, the
@@ -419,6 +541,50 @@ mod tests {
             ("prontera", 1, 1, "prt_gate", "prt_fild08", 5, 6),
             ("lhz_in03", 12, 162, "#to_lhz", "lighthalzen", 321, 322),
             ("izlude", 1, 1, "commented_end", "prontera", 7, 8),
+        ]);
+    }
+
+    /// A touch script that warps is a portal too: one row per map it sends
+    /// you to. Talking NPCs, teleport services and what is not a place are not.
+    #[test]
+    fn touch_scripts_that_warp_are_portals() {
+        let script = b"pay_dun03,127,62,4\tscript\tpayd04r\t45,2,2,{\n\
+            \tswitch(rand(2)) {\n\
+            \t\tcase 0: warp \"pay_dun04\",201,204; end;\n\
+            \t\tcase 1: warp \"pay_dun04\",189,43; end;\n\
+            \t}\n\
+            }\n\
+            ecl_fild01,97,322,0\tscript\t#ep14_2Entrance::gate\tWARPNPC,3,3,{\n\
+            \tend;\n\
+            OnTouch:\n\
+            \tif (ep14_2_oliver < 3) { mes \"} warp \\\"nowhere\\\",1,1\"; close; }\n\
+            \twarp(\"eclage\", 100, 28);\n\
+            \tend;\n\
+            }\n\
+            ra_san01,140,30,0\tscript\tsanctuary01\t45,1,1,{\n\
+            \tif (select(\"Up:Down\") == 1) warp \"ra_san02\",1,2; else warp \"ra_san03\",3,4;\n\
+            \t// warp \"commented\",1,1;\n\
+            \twarp \"Random\",0,0; warp \"SavePoint\",0,0; warp \"1@tower\",1,1;\n\
+            \twarpparty \"prontera\",1,1,getcharid(1); warp .@map$,1,1;\n\
+            }\n\
+            prontera,150,150,4\tscript\tGuide\t4_M_KAFRA,{\n\
+            \twarp \"izlude\",1,1;\n\
+            }\n\
+            moc_para01,30,10,0\tscript\t#eden_out\t45,1,1,{\n\
+            \twarp \"a\",1,1; warp \"b\",1,1; warp \"c\",1,1; warp \"d\",1,1; warp \"e\",1,1; warp \"f\",1,1;\n\
+            }\n\
+            -\tscript\tfloating\t-1,1,1,{\n\
+            \twarp \"izlude\",1,1;\n\
+            }\n\
+            pay_dun03,1,1,0\twarp\tplain\t1,1,pay_dun02,5,6\n";
+        let warps = parse_warps(script);
+        let got: Vec<_> = warps.iter().map(|w| (w.map.as_str(), w.x, w.y, w.name.as_str(), w.dest.as_str(), w.dx, w.dy)).collect();
+        assert_eq!(got, [
+            ("pay_dun03", 1, 1, "plain", "pay_dun02", 5, 6),
+            ("pay_dun03", 127, 62, "payd04r", "pay_dun04", 201, 204),
+            ("ecl_fild01", 97, 322, "gate", "eclage", 100, 28),
+            ("ra_san01", 140, 30, "sanctuary01", "ra_san02", 1, 2),
+            ("ra_san01", 140, 30, "sanctuary01", "ra_san03", 3, 4),
         ]);
     }
 

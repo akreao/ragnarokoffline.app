@@ -8,7 +8,13 @@ those routes lead to the wrong place or nowhere.
 
 With this mod on, routes use the server's portals instead: the `warp` and
 `warp2` lines in the scripts the server loads for your era, the stock scripts
-other mods switch on (`stock-npc.txt`), and the scripts other mods ship. A
+other mods switch on (`stock-npc.txt`), and the scripts other mods ship.
+Many of rAthena's portals are scripts rather than `warp` lines -- an NPC with
+a touch area that warps you when you step on it, often after a quest check:
+Payon Cave's fourth floor, Thanatos Tower, the Rachel sanctuary, Juperos,
+Geffenia, Eclage's gate. Those count as portals too, one for each map the
+script names (up to five; a script that can send you to more places is a
+teleport service, not a portal). A
 portal switched off when the server starts (`disablenpc "<name>"` under
 `OnInit`) is left out, so a mod that reroutes a gate is routed over correctly.
 One that some script switches back on with `enablenpc` is kept: it is a gate an
