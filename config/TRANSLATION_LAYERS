@@ -27,8 +27,15 @@ take	data/contentdata/repute/
 # Emotion names (read from 20230302).
 take	data/simplemsg/msg_emotion.csv
 
-# Tip of the Day pictures. The client has no tip window, and two differ in
-# size from kRO's.
+# The tip box's tips (Alt+D, /tip, TIPBOX links), read from
+# System/tipbox.lub, which link-assets fills from SystemEN. Only the
+# 2017-12-13 layer has them, so a packet version before that keeps the
+# client's own, as ClientGenerator would.
+take	SystemEN/tipbox.lub
+
+# The tip pictures with English drawn in. All 240x320, as kRO's are, but
+# 24-bit BMPs: 232 of them are 54 MB (34 MB compressed) of payload, so the
+# tip box shows the client's own pictures instead.
 skip	data/texture/À¯ÀúÀÎÅÍÆäÀÌ½º/tipbox/tip
 
 # Not the size of kRO's own, after stacking (checked against a 2025-11-05 kRO
