@@ -92,7 +92,14 @@ export function readAct(buf) {
 		}
 		actions.push(frames);
 	}
-	return { actions };
+	// Then the sound names, and each action's frame delay in 25 ms ticks.
+	const delays = actions.map(() => 4);
+	if (version >= 2.1 && r.pos + 4 <= r.u8.length) {
+		const sounds = r.i32();
+		r.pos += sounds * 40;
+		if (version >= 2.2) for (let a = 0; a < count && r.pos + 4 <= r.u8.length; a++) delays[a] = r.f32();
+	}
+	return { actions, delays };
 }
 
 function framePixels(spr, index, palette) {

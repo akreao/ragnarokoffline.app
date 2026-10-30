@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GRF browser</title>
+<!--
+  Every file in the player's GRFs, through the game's asset server: find one,
+  preview it, copy it into a mod, or send it out as PNGs to edit and bring the
+  edited pictures back in the client's format. The host side is
+  electron/grf-browser.js; the conversions are formats.js beside this page.
+-->
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #fafafa;
+    --panel: #ffffff;
+    --border: #e5e7eb;
+    --text: #111827;
+    --muted: #6b7280;
+    --accent: #2563eb;
+    --hit: #eff6ff;
+    --code: #f3f4f6;
+    --warn: #fef3c7;
+    --warn-text: #92400e;
+    --ok-bg: #dcfce7;
+    --ok-text: #166534;
+    --bad-bg: #fee2e2;
+    --danger: #dc2626;
+    --check-a: #e5e7eb;
+    --check-b: #f9fafb;
+    --shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1115;
+      --panel: #171a21;
+      --border: #262b36;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --accent: #60a5fa;
+      --hit: #1e293b;
+      --code: #0d1017;
+      --warn: #3b2f0b;
+      --warn-text: #fcd34d;
+      --ok-bg: #0f2e1b;
+      --ok-text: #86efac;
+      --bad-bg: #3a1414;
+      --danger: #f87171;
+      --check-a: #1f2430;
+      --check-b: #171a21;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3);
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg); color: var(--text);
+    display: flex; flex-direction: column; font-size: 13px; line-height: 1.4;
+  }
+  button, select, input { font: inherit; color: inherit; }
+  button { padding: 5px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); cursor: pointer; }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button:disabled { opacity: 0.5; cursor: default; }
+  select, input[type=text], input[type=search] { padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); }
+  header {
+    padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--panel);
+    display: flex; gap: 12px; align-items: center; box-shadow: var(--shadow);
+  }
+  h1 { margin: 0; font-size: 15px; font-weight: 600; white-space: nowrap; }
+  header input[type=search] { flex: 1; max-width: 520px; }
+  .muted { color: var(--muted); }
+  .spacer { flex: 1; }
+  main { flex: 1; display: flex; min-height: 0; }
+  aside { width: 420px; min-width: 260px; border-right: 1px solid var(--border); background: var(--panel); display: flex; flex-direction: column; }
+  #kinds { display: flex; gap: 4px; flex-wrap: wrap; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  #kinds button { padding: 2px 9px; border-radius: 999px; font-size: 12px; }
+  #kinds button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  #list { flex: 1; overflow: auto; padding: 4px 0; }
+  .row { padding: 2px 10px; white-space: nowrap; cursor: pointer; overflow: hidden; text-overflow: ellipsis; }
+  .row:hover { background: var(--hit); }
+  .row.sel { background: var(--accent); color: #fff; }
+  .row .twisty { display: inline-block; width: 14px; color: var(--muted); }
+  .row.sel .twisty { color: #fff; }
+  .row .count { color: var(--muted); font-size: 11px; margin-left: 6px; }
+  .row.sel .count { color: #e5e7eb; }
+  #listnote { padding: 6px 10px; border-top: 1px solid var(--border); }
+  section#view { flex: 1; overflow: auto; padding: 16px 20px; min-width: 0; }
+  #path { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; word-break: break-all; }
+  .bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 10px 0; }
+  .stage {
+    display: inline-flex; align-items: center; justify-content: center; min-width: 220px; min-height: 180px; padding: 16px;
+    border: 1px solid var(--border); border-radius: 8px;
+    background: repeating-conic-gradient(var(--check-a) 0 25%, var(--check-b) 0 50%) 0 0 / 16px 16px;
+  }
+  .stage canvas, .stage img { image-rendering: pixelated; max-width: 100%; }
+  #frames { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  #frames figure { margin: 0; padding: 4px; border: 1px solid var(--border); border-radius: 6px; text-align: center; background: var(--panel); }
+  #frames figcaption { font-size: 11px; color: var(--muted); }
+  #frames canvas { image-rendering: pixelated; max-width: 96px; max-height: 96px; }
+  pre.text { background: var(--code); border: 1px solid var(--border); border-radius: 6px; padding: 10px; max-height: 60vh; overflow: auto; white-space: pre-wrap; font-size: 12px; }
+  .note { border-radius: 6px; padding: 8px 10px; margin: 10px 0; max-width: 760px; }
+  .note.warn { background: var(--warn); color: var(--warn-text); }
+  .note.ok { background: var(--ok-bg); color: var(--ok-text); }
+  .note.bad { background: var(--bad-bg); color: var(--danger); white-space: pre-wrap; }
+  .note code, .help code { font-size: 12px; }
+  .panel { border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; background: var(--panel); margin: 12px 0; max-width: 760px; }
+  .panel h2 { font-size: 13px; margin: 0 0 6px; }
+  .help { max-width: 680px; }
+  .help li { margin: 4px 0; }
+  dialog { border: 1px solid var(--border); border-radius: 10px; padding: 0; background: var(--panel); color: var(--text); width: 440px; }
+  dialog form { padding: 16px 20px 0; }
+  dialog label { display: block; margin: 10px 0 4px; }
+  dialog select, dialog input[type=text] { width: 100%; }
+  dialog .actions { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--border); margin-top: 16px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>GRF browser</h1>
+  <input id="search" type="search" placeholder="Find a file: poring, prontera, .pal, or a /regex/" autocomplete="off" spellcheck="false">
+  <span class="spacer"></span>
+  <span id="summary" class="muted">Loading the file list…</span>
+</header>
+<main>
+  <aside>
+    <div id="kinds"></div>
+    <div id="list"></div>
+    <div id="listnote" class="muted"></div>
+  </aside>
+  <section id="view">
+    <div class="help">
+      <h2 style="font-size:15px;margin-top:0">Your client's files</h2>
+      <p>Everything in your GRFs, as the game reads it — with any file a mod replaces shown as the mod has it.
+        Pick a file on the left, or search for one.</p>
+      <ul>
+        <li><b>Copy to mod</b> puts the file in one of your mods (or a new one) at the path the client asks for. A mod's copy replaces the GRF's.</li>
+        <li><b>Edit as PNG</b> writes sprites' frames, pictures and palettes out as PNG files and opens their folder, for any image editor.
+          Save your changes there, then <b>Bring back into a mod</b> turns them into the client's own format again.</li>
+        <li>Mod changes reach the game after <b>Settings → Mods → Apply</b>.</li>
+      </ul>
+      <p class="muted">Nothing here changes your GRFs.</p>
+    </div>
+  </section>
+</main>
+
+<dialog id="todialog">
+  <form method="dialog">
+    <b id="dlgtitle">Copy to a mod</b>
+    <label for="dlgmod">Mod</label>
+    <select id="dlgmod"></select>
+    <div id="dlgnew" hidden>
+      <label for="dlgname">New mod's folder name</label>
+      <input id="dlgname" type="text" placeholder="my-sprites" pattern="[A-Za-z0-9_\-]{1,64}" spellcheck="false">
+      <label for="dlgdesc">What it does</label>
+      <input id="dlgdesc" type="text" placeholder="A new look for the Poring.">
+    </div>
+    <div id="dlgextra"></div>
+    <p class="muted" id="dlgwhere"></p>
+    <div class="actions">
+      <button value="cancel" formnovalidate>Cancel</button>
+      <button value="ok" class="primary" id="dlgok">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<script type="module">
+import { readSpr, readAct, renderSprite, actDirection } from './shared/sprite.js';
+import { decodeImage, encodeBmp } from './shared/image.js';
+import {
+	fileKind, EDITABLE, frameToImage, frameFile, rebuildSprite, writeSpr,
+	paletteToImage, imageToPalette, encodeTga, modPath, workName,
+} from './formats.js';
+
+const $ = id => document.getElementById(id);
+const h = (tag, props = {}, ...children) => {
+	const el = Object.assign(document.createElement(tag), props);
+	for (const c of children.flat()) if (c != null) el.append(c);
+	return el;
+};
+const view = $('view');
+const MAX_ROWS = 2000;
+
+// ---- Talking to the app
+
+async function api(call, body) {
+	const res = await fetch(`api/${call}`, body ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {});
+	const out = await res.json().catch(() => ({ error: `${res.status}` }));
+	if (!res.ok || out.error) throw new Error(out.error || `${res.status}`);
+	return out;
+}
+const assetUrl = name => `asset/${modPath(name).split('/').map(encodeURIComponent).join('/')}`;
+async function getFile(name) {
+	const res = await fetch(assetUrl(name));
+	if (!res.ok) throw new Error(`${name} could not be read (${res.status})`);
+	return new Uint8Array(await res.arrayBuffer());
+}
+function toBase64(u8) {
+	let s = '';
+	for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
+	return btoa(s);
+}
+const fromBase64 = b64 => Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+
+// ---- Pictures through the browser's own PNG and JPEG codecs
+
+async function encodeWith(img, type, quality) {
+	const canvas = new OffscreenCanvas(img.width, img.height);
+	canvas.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(img.data), img.width, img.height), 0, 0);
+	return new Uint8Array(await (await canvas.convertToBlob({ type, quality })).arrayBuffer());
+}
+const encodePng = img => encodeWith(img, 'image/png');
+async function decodeBrowser(bytes) {
+	const bitmap = await createImageBitmap(new Blob([bytes]), { premultiplyAlpha: 'none', colorSpaceConversion: 'none' });
+	const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+	const ctx = canvas.getContext('2d', { willReadFrequently: true });
+	ctx.drawImage(bitmap, 0, 0);
+	const { data } = ctx.getImageData(0, 0, bitmap.width, bitmap.height);
+	return { width: bitmap.width, height: bitmap.height, data };
+}
+/** Any picture the client uses, as RGBA: BMP and TGA here, JPEG and PNG by the browser. */
+async function decodePicture(bytes, name) {
+	return decodeImage(bytes, name) || decodeBrowser(bytes);
+}
+/** An RGBA picture in the format `name` is: what the client reads at that path. */
+async function encodeAs(img, name) {
+	const ext = (/\.([^.]+)$/.exec(name) || [])[1]?.toLowerCase();
+	if (ext === 'bmp') return encodeBmp(img);
+	if (ext === 'tga') return encodeTga(img);
+	if (ext === 'jpg' || ext === 'jpeg') return encodeWith({ ...img, data: opaque(img.data) }, 'image/jpeg', 0.95);
+	return encodePng(img);
+}
+// JPEG has no transparency; the client's JPEGs never had any.
+function opaque(data) { const out = new Uint8ClampedArray(data); for (let i = 3; i < out.length; i += 4) out[i] = 255; return out; }
+
+function canvasOf(img, scale = 1) {
+	const c = h('canvas', { width: img.width, height: img.height });
+	c.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(img.data), img.width, img.height), 0, 0);
+	if (scale !== 1) { c.style.width = `${img.width * scale}px`; c.style.height = `${img.height * scale}px`; }
+	return c;
+}
+
+// ---- The file list
+
+let files = [];          // every name, as the asset server lists it
+let tree = null;         // folder -> { dirs: Map(name -> folder), files: [names] }
+let kind = 'all';
+let selected = null;
+const open = new Set(['data']);
+const KINDS = [['all', 'All'], ['sprite', 'Sprites'], ['image', 'Pictures'], ['palette', 'Palettes'], ['text', 'Text'], ['sound', 'Sounds'], ['map', 'Maps'], ['model', 'Models']];
+
+function buildTree() {
+	tree = { path: '', dirs: new Map(), files: [], count: 0 };
+	for (const name of files) {
+		const parts = name.split('\\');
+		let node = tree;
+		node.count++;
+		for (let i = 0; i < parts.length - 1; i++) {
+			const key = parts[i].toLowerCase();
+			let next = node.dirs.get(key);
+			if (!next) { next = { path: parts.slice(0, i + 1).join('\\'), label: parts[i], dirs: new Map(), files: [], count: 0 }; node.dirs.set(key, next); }
+			next.count++;
+			node = next;
+		}
+		node.files.push(name);
+	}
+}
+
+function matches(name) { return kind === 'all' || fileKind(name) === kind; }
+
+function searchTest() {
+	const q = $('search').value.trim();
+	if (!q) return null;
+	const re = /^\/(.+)\/$/.exec(q);
+	if (re) { try { const r = new RegExp(re[1], 'i'); return n => r.test(n); } catch { return () => false; } }
+	const words = q.toLowerCase().replace(/\//g, '\\').split(/\s+/);
+	return n => { const l = n.toLowerCase(); return words.every(w => l.includes(w)); };
+}
+
+function fileRow(name, depth, label = name.split('\\').pop()) {
+	const row = h('div', { className: `row${name === selected ? ' sel' : ''}`, title: name }, h('span', { className: 'twisty' }), label);
+	row.style.paddingLeft = `${10 + depth * 14}px`;
+	row.onclick = () => { selected = name; render(); show(name); };
+	return row;
+}
+
+function render() {
+	const list = $('list');
+	list.replaceChildren();
+	const test = searchTest();
+	if (test) {
+		let shown = 0, found = 0;
+		for (const name of files) {
+			if (!matches(name) || !test(name)) continue;
+			found++;
+			if (shown < MAX_ROWS) { list.append(fileRow(name, 0, name.replace(/^data\\/i, ''))); shown++; }
+		}
+		$('listnote').textContent = found > shown ? `${found.toLocaleString()} found; the first ${shown.toLocaleString()} shown — narrow the search.` : `${found.toLocaleString()} found`;
+		return;
+	}
+	let rows = 0;
+	const walk = (node, depth) => {
+		for (const dir of [...node.dirs.values()].sort((a, b) => a.label.localeCompare(b.label))) {
+			const isOpen = open.has(dir.path.toLowerCase());
+			const row = h('div', { className: 'row', title: dir.path }, h('span', { className: 'twisty' }, isOpen ? '▾' : '▸'), dir.label, h('span', { className: 'count' }, dir.count.toLocaleString()));
+			row.style.paddingLeft = `${10 + depth * 14}px`;
+			row.onclick = () => { const k = dir.path.toLowerCase(); if (open.has(k)) open.delete(k); else open.add(k); render(); };
+			list.append(row);
+			if (isOpen) walk(dir, depth + 1);
+		}
+		const own = node.files.filter(matches).sort((a, b) => a.localeCompare(b));
+		for (const name of own.slice(0, MAX_ROWS)) { list.append(fileRow(name, depth)); rows++; }
+		if (own.length > MAX_ROWS) list.append(h('div', { className: 'row muted' }, `… ${(own.length - MAX_ROWS).toLocaleString()} more: search to find them`));
+	};
+	walk(tree, 0);
+	$('listnote').textContent = kind === 'all' ? '' : 'Showing only ' + KINDS.find(k => k[0] === kind)[1].toLowerCase() + ' in each folder.';
+}
+
+function renderKinds() {
+	$('kinds').replaceChildren(...KINDS.map(([id, label]) => {
+		const b = h('button', { className: id === kind ? 'on' : '', textContent: label });
+		b.onclick = () => { kind = id; renderKinds(); render(); };
+		return b;
+	}));
+}
+
+let searchTimer = 0;
+$('search').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(render, 150); });
+
+async function loadList() {
+	try {
+		const res = await fetch('files.json');
+		const out = await res.json();
+		if (!res.ok) throw new Error(out.error || res.status);
+		files = out.filter(n => typeof n === 'string');
+		buildTree();
+		$('summary').textContent = `${files.length.toLocaleString()} files`;
+		renderKinds();
+		render();
+	} catch (e) {
+		$('summary').textContent = '';
+		view.replaceChildren(h('div', { className: 'note bad' }, `The file list could not be read: ${e.message}`));
+	}
+}
+
+// ---- Showing one file
+
+let anim = 0;
+let shownName = null;
+
+async function show(name) {
+	cancelAnimationFrame(anim); clearTimeout(anim);
+	shownName = name;
+	const k = fileKind(name);
+	const head = [
+		h('div', { id: 'path' }, name),
+		actions(name, k),
+	];
+	view.replaceChildren(...head, h('p', { className: 'muted' }, 'Loading…'));
+	let bytes;
+	try { bytes = await getFile(name); } catch (e) { if (shownName === name) view.replaceChildren(...head, h('div', { className: 'note bad' }, e.message)); return; }
+	if (shownName !== name) return;
+	head.push(h('p', { className: 'muted' }, `${bytes.length.toLocaleString()} bytes`));
+	let body;
+	try { body = await preview(name, k, bytes); } catch (e) { body = h('div', { className: 'note bad' }, `No preview: ${e.message}`); }
+	if (shownName === name) view.replaceChildren(...head, ...[body].flat(), h('div', { id: 'work' }));
+}
+
+function actions(name, k) {
+	const bar = h('div', { className: 'bar' });
+	const copy = h('button', { className: 'primary', textContent: 'Copy to mod…' });
+	copy.onclick = () => copyToMod(name);
+	bar.append(copy);
+	if (EDITABLE.has(k)) {
+		const edit = h('button', { textContent: 'Edit as PNG' });
+		edit.onclick = () => editAsPng(name, k);
+		bar.append(edit);
+	}
+	const save = h('a', { href: assetUrl(name), download: name.split('\\').pop(), textContent: 'Save a copy…' });
+	bar.append(save);
+	return bar;
+}
+
+async function preview(name, k, bytes) {
+	if (k === 'sprite') return previewSprite(name, bytes);
+	if (k === 'image') {
+		const img = await decodePicture(bytes, name);
+		return [h('div', { className: 'stage' }, canvasOf(img, img.width <= 256 && img.height <= 256 ? 2 : 1)), h('p', { className: 'muted' }, `${img.width} × ${img.height}`)];
+	}
+	if (k === 'palette') return h('div', {}, h('div', { className: 'stage' }, canvasOf(paletteToImage(bytes, 16))), h('p', { className: 'muted' }, '256 colours, index 0 at the top left. Index 0 is the background in a sprite.'));
+	if (k === 'sound') return h('audio', { controls: true, src: URL.createObjectURL(new Blob([bytes])) });
+	if (k === 'text' || /\.lub$/i.test(name)) {
+		if (bytes[0] === 0x1b && bytes[1] === 0x4c) return h('div', { className: 'note warn' }, 'Compiled Lua: there is no text to show. Copy it to a mod to replace it with a .lub of your own (plain Lua text works too, with the same name).');
+		let text;
+		try { text = new TextDecoder('utf-8', { fatal: true }).decode(bytes); } catch { text = new TextDecoder('euc-kr').decode(bytes); }
+		return h('pre', { className: 'text' }, text.length > 400000 ? `${text.slice(0, 400000)}\n…` : text);
+	}
+	if (k === 'action') {
+		const spr = name.replace(/\.act$/i, '.spr');
+		const b = h('button', { textContent: 'Show the sprite' });
+		b.onclick = () => { selected = files.find(f => f.toLowerCase() === spr.toLowerCase()) || spr; render(); show(selected); };
+		return h('div', {}, h('p', {}, 'How a sprite\'s frames are placed and played: the actions, directions and timing. It has no pictures of its own.'), b);
+	}
+	if (k === 'map' || k === 'model') return h('p', { className: 'muted' }, k === 'map' ? 'Map files open in Settings → Tools → Map editor.' : 'A 3D model. The map editor places models; to change one, copy it to a mod and use a model editor.');
+	return h('p', { className: 'muted' }, 'No preview for this kind of file.');
+}
+
+// A monster's five actions and a player's thirteen, eight directions each.
+const MONSTER_ACTIONS = ['Standing', 'Walking', 'Attacking', 'Hurt', 'Dying'];
+const PLAYER_ACTIONS = ['Standing', 'Walking', 'Sitting', 'Picking up', 'Ready', 'Attacking', 'Hurt', 'Frozen', 'Dying', 'Frozen 2', 'Attacking 2', 'Attacking 3', 'Casting'];
+const DIRECTIONS = ['South', 'South-west', 'West', 'North-west', 'North', 'North-east', 'East', 'South-east'];
+
+async function previewSprite(name, bytes) {
+	const spr = readSpr(bytes);
+	const out = [];
+	let act = null;
+	const actName = name.replace(/\.spr$/i, '.act');
+	if (files.some(f => f.toLowerCase() === actName.toLowerCase())) {
+		try { act = readAct(await getFile(actName)); } catch { act = null; }
+	}
+	if (act && act.actions.length) {
+		const groups = Math.ceil(act.actions.length / 8);
+		// A player's sprite has 13 actions, a monster's 5 (some have a few more after them).
+		const labels = groups >= 13 ? PLAYER_ACTIONS : groups >= 5 ? MONSTER_ACTIONS : [];
+		const actionSel = h('select', {}, ...Array.from({ length: groups }, (_, i) => h('option', { value: i, textContent: labels[i] || `Action ${i}` })));
+		const dirSel = h('select', {}, ...DIRECTIONS.map((d, i) => h('option', { value: i, textContent: d })));
+		const playing = h('input', { type: 'checkbox', checked: true });
+		const stage = h('div', { className: 'stage' });
+		let frame = 0;
+		const draw = () => {
+			const action = Number(actionSel.value), dir = Number(dirSel.value);
+			const frames = act.actions[action * 8 + dir] || [];
+			if (frame >= frames.length) frame = 0;
+			// renderSprite takes rAthena's facing; the act's own direction maps back by the same formula.
+			const img = renderSprite(spr, act, action, actDirection(dir), frame);
+			stage.replaceChildren(img ? canvasOf(img, 2) : h('span', { className: 'muted' }, 'empty frame'));
+			const delay = (act.delays[action * 8 + dir] || 4) * 25;
+			if (playing.checked && frames.length > 1 && shownName === name) anim = setTimeout(() => { frame++; draw(); }, Math.max(40, delay));
+		};
+		const restart = () => { clearTimeout(anim); frame = 0; draw(); };
+		actionSel.onchange = restart; dirSel.onchange = restart; playing.onchange = restart;
+		out.push(h('div', { className: 'bar' }, actionSel, dirSel, h('label', {}, playing, ' Play')), stage);
+		requestAnimationFrame(draw);
+	} else {
+		out.push(h('p', { className: 'muted' }, 'No .act beside it, so it is shown frame by frame.'));
+	}
+	const strip = h('div', { id: 'frames' });
+	spr.frames.slice(0, 300).forEach((f, i) => strip.append(h('figure', {}, canvasOf(frameToImage(spr, i)), h('figcaption', {}, `${i}${f.rgba ? ' RGBA' : ''} · ${f.w}×${f.h}`))));
+	out.push(h('p', { className: 'muted' }, `${spr.frames.length} frame${spr.frames.length === 1 ? '' : 's'}: ${spr.indexed} with the sprite's palette, ${spr.frames.length - spr.indexed} full colour.`), strip);
+	return out;
+}
+
+// ---- Into a mod
+
+let mods = [];
+async function chooseMod(title, extra) {
+	try { mods = (await api('mods')).mods; } catch (e) { mods = []; }
+	const dlg = $('todialog');
+	$('dlgtitle').textContent = title;
+	const sel = $('dlgmod');
+	const last = (() => { try { return localStorage.getItem('grf-browser.mod'); } catch { return null; } })();
+	sel.replaceChildren(...mods.map(m => h('option', { value: m.name, textContent: m.description ? `${m.name} — ${m.description.slice(0, 50)}` : m.name })), h('option', { value: '', textContent: 'A new mod…' }));
+	sel.value = mods.some(m => m.name === last) ? last : (mods.length ? mods[0].name : '');
+	const update = () => { $('dlgnew').hidden = sel.value !== ''; $('dlgname').required = sel.value === ''; };
+	sel.onchange = update; update();
+	$('dlgextra').replaceChildren(...(extra || []));
+	dlg.returnValue = '';
+	dlg.showModal();
+	await new Promise(resolve => dlg.addEventListener('close', resolve, { once: true }));
+	if (dlg.returnValue !== 'ok') return null;
+	const mod = sel.value || $('dlgname').value.trim();
+	if (!/^[A-Za-z0-9_-]{1,64}$/.test(mod)) { note('bad', 'A mod\'s folder name is letters, digits, - and _.'); return null; }
+	try { localStorage.setItem('grf-browser.mod', mod); } catch { /* fine without */ }
+	return { mod, description: $('dlgdesc').value.trim() };
+}
+
+function note(kind, ...content) {
+	const work = $('work') || view;
+	work.replaceChildren(h('div', { className: `note ${kind}` }, ...content));
+}
+
+async function saveToMod(choice, name, bytes) {
+	const path = modPath(name);
+	const out = await api('save', { mod: choice.mod, path, data: toBase64(bytes), description: choice.description });
+	return [`Saved to `, h('code', {}, `mods/${choice.mod}/${path}`), out.created ? ' — a new mod, switched on.' : '.',
+		h('br'), 'It reaches the game after ', h('b', {}, 'Settings → Mods → Apply'), '.'];
+}
+
+async function copyToMod(name) {
+	const choice = await chooseMod('Copy to a mod');
+	if (!choice) return;
+	try { note('ok', ...(await saveToMod(choice, name, await getFile(name)))); } catch (e) { note('bad', e.message); }
+}
+
+// ---- Out as PNG, and back
+
+async function editAsPng(name, k) {
+	const work = workName(name);
+	const files = {};
+	const base = name.split('\\').pop().replace(/\.[^.]+$/, '');
+	let readme;
+	try {
+		const bytes = await getFile(name);
+		if (k === 'sprite') {
+			const spr = readSpr(bytes);
+			for (let i = 0; i < spr.frames.length; i++) files[frameFile(i)] = toBase64(await encodePng(frameToImage(spr, i)));
+			readme = `${name}\n\nOne PNG per frame of the sprite, frame-000.png first. Edit them and save them here under the same names,\nthen press "Bring back into a mod" in the GRF browser. A frame you leave alone stays as it was.\n\nTransparent pixels are the background. Frames ${spr.indexed ? `0-${spr.indexed - 1}` : '(none)'} use the sprite's palette: each colour you paint is\nmatched to the nearest one in it, unless you choose "Make a new palette" when bringing them back.\nThe .act (where each frame is drawn, and when) is not changed, so keep a frame's subject where it was.\n`;
+		} else if (k === 'palette') {
+			files[`${base}.png`] = toBase64(await encodePng(paletteToImage(bytes, 8)));
+			readme = `${name}\n\nThe palette's 256 colours as a 16 x 16 grid of squares, index 0 at the top left.\nRecolour the squares (any size of picture works; the middle of each square is read),\nsave it here under the same name, then press "Bring back into a mod".\n`;
+		} else {
+			const img = await decodePicture(bytes, name);
+			files[`${base}.png`] = toBase64(await encodePng(img));
+			readme = `${name}\n\nEdit the PNG and save it here under the same name, then press "Bring back into a mod".\n${/\.bmp$/i.test(name) ? 'The client draws magenta (255, 0, 255) as see-through; transparent pixels become magenta again.\n' : ''}${/\.jpe?g$/i.test(name) ? 'It goes back as a JPEG, so transparency is lost.\n' : ''}`;
+		}
+		files['README.txt'] = toBase64(new TextEncoder().encode(readme));
+		const out = await api('export', { name: work, files });
+		showWork(name, k, work, out.dir, out.opened);
+	} catch (e) { note('bad', e.message); }
+}
+
+function showWork(name, k, work, dir, opened) {
+	const box = $('work');
+	if (!box) return;
+	const newPalette = h('input', { type: 'checkbox' });
+	const back = h('button', { className: 'primary', textContent: 'Bring back into a mod…' });
+	const again = h('button', { textContent: 'Open the folder' });
+	again.onclick = () => api('open', { name: work }).catch(e => note('bad', e.message));
+	back.onclick = () => bringBack(name, k, work, newPalette.checked);
+	box.replaceChildren(h('div', { className: 'panel' },
+		h('h2', {}, 'Editing as PNG'),
+		h('p', {}, opened ? 'The PNGs are in the folder that just opened: ' : 'The PNGs are in ', h('code', {}, dir), '.'),
+		h('p', {}, 'Edit them in any image editor and save them there under the same names. Then bring them back: they are turned into ', h('b', {}, name.split('.').pop().toUpperCase()), ' again and saved in a mod.'),
+		k === 'sprite' ? h('p', {}, h('label', {}, newPalette, ' Make a new palette from my pictures'), h('br'),
+			h('span', { className: 'muted' }, 'Leave this off for a body, hair or other sprite the game recolours with palettes: it would break them. Turn it on for new art in new colours.')) : null,
+		h('div', { className: 'bar' }, back, again)));
+}
+
+async function bringBack(name, k, work, newPalette) {
+	let edited;
+	try { edited = await api(`edited?name=${encodeURIComponent(work)}`); } catch (e) { note('bad', e.message); return; }
+	const pngs = Object.keys(edited.files);
+	if (!pngs.length) { note('bad', 'There are no PNGs in that folder now.'); return; }
+	let bytes, inexact = 0;
+	const summary = [];
+	try {
+		if (k === 'sprite') {
+			const spr = readSpr(await getFile(name));
+			const images = new Map();
+			const ignored = [];
+			for (const file of pngs) {
+				const m = /^frame-(\d+)\.png$/i.exec(file);
+				if (!m || Number(m[1]) >= spr.frames.length) { ignored.push(file); continue; }
+				images.set(Number(m[1]), await decodeBrowser(fromBase64(edited.files[file])));
+			}
+			const out = rebuildSprite(spr, images, { newPalette });
+			bytes = writeSpr(out.spr);
+			summary.push(`${images.size} frame${images.size === 1 ? '' : 's'} read.`);
+			if (out.inexact && !newPalette) inexact = out.inexact;
+			if (ignored.length) summary.push(` Not used (not a frame of this sprite): ${ignored.join(', ')}.`);
+		} else {
+			const file = pngs.length === 1 ? pngs[0] : pngs.find(f => f.toLowerCase() === `${name.split('\\').pop().replace(/\.[^.]+$/, '')}.png`.toLowerCase());
+			if (!file) { note('bad', 'Keep one PNG in the folder, with the name it was given.'); return; }
+			const img = await decodeBrowser(fromBase64(edited.files[file]));
+			bytes = k === 'palette' ? imageToPalette(img) : await encodeAs(img, name);
+		}
+	} catch (e) { note('bad', `Those PNGs could not be turned back: ${e.message}`); return; }
+	const choice = await chooseMod('Save the edited file to a mod');
+	if (!choice) return;
+	try {
+		const saved = await saveToMod(choice, name, bytes);
+		const result = await preview(name, k, bytes).catch(() => null);
+		$('work').replaceChildren(...[h('div', { className: 'note ok' }, ...saved, summary.length ? h('br') : null, ...summary),
+			inexact ? h('div', { className: 'note warn' }, `${inexact.toLocaleString()} pixels were colours the sprite's palette does not have, and took the nearest one it does. `,
+				'If the colours below are not what you painted, bring the frames back again with ', h('b', {}, 'Make a new palette from my pictures'), ' on.') : null,
+			h('p', { className: 'muted' }, 'As saved:'), ...[result].flat()].filter(Boolean));
+	} catch (e) { note('bad', e.message); }
+}
+
+loadList();
+</script>
+</body>
+</html>

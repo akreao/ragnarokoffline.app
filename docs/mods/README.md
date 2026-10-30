@@ -19,6 +19,7 @@ and that nobody would find by guessing:
 |---|---|
 | [Adding a mod to the registry](../MOD_REGISTRY.md) | putting a mod in the registry so the app can find and install it: files in this repository or your own repository with releases, `mod.json`, cutting a release, updates, and what a reviewer reads for ([short version](publishing.md)) |
 | [The map editor](MAP_EDITOR.md) | Settings → Tools → Map editor: making a map, or changing one of the client's, as a mod — ground, textures, walkability, water, light, models, NPCs, warps, monsters, sky and music — then Test in game. AI agents can drive it too (`ragnarok-map`, MCP) |
+| [The GRF browser](GRF_BROWSER.md) | Settings → Tools → GRF browser: every file in your client's GRFs, previewed (sprites animated, pictures, palettes, text, sounds) and copied into a mod; sprites, pictures and palettes out as PNGs for any image editor and back in the client's format |
 | [Custom maps](CUSTOM_MAPS.md) | a map that is in nobody's GRF: the files, how the server side is done for you, making the geometry, its sky, weather and music, and getting players there |
 | [Custom quests](CUSTOM_QUESTS.md) | a quest in the game's own quest log: kill counters the server keeps, the quest window's text, icons over the NPC, choosing a quest id, and what the quest system cannot do |
 | [Custom achievements](CUSTOM_ACHIEVEMENTS.md) | an achievement in the game's own achievement window: what completes it on the server, its tab and text in the window, rewards and titles, choosing an id, and the traps between the files |
