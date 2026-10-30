@@ -1393,6 +1393,18 @@ load	prerenewal	npc/pre-re/warps/other/sign.txt
 load	prerenewal	npc/pre-re/warps/guildcastles.txt
 load	prerenewal	npc/custom/population/arena.txt
 load	prerenewal	npc/custom/population/recruiter.txt
+file	npc/airports/airships.txt
+warp	airplane	243	73	#AirshipWarp-1	yuno	92	260
+warp	airplane	243	73	#AirshipWarp-1	einbroch	92	278
+warp	airplane	243	73	#AirshipWarp-1	lighthalzen	302	75
+warp	airplane	243	73	#AirshipWarp-1	hugel	181	146
+warp	airplane_01	243	73	#AirshipWarp-3	ra_fild12	292	204
+warp	airplane_01	243	73	#AirshipWarp-3	izlude	200	73
+warp	airplane_01	243	73	#AirshipWarp-3	yuno	12	261
+file	npc/airports/hugel.txt
+warp	hugel	178	142	toairplane#hugel	airplane	244	58
+file	npc/airports/rachel.txt
+warp	ra_fild12	295	208	toairplane#rachel	airplane_01	245	60
 file	npc/battleground/bg_common.txt
 warp	bat_room	57	81	bat1	bat_room	154	149
 warp	bat_room	57	90	bat2	bat_room	154	149
@@ -1484,6 +1496,10 @@ warp	bat_room	57	220	back_bgrooma01a	bat_room	154	150
 warp	bat_room	57	211	back_bgrooma01b	bat_room	154	150
 warp	bat_a01	169	227	underladd#bat_a01_1	bat_a01	178	228
 warp	bat_a01	208	164	underladd#bat_a01_2	bat_a01	200	171
+warp	bat_a01	194	267	barri_warp_up#bat_a01_a	bat_a01	194	261
+warp	bat_a01	194	265	barri_warp_down#bat_a01a	bat_a01	194	270
+warp	bat_a01	177	130	barri_warp_up#bat_a01_b	bat_a01	178	125
+warp	bat_a01	177	128	barri_warp_down#bat_a01b	bat_a01	178	134
 off	Croix Blacksmith#bat_a01
 off	Croix Vintenar#a01_b
 off	Guillaume Blacksmith#a01
@@ -1499,6 +1515,10 @@ warp	bat_room	113	220	back_bgrooma02a	bat_room	154	150
 warp	bat_room	113	211	back_bgrooma02b	bat_room	154	150
 warp	bat_a02	169	227	underladd#bat_a02_1	bat_a02	178	228
 warp	bat_a02	208	164	underladd#bat_a02_2	bat_a02	200	171
+warp	bat_a02	194	267	barri_warp_up#bat_a02_a	bat_a02	194	261
+warp	bat_a02	194	265	barri_warp_down#bat_a02a	bat_a02	194	270
+warp	bat_a02	177	130	barri_warp_up#bat_a02_b	bat_a02	178	125
+warp	bat_a02	177	128	barri_warp_down#bat_a02b	bat_a02	178	134
 off	Croix Blacksmith#bat_a02
 off	Croix Vintenar#a02_b
 off	Guillaume Blacksmith#a02
@@ -1509,6 +1529,14 @@ on	Croix Blacksmith#bat_a02
 on	Croix Vintenar#a02_b
 on	Guillaume Blacksmith#a02
 on	Guillaume Vintenar#a02_a
+file	npc/cities/lighthalzen.txt
+warp	lhz_in01	23	132	Rekenber Guard#li02	lhz_in01	33	224
+warp	lhz_in01	46	125	Rekenber Guard#li03	lhz_in01	33	224
+file	npc/cities/umbala.txt
+warp	umbala	140	197	Bungee Jump	nif_in	69	15
+warp	umbala	136	195	#jump	umbala	145	166
+file	npc/custom/etc/monster_arena.txt
+warp	gon_test	57	86	SummonPad	gon_test	57	99
 file	npc/custom/events/devil_square.txt
 on	Devil Square Guardian#2
 on	ord11-12
@@ -1694,6 +1722,10 @@ on	Chicken#06_hw_pf25
 on	Chicken#06_hw_pf26
 on	Chicken#06_hw_pf27
 on	Masta's chicken#
+file	npc/events/halloween_2008.txt
+warp	evt_zombie	16	142	zombiewarp001	payon	28	142
+warp	evt_zombie	122	27	zombiewarp002	payon	121	40
+warp	evt_zombie	267	89	zombiewarp003	payon	253	95
 file	npc/events/nguild/nguild_managers.txt
 on	Kafra Staff#
 file	npc/events/xmas.txt
@@ -1703,13 +1735,28 @@ on	Kafra Staff#
 file	npc/guild2/agit_main_se.txt
 on	Kafra Employee#
 file	npc/instances/EndlessTower.txt
+warp	e_tower	30	30	Huge Vortex	alberta	223	36
 off	Purification Stone#et1
 on	Purification Stone#et1
 file	npc/instances/NydhoggsNest.txt
+warp	spl_in01	110	21	trap#s_edq	spl_in01	109	58
+warp	man_in01	282	42	trap#edq2	man_in01	311	54
 off	Purification Stone#nyd2
 on	Purification Stone#nyd2
 on	Yggdrasil Gatekeeper
 file	npc/jobs/2-1/assassin.txt
+warp	in_moc_16	25	90	Guildsman#ASN2	in_moc_16	19	144
+warp	in_moc_16	25	90	Guildsman#ASN2	c_tower4	64	76
+warp	in_moc_16	25	90	Guildsman#ASN2	moc_fild16	206	229
+warp	in_moc_16	19	154	nameless_one	moc_fild16	206	151
+warp	in_moc_16	19	154	nameless_one	in_moc_16	19	76
+warp	in_moc_16	21	165	Test Guide#ASN	in_moc_16	19	76
+warp	in_moc_16	68	158	SinTrap	in_moc_16	19	161
+warp	in_moc_16	87	137	Keeper of the Door#ASN	in_moc_16	87	102
+warp	in_moc_16	89	98	Thomas#ASNTEST	in_moc_16	18	14
+warp	in_moc_16	87	48	Barcardi#ASN	in_moc_16	181	183
+warp	in_moc_16	182	169	Maze Assistant	in_moc_16	181	183
+warp	in_moc_16	149	80	Guildmaster#ASN2	in_moc_16	17	19
 off	Keeper of the Door#ASN
 on	Keeper of the Door#ASN
 on	[Barcardi]
@@ -1720,12 +1767,18 @@ on	[Khai]
 on	[The Anonymous One]
 on	[Thomas]
 file	npc/jobs/2-1/hunter.txt
+warp	job_hunte	178	32	Guide#hnt	payon_in02	21	27
+warp	job_hunte	93	101	Switch#hnt	job_hunte	176	22
+warp	job_hunte	89	139	exit#hnttest	payon_in02	21	27
+warp	job_hunte	89	139	exit#hnttest	payon_in03	128	7
+warp	job_hunte	52	140	HntTrap	job_hunte	176	22
 off	Manager#hnt
 off	exit#hnttest
 on	Manager#hnt
 on	Switch#hnt
 on	exit#hnttest
 file	npc/jobs/2-1/knight.txt
+warp	job_knt	143	57	Warp#knt	prt_in	80	100
 off	Knight1
 off	Knight2
 off	Knight3
@@ -1736,6 +1789,14 @@ on	Knight3
 on	Timer#knt
 on	Warp#knt
 file	npc/jobs/2-1/priest.txt
+warp	job_prist	24	109	prst1_1	job_prist	168	17
+warp	job_prist	168	45	Deviruchi#prst	c_tower2	168	33
+warp	job_prist	168	45	Deviruchi#prst	mjolnir_05	200	200
+warp	job_prist	168	80	Doppelganger#prst	gef_dun02	210	177
+warp	job_prist	168	115	Dark Lord#prst	gl_church	145	170
+warp	job_prist	168	150	Baphomet#prst	glast_01	200	203
+warp	job_prist	168	180	prst2_1	job_prist	98	40
+warp	job_prist	98	105	prst3_1	prt_church	15	36
 off	Mummy1_1
 off	Mummy2_1
 off	Mummy3_1
@@ -1758,6 +1819,9 @@ on	Zombie3_1
 on	Zombie4_1
 on	Zombie5_1
 file	npc/jobs/2-1/wizard.txt
+warp	job_wiz	114	169	Room of Water#Failed	geffen	120	110
+warp	job_wiz	116	97	Room of Earth#Failed	geffen	120	110
+warp	job_wiz	46	99	Room of Fire#Failed	geffen	120	110
 off	Room of Earth
 off	Room of Earth#Door
 off	Room of Earth#Failed
@@ -1795,6 +1859,9 @@ on	Summoner#cr2
 on	Summoner#cr3
 on	Summoner#cr4
 file	npc/jobs/2-2/dancer.txt
+warp	job_duncer	69	110	dance#return	comodo	188	162
+warp	job_duncer	66	110	dance#return#2	comodo	188	162
+warp	job_duncer	72	110	dance#return#3	comodo	188	162
 on	dance#cen
 on	dance#down
 on	dance#left
@@ -1803,6 +1870,40 @@ on	dance#return#2
 on	dance#return#3
 on	dance#right
 on	dance#up
+file	npc/jobs/2-2/monk.txt
+warp	prt_monk	59	247	Guarding Monk#mk	prt_fild03	357	256
+warp	monk_test	387	350	Supervisor#race_monk	monk_test	385	388
+warp	monk_test	387	350	Supervisor#race_monk	prt_monk	194	168
+warp	monk_test	166	278	exit_monk#1	prt_monk	196	168
+warp	monk_test	166	178	exit_monk#2	prt_monk	196	168
+warp	monk_test	270	278	exit_monk#3	prt_monk	196	168
+file	npc/jobs/2-2/rogue.txt
+warp	cmd_fild09	106	195	Warp#1	in_rogue	246	25
+warp	cmd_fild09	335	143	Warp#2	in_rogue	169	34
+warp	cmd_fild04	304	180	Warp#3	in_rogue	164	106
+warp	in_rogue	270	130	he_to_rogue#rg	in_rogue	10	21
+warp	in_rogue	200	389	gen_ro#1	mag_dun02	181	176
+warp	in_rogue	100	389	gen_ro#2	mag_dun02	181	176
+warp	in_rogue	150	389	gen_ro#3	mag_dun02	181	176
+warp	in_rogue	250	389	gen_ro#4	mag_dun02	181	176
+warp	in_rogue	9	389	oneway_to_gu	in_rogue	367	10
+warp	in_rogue	370	320	quest_out	in_rogue	378	113
+warp	in_rogue	15	184	mob_rogue#1	mag_dun02	181	176
+warp	in_rogue	15	273	mob_rogue#2	mag_dun02	181	176
+warp	in_rogue	15	333	mob_rogue#3	mag_dun02	181	176
+warp	in_rogue	39	341	mob_rogue#4	mag_dun02	181	176
+warp	in_rogue	102	334	mob_rogue#5	mag_dun02	181	176
+warp	in_rogue	58	309	mob_rogue#6	mag_dun02	181	176
+warp	in_rogue	101	264	mob_rogue#7	mag_dun02	181	176
+warp	in_rogue	140	312	mob_rogue#8	mag_dun02	181	176
+warp	in_rogue	139	246	mob_rogue#9	mag_dun02	181	176
+warp	in_rogue	197	249	mob_rogue#10	mag_dun02	181	176
+warp	in_rogue	96	205	mob_rogue#11	mag_dun02	181	176
+warp	in_rogue	86	187	mob_rogue#12	mag_dun02	181	176
+warp	in_rogue	223	187	mob_rogue#13	mag_dun02	181	176
+warp	in_rogue	233	207	mob_rogue#14	mag_dun02	181	176
+warp	in_rogue	244	319	mob_rogue#15	mag_dun02	181	176
+warp	in_rogue	334	319	mob_rogue#16	mag_dun02	181	176
 file	npc/jobs/2-2/sage.txt
 off	Arena#1
 off	Arena#2
@@ -1812,10 +1913,15 @@ off	Test Helper#sg
 on	Arena#1
 on	Arena#2
 on	Arena#Doorkeeper
+file	npc/jobs/2-2e/SoulLinker.txt
+warp	job_soul	30	31	SLTester	morocc	157	47
 file	npc/jobs/valkyrie.txt
 warp	valkyrie	48	73	valk01#1	valkyrie	48	64
 warp	valkyrie	48	66	valk01#2	valkyrie	48	75
 file	npc/other/arena/arena_aco.txt
+warp	arena_room	114	102	onlyaco#arena	arena_room	135	129
+warp	force_5-1	62	26	force_08_01#aco	force_5-1	40	26
+warp	prt_are_in	22	29	arn_warp_aco	arena_room	100	75
 off	arn_warp_aco
 on	arena#aco
 on	arn_warp_aco
@@ -1848,6 +1954,15 @@ on	force_09start#pri
 on	force_exit#aco
 on	onlyaco#arena
 file	npc/other/arena/arena_lvl50.txt
+warp	force_1-1	62	26	force_08_01#50	force_1-1	40	26
+warp	force_1-1	25	44	force_01_02#50	force_1-1	25	69
+warp	force_1-1	25	134	force_02_03#50	force_1-1	25	159
+warp	force_1-1	44	174	force_03_04#50	force_1-1	69	174
+warp	force_1-1	134	174	force_04_05#50	force_1-1	159	174
+warp	force_1-1	174	155	force_05_06#50	force_1-1	174	130
+warp	force_1-1	174	65	force_06_07#50	force_1-1	174	40
+warp	force_1-1	155	26	force_07_08#50	force_1-1	132	26
+warp	force_1-1	99	54	force_08_09#50	force_1-1	99	82
 on	Heel and Toe#arena
 on	arena#50
 on	force_01_02#50
@@ -1861,6 +1976,15 @@ on	force_08_01#50
 on	force_08_09#50
 on	force_exit#50
 file	npc/other/arena/arena_lvl60.txt
+warp	force_2-1	62	26	force_08_01#60	force_2-1	40	26
+warp	force_2-1	25	44	force_01_02#60	force_2-1	25	69
+warp	force_2-1	25	134	force_02_03#60	force_2-1	25	159
+warp	force_2-1	44	174	force_03_04#60	force_2-1	69	174
+warp	force_2-1	134	174	force_04_05#60	force_2-1	159	174
+warp	force_2-1	174	155	force_05_06#60	force_2-1	174	130
+warp	force_2-1	174	65	force_06_07#60	force_2-1	174	40
+warp	force_2-1	155	26	force_07_08#60	force_2-1	132	26
+warp	force_2-1	99	54	force_08_09#60	force_2-1	99	82
 on	Minilover#arena
 on	arena#60
 on	force_01_02#60
@@ -1874,6 +1998,15 @@ on	force_08_01#60
 on	force_08_09#60
 on	force_exit#60
 file	npc/other/arena/arena_lvl70.txt
+warp	force_3-1	62	26	force_08_01#70	force_3-1	40	26
+warp	force_3-1	25	44	force_01_02#70	force_3-1	25	69
+warp	force_3-1	25	134	force_02_03#70	force_3-1	25	159
+warp	force_3-1	44	174	force_03_04#70	force_3-1	69	174
+warp	force_3-1	134	174	force_04_05#70	force_3-1	159	174
+warp	force_3-1	174	155	force_05_06#70	force_3-1	174	130
+warp	force_3-1	174	65	force_06_07#70	force_3-1	174	40
+warp	force_3-1	155	26	force_07_08#70	force_3-1	132	26
+warp	force_3-1	99	54	force_08_09#70	force_3-1	99	82
 on	Cadillac#arena
 on	arena#70
 on	force_01_02#70
@@ -1887,6 +2020,15 @@ on	force_08_01#70
 on	force_08_09#70
 on	force_exit#70
 file	npc/other/arena/arena_lvl80.txt
+warp	force_4-1	62	26	force_08_01#80	force_4-1	40	26
+warp	force_4-1	25	44	force_01_02#80	force_4-1	25	69
+warp	force_4-1	25	134	force_02_03#80	force_4-1	25	159
+warp	force_4-1	44	174	force_03_04#80	force_4-1	69	174
+warp	force_4-1	134	174	force_04_05#80	force_4-1	159	174
+warp	force_4-1	174	155	force_05_06#80	force_4-1	174	130
+warp	force_4-1	174	65	force_06_07#80	force_4-1	174	40
+warp	force_4-1	155	26	force_07_08#80	force_4-1	132	26
+warp	force_4-1	99	54	force_08_09#80	force_4-1	99	82
 on	Octus#arena
 on	arena#80
 on	force_01_02#80
@@ -1900,6 +2042,11 @@ on	force_08_01#80
 on	force_08_09#80
 on	force_exit#80
 file	npc/other/arena/arena_party.txt
+warp	prt_are_in	73	78	toarena#party	arena_room	100	75
+warp	prt_are_in	73	78	toarena#party	force_1-2	99	26
+warp	prt_are_in	73	79	toout#party	arena_room	100	75
+warp	prt_are_in	73	74	arena_out	arena_room	100	75
+warp	force_1-2	95	187	force_09_exit	prt_are_in	73	139
 off	toarena#party
 off	toout#party
 on	Helper#party
@@ -1956,6 +2103,9 @@ warp	auction_01	22	37	auction_entrance_prt	prontera	214	120
 warp	auction_02	151	17	auction_enterance_juno	yuno	132	119
 warp	auction_02	43	17	auction_enterance_lhz	lighthalzen	209	169
 file	npc/other/hugel_bingo.txt
+warp	que_bingo	49	125	end1a#bingo	que_bingo	45	186
+warp	que_bingo	50	138	out3#bingo	que_bingo	40	121
+warp	que_bingo	49	136	go3#bingo	que_bingo	49	125
 off	10a#bingo
 off	10b#bingo
 off	10c#bingo
@@ -2145,6 +2295,13 @@ on	TrapGlobal#race02
 on	starting#
 on	starting#race02_
 file	npc/other/poring_war.txt
+warp	poring_w01	103	70	#wop_warp_rtry	poring_w01	112	138
+warp	poring_w02	51	82	#wop_warp_a	poring_w02	57	82
+warp	poring_w02	146	82	#wop_warp_d	poring_w02	140	82
+warp	poring_w02	103	52	#aroom_ingate_wop	poring_w02	99	49
+warp	poring_w02	93	51	#aroom_outgate_wop	poring_w02	99	54
+warp	poring_w02	93	113	#droom_ingate_wop	poring_w02	98	116
+warp	poring_w02	103	114	#droom_outgate_wop	poring_w02	98	111
 off	#aroom_ingate_wop
 off	#aroom_outgate_wop
 off	#droom_ingate_wop
@@ -2165,7 +2322,17 @@ on	#wop_warp_rtry
 on	Deviruchi#wop_endmaster
 on	Mr. Doppel#wop_team_a
 on	Mr. Doppel#wop_team_d
+file	npc/other/pvp.txt
+warp	pvp_2vs2	40	40	Combat Square Staff#5	pvp_2vs2	39	7
+warp	pvp_2vs2	40	40	Combat Square Staff#5	pvp_c_room	84	39
+warp	pvp_room	51	19	out#eventpvp	prontera	107	60
+warp	pvp_room	51	19	out#eventpvp	morocc	157	96
+warp	pvp_room	51	19	out#eventpvp	geffen	120	36
+warp	pvp_room	51	19	out#eventpvp	payon	96	100
+warp	pvp_room	51	19	out#eventpvp	alberta	41	243
 file	npc/other/turbo_track.txt
+warp	alde_gld	183	204	en_turbo	alde_gld	183	199
+warp	alde_gld	183	204	en_turbo	turbo_room	100	65
 off	#cos_
 off	Broadcast#
 off	Guide#TBT_
@@ -2195,7 +2362,13 @@ warp	job_sword1	65	117	pitfall01-01	job_sword1	10	245
 warp	job_sword1	98	27	pitfall02-01	job_sword1	11	207
 warp	job_sword1	161	27	pitfall02-02	job_sword1	11	207
 warp	job_sword1	239	117	pitfall03-01	job_sword1	11	169
+warp	job_sword1	193	207	Test Hall Staff#swd_8	job_sword1	215	205
+warp	job_sword1	16	251	SwdTrap1	job_sword1	65	56
+warp	job_sword1	56	212	SwdTrap2	job_sword1	162	120
+warp	job_sword1	17	174	SwdTrap3	job_sword1	195	15
 file	npc/pre-re/jobs/2-2/crusader.txt
+warp	job_cru	98	105	Summoner#cr5	prt_castle	164	28
+warp	job_cru	168	180	Monster Summon#cr5	prt_castle	35	147
 off	Monster Summon#cr5
 on	Monster Summon#cr5
 file	npc/pre-re/quests/quests_morocc.txt
@@ -2214,6 +2387,13 @@ warp	prt_castle	273	284	#room21	prt_castle	221	338
 warp	prt_castle	225	318	#room12	prt_castle	276	263
 warp	prt_castle	273	264	#room22	prt_castle	221	318
 warp	prt_castle	221	308	#princeout	prt_castle	176	167
+warp	prt_castle	318	276	#eisen	prt_castle	318	368
+warp	prt_castle	336	276	#ern	prt_castle	368	308
+warp	prt_castle	300	276	#erich	prt_castle	274	368
+warp	prt_castle	330	271	#helmut	prt_castle	290	208
+warp	prt_castle	348	271	#poe	prt_castle	390	208
+warp	prt_castle	354	276	#peter	prt_castle	366	368
+warp	prt_castle	310	271	#urgen	prt_castle	340	208
 off	Aged Noble#rihart
 off	Prince#another_ern
 off	Prince#another_ern1
@@ -2721,6 +2901,8 @@ warp	ve_fild05	200	330	ve_fild5-1	ve_fild03	222	48
 warp	ve_fild05	359	192	ve_fild5-2	ve_fild06	80	183
 warp	ve_fild06	153	220	ve_fild6-1	veins	218	355
 warp	ve_fild07	147	371	ve_fild7-1	veins	146	28
+warp	ve_fild06	81	177	ve_fild6-2	ve_fild04	115	55
+warp	ve_fild06	81	177	ve_fild6-2	ve_fild05	354	191
 file	npc/pre-re/warps/fields/yuno_fild.txt
 warp	yuno_fild02	18	337	yunfild03	yuno_fild03	381	331
 warp	yuno_fild03	383	331	yunfild03-1	yuno_fild02	20	337
@@ -2807,6 +2989,21 @@ warp	que_job01	6	94	#maobar2	morocc	45	103
 warp	que_job01	17	48	#maobar3	que_job01	68	92
 warp	que_job01	68	96	#maobar4	que_job01	17	53
 warp	que_job01	65	50	#maobar4-2	que_job01	84	77
+warp	morocc	45	110	#maobar1	que_job01	9	94
+warp	morocc	45	110	#maobar1	morocc	45	103
+warp	que_job01	80	77	#maobar5	que_job01	61	50
+warp	que_job01	51	55	#roombar1	que_job01	15	8
+warp	que_job01	12	13	#maobar6	que_job01	52	50
+warp	que_job01	51	44	#roombar2	que_job01	52	50
+warp	que_job01	80	17	#maobar7	que_job01	52	50
+warp	que_job01	144	51	#maobar8	que_job01	52	50
+warp	que_job01	11	4	#maoexit1	que_job01	52	50
+warp	que_job01	80	27	#maoexit2	que_job01	52	50
+warp	que_job01	144	61	#maoexit3	que_job01	52	50
+warp	que_job01	15	8	#mao_table	que_job01	11	4
+warp	que_job01	144	57	#Rabsent	que_job01	144	61
+warp	que_job02	14	182	#maogate1	morocc	100	100
+warp	que_job03	14	182	#maogate2	morocc	100	100
 off	#Rabsent
 off	#mao_empty
 off	#mao_table
@@ -2909,7 +3106,24 @@ on	Member#mao4
 on	R#maogate1
 on	R#maogate2
 on	Valdes#1
+file	npc/quests/eye_of_hellion.txt
+warp	geffen	110	200	Sage Welshyun#hellion	gef_fild09	368	88
+warp	gef_fild09	296	59	Hidden Cave#hellion	gef_dun03	140	119
 file	npc/quests/kiel_hyre_quest.txt
+warp	kh_vila	191	14	Wall#kh	kh_vila	17	177
+warp	kh_vila	181	178	Vicious Dog#khp1	kh_vila	173	182
+warp	lighthalzen	188	200	Abduction_trigger	kh_mansion	30	75
+warp	kh_mansion	25	79	Mysterious Woman#kh	yuno	54	209
+warp	kh_mansion	25	79	Mysterious Woman#kh	kh_mansion	83	50
+warp	kh_mansion	27	27	Kiehl_Room_Warp	kh_kiehl01	10	31
+warp	yuno	273	141	Rosimmir_Entrance	kh_rossi	20	92
+warp	kh_kiehl01	43	33	Big_Door_1_Warp	kh_kiehl01	55	33
+warp	kh_kiehl01	173	39	Big_Door_2_Warp	kh_kiehl01	173	35
+warp	kh_kiehl01	78	107	Big_Door_3_Warp	kh_kiehl01	82	108
+warp	kh_kiehl01	41	178	Big_Door_4_Warp	kh_kiehl01	38	178
+warp	kh_kiehl01	166	186	Big_Door_5_Warp	kh_kiehl02	50	7
+warp	kh_kiehl01	166	186	Big_Door_5_Warp	kh_kiehl01	166	183
+warp	kh_kiehl02	49	56	Kiehl_Room_Exit	lighthalzen	193	200
 off	Big_Door_1_Warp
 off	Big_Door_2_Warp
 off	Big_Door_3_Warp
@@ -2925,6 +3139,7 @@ on	Big_Door_5_Warp
 on	Kiehl_Room_Exit
 on	Kiehl_Room_Warp
 file	npc/quests/newgears/2004_headgears.txt
+warp	in_orcs01	31	93	Orc Warrior#1	gef_fild10	100	100
 off	 #Alarm Mask Man1
 off	 #Alarm Mask Man2
 off	 #Alarm Mask Man3
@@ -2937,6 +3152,8 @@ on	 #Alarm Mask Man3
 on	 #Alarm Mask Man4
 on	Nine Tails#Kitsune Man
 on	Nine Tails#Kitsune Mask
+file	npc/quests/newgears/2008_headgears.txt
+warp	in_orcs01	119	106	Orc Lady#2008hat03	gef_fild10	223	203
 file	npc/quests/okolnir.txt
 warp	que_qaru01	345	23	Gate02#gq_aru01	arug_cas01	157	369
 warp	que_qaru02	345	23	Gate02#gq_aru02	arug_cas02	349	355
@@ -2993,6 +3210,19 @@ warp	que_job01	65	50	que_job01#05	que_job01	84	77
 warp	yuno_fild09	234	133	#moc2_fild09-que_dan02	que_dan02	13	10
 warp	que_dan02	13	6	#moc_que_dan02-fild09	yuno_fild09	234	129
 warp	que_dan02	88	11	#moc2_b1-b2	que_dan02	21	33
+warp	mid_campin	376	120	Research Official#ep131	mid_camp	165	236
+warp	morocc	45	110	que_job01#01	que_job01	9	94
+warp	que_job01	80	77	que_job01#04	que_job01	61	50
+warp	que_job01	51	55	que_job01#room_1	que_job01	11	7
+warp	que_job01	12	13	#room1_warp13	que_job01	52	50
+warp	que_job01	11	4	que_job01#room1_out	que_job01	52	50
+warp	que_job01	51	44	que_job01#room_2	que_job01	80	21
+warp	que_job01	80	17	#room2_1_warp	que_job01	52	50
+warp	que_job01	144	51	#room2_2_warp	que_job01	52	50
+warp	que_job01	80	27	que_job01#room2_1_out	que_job01	52	50
+warp	que_job01	144	61	que_job01#room2_2_out	que_job01	52	50
+warp	que_dan01	32	27	#moc2_event_on	morocc	100	100
+warp	que_dan02	21	37	#moc2_b1_gate	que_dan02	91	11
 off	Botanist#ep13_1
 off	Command Timer#edq
 off	Expedition Messenger#2
@@ -3033,6 +3263,11 @@ warp	man_in01	65	125	to_out2#ep13mdwarp03	man_in01	179	58
 warp	spl_in02	236	86	terrashome_out	splendide	285	139
 warp	nyd_dun01	255	142	nynm_dun1f_to_2f	nyd_dun02	61	265
 warp	nyd_dun02	56	264	nynm_dun2f_to_1f	nyd_dun01	249	143
+warp	spl_fild01	375	109	to_dun01#ep13_2	nyd_dun01	72	125
+warp	nyd_dun01	62	233	Trunk of a Tree#ep13	spl_fild01	376	65
+warp	man_in01	183	58	to_in013ep13mdwarp01	man_in01	13	125
+warp	splendide	287	140	terrashome_in	spl_in02	237	89
+warp	nyd_dun02	178	255	Strange Device#ep13_out	nyd_dun02	139	268
 on	#hu_01
 on	#hu_02
 on	#hu_03
@@ -3075,6 +3310,9 @@ file	npc/quests/quests_airship.txt
 off	Ferlock#lab
 on	Ferlock#lab
 file	npc/quests/quests_amatsu.txt
+warp	ama_test	50	100	Coach#ama	amatsu	223	230
+warp	ama_test	50	100	Coach#after	amatsu	223	230
+warp	ama_test	50	100	backwarp#ama	amatsu	115	95
 off	Am Mut#ama
 off	Coach#after
 off	Coach#ama
@@ -3099,13 +3337,18 @@ on	Haggard Man
 file	npc/quests/quests_brasilis.txt
 warp	bra_in01	138	174	outbathroom#bra	bra_in01	12	183
 warp	bra_in01	206	98	tobath#bra	bra_in01	138	176
+warp	bra_fild01	75	83	Toucan#bra	bra_fild01	68	146
+warp	bra_in01	12	185	inbathroom#bra	bra_in01	138	176
 off	Ghost#bra
 off	Ghost#bra_end
 on	Ghost#bra
 on	Ghost#bra_end
 file	npc/quests/quests_ein.txt
+warp	einbroch	51	52	Security#ein	ein_in01	283	25
+warp	ein_in01	21	147	Megass#EIN	einbroch	112	245
 on	Einbroch Smog Alert
 file	npc/quests/quests_gonryun.txt
+warp	yuno_in01	104	94	go away#gnbs	yuno	246	143
 off	#getitem1-1
 off	#getitem1-2
 off	#getitem1-3
@@ -3215,6 +3458,15 @@ on	trace3-5#gnbs
 on	trace3-6#gnbs
 on	trace3-7#gnbs
 file	npc/quests/quests_hugel.txt
+warp	odin_tem03	266	302	warpinside#1	que_hugel	36	179
+warp	odin_tem03	288	271	warpinside#2	que_hugel	36	179
+warp	odin_tem03	283	241	warpinside#3	que_hugel	36	179
+warp	odin_tem03	179	275	warpinside#4	que_hugel	36	179
+warp	odin_tem03	320	264	warpinside#5	que_hugel	36	179
+warp	que_hugel	35	29	object#1	que_hugel	163	31
+warp	que_hugel	163	178	object#3	odin_tem03	264	260
+warp	hu_in01	15	108	alex#warp	hu_in01	15	155
+warp	hugel	52	90	alex#warp2	hu_in01	102	90
 off	#DrawerOpener
 off	HiddenExplosion
 off	Postell Schuwell#D
@@ -3251,6 +3503,24 @@ on	warpinside#3
 on	warpinside#4
 on	warpinside#5
 file	npc/quests/quests_juperos.txt
+warp	juperos_01	100	91	jupe_goto#1	juperos_02	128	278
+warp	juperos_01	100	91	jupe_goto#1	juperos_01	96	91
+warp	juperos_01	100	91	jupe_goto#2	juperos_02	128	278
+warp	juperos_02	130	149	Restricted Area#jupe	jupe_gate	50	167
+warp	jupe_area1	83	221	Warp#1-1	jupe_area1	47	259
+warp	jupe_area1	21	225	Warp#1-2	jupe_area1	21	191
+warp	jupe_area1	33	137	Warp#1-3	jupe_area1	33	105
+warp	jupe_area1	57	53	Warp#1-4	jupe_area1	83	157
+warp	jupe_area1	117	157	LeverWarp#ufe	jupe_gate	28	30
+warp	jupe_area2	80	221	Warp#2-1	jupe_area2	116	259
+warp	jupe_area2	142	225	Warp#2-2	jupe_area2	142	191
+warp	jupe_area2	130	137	Warp#2-3	jupe_area2	130	105
+warp	jupe_area2	106	53	Warp#2-4	jupe_area2	80	157
+warp	jupe_area2	46	157	LeverWarp#ufe2	jupe_gate	71	29
+warp	jupe_gate	50	173	gate#start	juperos_02	130	142
+warp	jupe_gate	50	173	gate#start	jupe_gate	50	168
+warp	jupe_gate	50	171	gate#start#2	juperos_02	130	142
+warp	juperos_02	33	59	jupe_goto2F	juperos_01	120	72
 off	4F Enter#ufe
 off	Annihilation#ufe
 off	Elevator Escape#ufe
@@ -3375,6 +3645,15 @@ file	npc/quests/quests_lighthalzen.txt
 warp	lhz_in03	12	162	#to_lhz	lighthalzen	321	322
 warp	lhz_que01	97	33	#li_toin01	lhz_in01	43	120
 warp	lhz_in01	278	132	#li_toin02	lhz_in01	43	120
+warp	lhz_dun02	224	6	Exit1#lt	lhz_cube	231	90
+warp	lhz_in01	206	129	#kiz09	lhz_que01	26	27
+warp	lhz_in01	282	166	#kiz10	lhz_que01	98	59
+warp	lighthalzen	324	322	#li_door	lhz_in03	15	162
+warp	lhz_in01	43	114	#li_toend	lhz_que01	97	30
+warp	lhz_in01	43	114	#li_toend	lhz_in01	277	130
+warp	lhz_fild01	76	214	Esuna Trigger	lhz_fild01	64	223
+warp	lhz_in01	187	31	#Sneak	lhz_in01	177	35
+warp	lhz_in01	177	44	Timer_Sneak	lhz_in01	191	49
 off	#bully1
 off	#bully2
 off	#packidentity
@@ -3404,6 +3683,12 @@ warp	louyang	129	121	Storage Warp#1	lou_in02	203	161
 warp	louyang	125	121	Storage Warp#2	lou_in02	198	161
 warp	lou_in02	198	159	Storage Warp#3	louyang	124	118
 warp	lou_in02	203	159	Storage Warp#4	louyang	129	118
+warp	lou_in02	62	183	Chef#1-2	louyang	280	161
+warp	lou_in01	101	125	Trap#lou_in1	louyang	218	246
+warp	lou_in01	101	129	Trap#lou_in2	louyang	218	246
+warp	lou_in01	101	134	Trap#lou_in3	louyang	218	246
+warp	lou_in01	114	163	Trap#lou_in4	louyang	218	246
+warp	lou_in01	114	165	Trap#lou_in5	louyang	218	246
 file	npc/quests/quests_morocc.txt
 warp	que_ba	265	34	#bpast_1to2	que_ba	156	37
 warp	que_ba	183	25	#bpast_2to3_1	que_ba	72	25
@@ -3412,6 +3697,16 @@ warp	ein_fild01	28	261	cave_in1	cave	97	24
 warp	cave	97	21	case_out1	ein_fild01	28	255
 warp	cave	86	167	zid_in	cave	77	185
 warp	cave	79	180	zid_out	cave	90	162
+warp	moc_fild20	354	183	MocConGuard	morocc	160	61
+warp	moc_fild20	354	183	MocConGuard	moc_fild21	38	193
+warp	moc_fild20	354	183	MocConGuard	moc_fild22	38	193
+warp	que_ba	247	33	#bpast_1_1	ama_dun03	119	110
+warp	que_ba	102	56	#3room_barmunt	yuno_in04	100	3
+warp	que_ba	102	56	#3room_barmunt	que_ba	53	232
+warp	que_ba	53	232	#garas_f_yume	yuno_in04	100	3
+warp	que_ba	264	186	#barmut_room1	yuno_in04	108	57
+warp	que_ba	270	270	#barmunt_living	yuno_in04	165	122
+warp	cave	82	97	Cave Settler#g1	cave	81	92
 off	#barmut_onna
 off	Jaeda#garas1
 off	Satan Broadcast#edq
@@ -3425,6 +3720,10 @@ on	Satan Summon#edq
 on	Time-Space Gap#edq
 file	npc/quests/quests_moscovia.txt
 warp	mosk_que	47	217	Escape#rus30	mosk_fild02	237	266
+warp	moscovia	136	46	Find#ship	mosk_fild01	95	93
+warp	mosk_ship	81	110	#findship	mosk_fild01	95	93
+warp	mosk_in	215	46	Baba Yaga, the Horrible	mosk_dun02	53	217
+warp	mosk_dun01	45	250	1#rus27	mosk_que	49	22
 off	#findship
 off	1#rus27
 off	Gray Wolf#rus03
@@ -3442,6 +3741,14 @@ on	Old Treasure Box#rus37
 on	Wall#rus04
 file	npc/quests/quests_nameless.txt
 warp	que_temsky	99	7	quetemskyout	ra_temin	276	231
+warp	nameless_in	12	37	Out_from_Monastery	nameless_n	168	252
+warp	nameless_i	168	257	outtoin_01#mo	nameless_in	12	41
+warp	nameless_n	145	162	AideAmi#Aru	nameless_n	158	169
+warp	nameless_n	145	162	AideAmi#Aru	abbey01	51	15
+warp	que_temsky	100	93	#em_sky_s	rachel	142	136
+warp	moc_fild17	209	235	Odd Slab	z_agit	98	40
+warp	z_agit	98	44	EntranceCheck#1	moc_fild17	209	235
+warp	z_agit	98	92	EntranceCheck#2	moc_fild17	209	235
 off	#ZGuard
 off	#zdan_broad
 off	Out_from_Monastery
@@ -3456,6 +3763,19 @@ warp	prt_church	166	106	#prtchhall	prt_church	112	122
 off	Marjana#poison
 on	Marjana#poison
 file	npc/quests/quests_rachel.txt
+warp	ice_dun03	150	137	#ice_4f_1	ice_dun04	33	144
+warp	ice_dun03	138	148	#ice_4f_2	ice_dun04	33	144
+warp	ice_dun03	161	148	#ice_4f_3	ice_dun04	33	144
+warp	ice_dun03	151	162	#ice_4f_4	ice_dun04	33	144
+warp	ra_temple	119	180	Temple Entrance#ra_tem	ra_temin	169	23
+warp	ra_temple	67	209	zawa00	que_rachel	62	82
+warp	que_rachel	169	18	Quest Temple Exit#ra_tem	ra_temple	119	175
+warp	ra_temin	134	131	gyoin1#rachel	ra_temin	276	239
+warp	ra_temin	275	226	#rachel33	que_temsky	99	11
+warp	ra_temin	275	226	#rachel33	ra_temsky	99	11
+warp	ra_temin	293	144	out1#rachel	ra_temin	300	153
+warp	ra_temin	28	319	saint1#rachel	ra_san01	140	135
+warp	que_san04	119	203	imir3#rachel	rachel	163	152
 off	#ice_4f_1
 off	#ice_4f_2
 off	#ice_4f_3
@@ -3465,6 +3785,7 @@ on	#ice_4f_2
 on	#ice_4f_3
 on	#ice_4f_4
 file	npc/quests/quests_umbala.txt
+warp	um_in	141	46	#!@#$%	umbala	94	181
 off	#!@#$%
 off	#unpc
 off	Umpokoriohtan
@@ -3473,6 +3794,17 @@ on	#unpc
 on	Umpokoriohtan
 file	npc/quests/quests_veins.txt
 warp	ra_in01	48	352	que_sch_jail	morocc	56	89
+warp	ra_temin	87	133	Rachel Guard#vol1	ra_temin	85	137
+warp	ra_temin	82	133	Rachel Guard#vol2	ra_temin	85	137
+warp	ra_temin	85	131	path_vol1	ra_temin	85	137
+warp	ra_temin	82	131	path_vol1#2	ra_temin	85	137
+warp	ra_temin	82	127	path_vol1#3	ra_temin	84	124
+warp	thor_camp	194	220	#Colonel1	thor_camp	156	68
+warp	thor_camp	162	182	#Colonel2	thor_camp	156	68
+warp	thor_camp	141	62	VeinsWarp	thor_camp	156	67
+warp	thor_v02	143	78	#totcamp	que_thor	65	55
+warp	que_thor	69	56	#tov_1	thor_v02	146	84
+warp	que_thor	187	56	#tov_2	thor_v02	146	84
 off	????#sch1
 off	????#sch2
 off	????#sch3
@@ -3500,8 +3832,22 @@ on	Rachel Guard#vol1
 on	Rachel Guard#vol1_1
 on	Rachel Guard#vol2
 on	Rachel Guard#vol2_1
+file	npc/quests/seals/brisingamen_seal.txt
+warp	gef_dun01	203	48	#lowentrace1	que_god02	47	53
+warp	que_god02	54	64	Soldier#1_brising	que_god02	174	49
+warp	que_god02	174	49	#lowenone	que_god02	120	52
+warp	que_god02	120	52	#monologue	que_god02	18	127
+warp	prt_fild02	185	269	#brisindwarf2	prt_fild02	165	224
+warp	mjo_dun02	126	36	#brisindwarf4	mjo_dun02	118	56
 file	npc/quests/seals/god_weapon_creation.txt
+warp	que_god01	154	67	god_failwarp#1	prontera	156	324
 on	god_failwarp#
+file	npc/quests/seals/sleipnir_seal.txt
+warp	que_god01	84	92	god_sl_w0	que_god01	60	88
+warp	que_god01	46	97	god_sl_w1	que_god01	62	119
+warp	que_god01	16	97	god_sl_w2	que_god01	12	119
+warp	que_god01	17	80	god_sl_w3	que_god01	12	52
+warp	que_god01	47	80	god_sl_w4	que_god01	50	52
 file	npc/quests/skills/bard_skills.txt
 off	Yhelle#bard_chick2
 off	Yhelle#bard_chick3
@@ -3542,6 +3888,11 @@ on	Waiting Room#rogue10
 file	npc/quests/thana_quest.txt
 warp	tha_scene01	30	30	scene	tha_scene01	131	220
 warp	tha_t04	81	36	to 5th Floor	tha_t05	62	8
+warp	hu_fild01	140	163	Tower Keeper	tha_scene01	131	220
+warp	tha_t02	227	163	3rdf_warp#tt	tha_t02	227	158
+warp	tha_t02	227	163	3rdf_warp#tt	tha_t03	219	159
+warp	tha_t12	130	52	#gateto_thanatos	thana_boss	136	116
+warp	tha_t06	119	120	to 7th Floor	thana_step	69	369
 off	#gateto_thanatos
 off	3rdf_warp#tt
 off	Memory Seal#tt5
@@ -3550,6 +3901,22 @@ on	#thanatos_seal
 on	3rdf_warp#tt
 on	Memory Seal#tt5
 file	npc/quests/the_sign_quest.txt
+warp	prt_maze02	58	150	#movesign	prt_maze02	11	146
+warp	prt_maze02	58	150	#movesign	prt_maze03	55	8
+warp	prt_maze02	58	150	#movesign	prt_maze01	62	129
+warp	prt_maze02	18	126	#mazewarp	prt_maze02	90	170
+warp	cmd_in01	14	14	Examiner#sd	cmd_in01	29	33
+warp	gef_fild07	182	241	#Valkyrie Warp	himinn	49	10
+warp	nif_in	186	168	#witch	umbala	132	203
+warp	niflheim	348	257	#Cursed Soul	niflheim	34	162
+warp	geffen	119	55	Geffenia Warp	gefenia01	58	169
+warp	geffen	119	55	Geffenia Warp	gefenia02	116	115
+warp	geffen	119	55	Geffenia Warp	gefenia03	130	206
+warp	geffen	119	55	Geffenia Warp	gefenia04	133	88
+warp	geffen	119	55	Geffenia Warp	geffen	116	115
+warp	que_sign01	196	44	Warp#serin	niflheim	30	156
+warp	que_sign01	197	195	Warp#witch	niflheim	30	156
+warp	que_sign02	378	235	sign_w6	que_sign01	197	190
 off	Dark Lord#serin
 off	Examiner#sd
 off	Geffenia Warp
@@ -3572,6 +3939,11 @@ on	s_dance#down
 on	s_dance#left
 on	s_dance#right
 on	s_dance#up
+file	npc/re/custom/lasagna/lasagna_npcs.txt
+warp	lasagna	205	325	Eggling#dorcon	conch_in	58	61
+warp	lasagna	205	325	Eggling#dorcon	izlude	193	209
+warp	lasagna	205	325	Eggling#dorcon	malangdo	213	110
+warp	lasagna	56	186	#dorcon96	lasa_in01	162	61
 file	npc/re/guild/invest_main.txt
 off	Revoting Manager#Invest2
 on	Revoting Manager#Invest1
@@ -3584,10 +3956,19 @@ file	npc/re/instances/DevilTower.txt
 on	#tnmtks01
 file	npc/re/instances/WolfchevLaboratory.txt
 warp	lhz_dun04	244	61	lhz_dun04_lhz_dun03	lhz_dun03	240	75
+warp	lhz_dun03	239	78	lhz_dun03_lhz_dun04	que_lhz	245	56
+warp	lhz_dun03	239	78	lhz_dun03_lhz_dun04	lhz_dun04	245	56
+warp	que_lhz	206	74	Researcher#02	que_lhz	96	136
+warp	que_lhz	148	251	#Move2lab	lhz_dun04	148	269
 file	npc/re/jobs/2-2/crusader.txt
+warp	job_cru	98	105	Summoner#cr5	prt_cas	238	94
+warp	job_cru	168	180	Monster Summon#cr5	prt_cas	238	94
 off	Monster Summon#cr5
 on	Monster Summon#cr5
 file	npc/re/jobs/2e/kagerou_oboro.txt
+warp	job_ko	57	16	Sight#ko_00	amatsu	147	136
+warp	job_ko	46	41	Sight#ko_40	amatsu	147	136
+warp	job_ko	46	41	Sight#ko_40	job_ko	35	113
 on	Kuuga Gai#ko2
 on	Red Leopard Joe#ko2
 file	npc/re/jobs/2e/rebellion.txt
@@ -3600,10 +3981,12 @@ warp	job_gun	105	97	shootingrange#2	job_gun	125	98
 warp	job_gun	156	115	shootingrange#3	job_gun	157	137
 warp	job_gun	152	154	shootingrange#4	job_gun	135	154
 warp	job_gun	130	146	shootingrange#5	job_gun	120	130
+warp	moc_fild12	261	318	Suspicious Man	moc_fild12	186	83
 off	Furnace Controller#2
 on	Furnace Controller#1
 on	Furnace Controller#2
 file	npc/re/jobs/3-1/archbishop.txt
+warp	yggdrasil01	220	47	#arch_pilgrimage	umbala	138	219
 off	#arch_2_01
 off	#arch_2_02
 off	#arch_2_03
@@ -3649,6 +4032,13 @@ on	#arch_3_02
 on	#arch_3_03
 on	#arch_end
 file	npc/re/jobs/3-1/guillotine_cross.txt
+warp	veins	206	56	#3rdgc_battleroom01	job3_guil02	34	44
+warp	job3_guil02	34	44	#3rdgc_room01_mag01	veins	178	62
+warp	job3_guil03	22	70	#3rdgc_event01	ve_fild02	330	379
+warp	job3_guil03	55	79	Barbed-Wire Entanglement	job3_guil03	57	79
+warp	job3_guil01	80	77	#gate_to_guil05	job3_guil01	60	50
+warp	job3_guil01	51	55	#gate_to_guil07	job3_guil01	12	7
+warp	job3_guil01	51	44	#gate_to_guil09	job3_guil01	79	23
 off	Renzak#3rdgc16
 on	#3rdgc_event01
 on	#3rdgc_room01_mag01
@@ -3670,6 +4060,7 @@ on	Renzak#3rdgc16
 file	npc/re/jobs/3-1/mechanic.txt
 on	#Door
 file	npc/re/jobs/3-1/ranger.txt
+warp	job3_rang02	180	78	Test Supervisor#jr_11	job3_rang02	250	49
 off	First Test Timer#jr_05
 off	Second Test Timer#jr_08
 off	Staff Rust#jr_09
@@ -3689,6 +4080,15 @@ on	Test Supervisor#jr_11
 on	Test Supervisor#jr_13
 on	Third Test Timer#jr_12
 file	npc/re/jobs/3-1/rune_knight.txt
+warp	glast_01	44	363	Rune Leader Jungberg	job3_rune01	80	65
+warp	gl_knt02	150	55	Rune Knight Staff	job3_rune01	80	65
+warp	job3_rune01	80	60	Rune Knight Captain	gl_knt02	150	55
+warp	job3_rune01	90	50	Rune Knight Lunarea	job3_rune02	38	40
+warp	job3_rune01	55	50	Rune Knight, Renoa	mid_camp	235	250
+warp	mid_camp	13	138	Dispatched Rune Knight#1	spl_fild01	355	325
+warp	mid_camp	13	138	Dispatched Rune Knight#1	mid_camp	50	153
+warp	spl_fild02	13	241	#Barricade1	spl_fild02	25	245
+warp	mid_camp	235	250	Sage Serpeone	job3_rune01	80	65
 off	job_rune_edq#1st_tb
 off	job_rune_edq#1st_tc
 off	job_rune_edq#1st_tcmc
@@ -3721,14 +4121,35 @@ off	Hollow Stone#Warlock
 off	The chamber of magic#4
 on	Hollow Stone#Warlock
 on	The chamber of magic#4
+file	npc/re/jobs/3-2/genetic.txt
+warp	job3_gen01	24	32	The gaze of Devries	job3_gen01	21	38
 file	npc/re/jobs/3-2/minstrel.txt
+warp	ice_dun01	157	15	#Minsicecave1	ice_dun01	157	23
+warp	ice_dun01	157	23	#Minsicecave2	ice_dun01	141	41
+warp	ice_dun01	141	41	#Minsicecave3	ice_dun01	120	35
+warp	ice_dun01	120	35	#Minsicecave4	ice_dun01	104	30
+warp	ice_dun01	104	30	#Minsicecave5	ice_dun01	86	23
+warp	ice_dun01	86	23	#Minsicecave6	ice_dun01	75	19
+warp	ice_dun01	75	19	#Minsicecave7	ice_dun01	56	12
+warp	ice_dun01	56	12	#Minsicecave8	ice_dun01	29	26
+warp	ice_dun01	29	26	#Minsicecave9	ice_dun01	25	46
+warp	ice_dun01	25	46	#Minsicecave10	ice_dun01	20	66
+warp	ice_dun01	20	66	#Minsicecave11	ice_dun01	22	85
+warp	ice_dun01	22	85	#Minsicecave12	ra_in01	361	129
+warp	prontera	155	42	#prtjm1	prontera	155	44
+warp	prontera	155	44	#prtjm2	prontera	155	46
+warp	prontera	155	46	#prtjm3	prontera	155	48
+warp	prontera	155	48	#prtjm4	prt_in	101	174
 off	Karian#cmd1
 off	Karian#cmd5
 off	Karian#cmd9
 on	Karian#cmd1
 on	Karian#cmd5
 on	Karian#cmd9
+file	npc/re/jobs/3-2/shadow_chaser.txt
+warp	tha_t01	149	228	#shadowc02	job3_sha01	71	36
 file	npc/re/jobs/3-2/sura.txt
+warp	sword_2-1	223	205	#Sura_garajjom	sword_1-1	216	168
 off	???#bcmd
 off	Buddy#Sura_Salon
 on	#Sura_garajjom
@@ -3746,6 +4167,7 @@ on	Spectator#xmas2
 on	Spectator#xmas3
 on	Spectator#xmas4
 file	npc/re/jobs/novice/academy.txt
+warp	izlude	198	213	Captain Carocc#iz	cmd_fild07	92	129
 off	Etinifni#
 on	Cultivated Red Plant#
 on	Etinifni#
@@ -3762,6 +4184,13 @@ off	Merchant Prince#HUMERC2
 on	#dalichat
 on	Merchant Prince#HUMERC
 on	Merchant Prince#HUMERC2
+file	npc/re/quests/garden_of_time.txt
+warp	xmas_fild01	158	246	Dimensional barrier#got1	t_garden	116	47
+warp	t_garden	111	36	Dimensional Barrier#got2	xmas_fild01	150	240
+warp	t_garden	118	66	#wp01_t_garden	xmas_fild01	150	240
+warp	t_garden	118	66	#wp01_t_garden	t_garden	118	79
+warp	t_garden	118	72	#wp02_t_garden	xmas_fild01	150	240
+warp	t_garden	118	72	#wp02_t_garden	t_garden	118	61
 file	npc/re/quests/newgears/2010_headgears.txt
 on	Roda Frog#Frog_Cap
 file	npc/re/quests/quests_14_3_bis.txt
@@ -3784,6 +4213,8 @@ on	Maggi#ep15_1elb
 on	Mark#ep15_1elb
 on	Tamarin#ep15_1elb
 file	npc/re/quests/quests_15_2.txt
+warp	un_myst	56	206	#myst_1	un_bunker	300	166
+warp	un_myst	56	206	#myst_1	un_myst	81	190
 on	Patient#EP15.2MR_01
 on	Patient#EP15.2MR_02
 on	Patient#EP15.2MR_03
@@ -3792,6 +4223,8 @@ on	Patient#EP15.2MR_05
 on	Patient#EP15.2MR_06
 on	Patient#EP15.2MR_07
 file	npc/re/quests/quests_16_1.txt
+warp	prontera	121	72	Royal Messenger#e16_pr	prontera	156	327
+warp	prt_pri00	51	116	Ellond Lawrence#EP161ER	prt_prison	160	290
 off	Bachelor#ep16wig01
 off	Strong Guards#ep16wig03
 off	Strong Guards#ep16wig04
@@ -3806,15 +4239,40 @@ on	Strong Guards#ep16wig05
 on	Strong Guards#ep16wig06
 on	Womenfolk#ep16wig01
 file	npc/re/quests/quests_16_2.txt
+warp	einbroch	270	267	Very small hole#16nego0	einbech	44	207
+warp	rebel_in	65	46	Rebellion Squadder#ep16	einbech	68	208
+warp	rebel_in	126	41	#162gmroom_2	rebel_in	158	83
 on	Hiding researcher#
 on	Naga#16.2rmA
+file	npc/re/quests/quests_17_1.txt
+warp	ein_fild03	288	270	ein05_to_spcor	sp_os	188	63
+warp	lighthalzen	53	279	lhz_to_rekenber	rgsr_in	127	38
+warp	sp_os	260	363	sp_os_to_sp_cor	sp_cor	163	60
+file	npc/re/quests/quests_17_2.txt
+warp	ba_in01	211	183	#libent_to_library	ba_lib	159	12
+file	npc/re/quests/quests_18.txt
+warp	ra_temin	256	130	Temple Knight#c12_02	ra_temin	255	138
 file	npc/re/quests/quests_19.txt
 warp	prt_cas	174	342	king_room_in_king_room_	prt_cas	322	336
 warp	prt_cas	318	336	king_room_out_king_room	prt_cas	170	342
 warp	jor_ab02	286	87	#to_jor_ab01_	jor_ab01	12	238
+warp	jor_tail	216	51	Navigator Ginger#ep19gg04	air_if	53	71
+warp	jor_nest	185	49	Rgan Priest#e19ms31	jor_back3	65	321
+warp	jor_dun01	8	238	#to_jor_dun02	jor_que	282	87
+warp	jor_dun01	8	238	#to_jor_dun02	jor_dun02	282	87
+warp	jor_que	271	88	Iwin Recon#i19ms11	jor_back3	65	321
+warp	jor_back2	258	315	#to_jor_ab01	jor_ab01	113	10
+warp	jor_ab01	8	238	#to_jor_ab02	jor_ab02	281	87
 file	npc/re/quests/quests_dicastes.txt
+warp	dic_in01	138	188	#ep133_event02	dic_in01	155	188
+warp	dicastes01	117	262	Frede#13_3	dic_in01	165	101
 on	Hibba Agip#ep133_is07
 file	npc/re/quests/quests_eclage.txt
+warp	ecl_fild01	97	322	#ep14_2Entrance	eclage	100	28
+warp	eclage	292	265	#ep14_2Yube Entrance	ecl_in04	226	232
+warp	eclage	156	51	#hidden_eclage	ecl_in04	80	108
+warp	eclage	155	91	#pa0829Hiel's Door10	ecl_in04	107	213
+warp	que_avan01	25	41	Hisie#tlhunt	eclage	294	240
 on	Euncheong#No.
 on	Rosi#No.
 file	npc/re/quests/quests_illusion_dungeons.txt
@@ -3822,6 +4280,8 @@ warp	tur_d03_i	217	73	illtur03_04	tur_d04_i	99	186
 warp	tur_d04_i	99	191	illtur04_03	tur_d03_i	217	82
 warp	com_d02_i	254	243	IL_Luanda#Luanda	beach_dun2	249	243
 warp	ant_d02_i	170	190	antd02i_anthell02	anthell02	172	185
+warp	ice_dun02	150	11	#tofrozen	ice_d03_i	149	24
+warp	ice_d03_i	149	19	#fromfrozen	ice_dun02	150	17
 on	Dracula#ilgf02
 on	Wizard#ilgf001
 on	Wizard#ilgf01
@@ -3837,6 +4297,7 @@ on	Ketchup#gamer
 on	Linguist Devore#mald
 on	Stew#gamer
 file	npc/re/quests/quests_malaya.txt
+warp	ma_in01	125	107	Ghost Diwata	malaya	324	66
 off	#buwaya_soil
 off	Beat Catching Boy#pin09
 off	Dog#buwaya
@@ -3874,6 +4335,9 @@ on	Black Shadow#ep14_muk
 on	Cheshire#ep14_1_xq01
 on	Cheshire#ep14_extra
 on	Lope#pa
+file	npc/re/quests/quests_rockridge.txt
+warp	alberta	240	103	Karam Pucci#alberta	harboro1	70	215
+warp	har_in01	34	28	har_in01_jail	har_in01	99	27
 file	npc/re/quests/woe_te/te_goditem_alde1.txt
 off	Aira#fake01_alde01
 off	Ezella#fake01_alde01
@@ -3952,17 +4416,21 @@ warp	ecl_hub01	40	14	hub3-2_in03	ecl_in03	144	17
 warp	ecl_in03	144	14	in03_hub3-2	ecl_hub01	40	11
 warp	ecl_hub01	105	36	hub4-1_in01e	ecl_in01	82	68
 warp	ecl_hub01	138	17	hub4-2_hub3-1	ecl_hub01	18	32
+warp	ecl_in01	84	68	in01e_hub2-1	ecl_hub01	106	31
+warp	ecl_hub01	18	34	hub3-1_hub2-2	ecl_hub01	135	14
 file	npc/re/warps/cities/einbech.txt
 warp	rebel_in	34	43	#negoin02	rebel_in	21	41
 warp	rebel_in	18	43	einbech_south	einbech	215	80
 warp	rebel_in	88	80	#162gmroom2_1	rebel_in	209	82
 warp	rebel_in	209	77	#162gmroom2_2	rebel_in	87	75
 warp	rebel_in	155	84	#162gmroom2_3	rebel_in	119	41
+warp	einbech	215	84	nemi	rebel_in	21	41
 file	npc/re/warps/cities/einbroch.txt
 warp	ein_in01	273	273	roomB_roomBGate	ein_in01	274	243
 warp	einbroch	302	331	ein_to_pub	pub_cat	49	27
 warp	pub_cat	44	27	pub_to_ein	einbroch	302	326
 warp	pub_cat	146	105	backroom_exit	pub_cat	100	106
+warp	ein_in01	274	246	#ep162_warp01	ein_in01	273	276
 file	npc/re/warps/cities/icecastle.txt
 warp	icas_in	33	109	#out_house1	icecastle	60	211
 warp	icecastle	62	137	#in_house5	icas_in	249	112
@@ -3991,6 +4459,7 @@ warp	icas_in	138	183	#out_icas	icecastle	208	168
 warp	icecastle	124	171	#in_restaurant	icas_in	243	36
 warp	icas_in	243	33	#out_restaurant	icecastle	123	168
 warp	icecastle	213	175	#to_icas_in	icas_in	138	187
+warp	icecastle	59	213	#in_house1	icas_in	33	112
 file	npc/re/warps/cities/izlude.txt
 warp	prt_fild08	371	212	prtf005	izlude	24	98
 warp	izlude	20	98	iz001	prt_fild08	367	212
@@ -4276,6 +4745,11 @@ warp	ma_in01	9	24	mal_in_ts	malaya	296	167
 warp	ma_in01	126	17	mal_in_shop_malaya_shop	malaya	261	237
 warp	ma_fild01	251	190	mf_minga_mf_in_minga	ma_in01	108	160
 warp	ma_in01	105	160	mf_in_minga_mf_minga	ma_fild01	248	190
+warp	malaya	178	211	malaya_inn	ma_in01	24	80
+warp	malaya	112	212	malaya_ws	ma_in01	83	16
+warp	malaya	299	167	malaya_ts	ma_in01	12	24
+warp	malaya	261	240	malaya_shop	ma_in01	126	20
+warp	malaya	300	211	malaya_house01	ma_in01	36	152
 file	npc/re/warps/cities/prontera.txt
 warp	prt_pri00	54	139	prt_pri_to_prt_cas	prt_cas	182	258
 warp	prt_prison	155	290	prt_prison_OUT	prt_pri00	50	120
@@ -4334,6 +4808,15 @@ warp	prt_cas	174	342	#ep172_prt_to_prt-8	prt_cas	322	336
 warp	prt_cas	318	336	#ep172_prt_to_prt-9	prt_cas	170	342
 warp	prontera	50	228	illusion123	prt_in	128	40
 warp	prt_in	128	45	illusion124	prontera	47	228
+warp	prt_lib_q	9	25	lib_q_to_pprt	prt_q	155	354
+warp	prt_cas	152	163	way_to_qroom_L_qroom_L_to_way	prt_cas_q	150	8
+warp	prt_cas	278	163	way_to_qroom_R_qroom_R_to_way	prt_cas_q	135	119
+warp	prt_cas_q	130	32	qroom_heine_in_qroom_heine_out	prt_cas_q	30	78
+warp	prt_cas_q	130	56	qroom_nerius_in_qroom_nerius_out	prt_cas_q	30	128
+warp	prt_lib	9	24	lib_to_prt_prison	prt_pri00	60	127
+warp	prt_lib	9	24	lib_to_prt_prison	prt_lib	60	61
+warp	prt_cas	188	258	prt_cas_to_prt_pri00	prt_pri00	54	134
+warp	prt_cas	188	258	prt_cas_to_prt_pri00	prt_cas	182	258
 file	npc/re/warps/cities/rachel.txt
 warp	rachel	150	249	rachel01	ra_temple	120	30
 warp	rachel	81	33	rachel02	ra_in01	237	198
@@ -4432,9 +4915,13 @@ warp	umbala	106	285	ygGate_yg1	yggdrasil01	39	63
 warp	yggdrasil01	249	262	nwarp5	nif_fild01	315	66
 warp	yggdrasil01	271	51	nwarp3	yggdrasil01	26	196
 warp	yggdrasil01	26	193	nwarp4	yggdrasil01	269	53
+file	npc/re/warps/dungeons/abyss.txt
+warp	abyss_03	91	110	Sign#Abs03ToAbs04	abyss_04	169	161
+warp	abyss_04	168	166	#Abs04ToAbs03	abyss_03	87	107
 file	npc/re/warps/dungeons/amicitia.txt
 warp	amicitia1	248	244	#wami1	ein_fild08	152	95
 warp	amicitia2	146	281	#wami3	amicitia1	149	27
+warp	amicitia1	149	19	#wami2	amicitia2	146	274
 file	npc/re/warps/dungeons/dic_dun.txt
 warp	dic_dun01	87	212	scarabahole0001	dic_dun01	169	227
 warp	dic_dun01	165	227	scarabahole0002	dic_dun01	83	212
@@ -4470,6 +4957,7 @@ warp	ecl_tdun04	34	17	eclage_dun0009	ecl_fild01	183	73
 warp	ecl_fild01	183	70	eclage_dun0010	ecl_tdun04	32	19
 file	npc/re/warps/dungeons/ein_dun.txt
 warp	ein_dun03	268	283	out_to_dun02	ein_dun02	24	250
+warp	ein_dun02	16	250	enter_ein_dun03	ein_dun03	268	279
 file	npc/re/warps/dungeons/harboro2.txt
 warp	harboro2	284	104	harboro2#harboro1	harboro1	318	124
 file	npc/re/warps/dungeons/jor_dun.txt
@@ -4480,6 +4968,7 @@ warp	jor_nest	282	18	#jor_nest_to_jor_dun02	jor_dun02	21	32
 warp	jor_dun03	58	48	#hw_ep19re3_	jor_nest	62	255
 file	npc/re/warps/dungeons/mag_dun.txt
 warp	mag_dun03	124	120	mag03a_mag02a	mag_dun02	243	68
+warp	mag_dun02	247	68	mag02a_mag03a	mag_dun03	120	120
 file	npc/re/warps/dungeons/moc_pryd.txt
 warp	moc_prydn1	223	9	PyramidsN1-2	moc_prydn2	192	8
 warp	moc_prydn2	195	8	PyramidsN2-1	moc_prydn1	220	9
@@ -4487,6 +4976,8 @@ file	npc/re/warps/dungeons/nif_dun.txt
 warp	nif_dun01	145	82	nifdun01a_nifla	niflheim	146	122
 warp	nif_dun02	162	15	nifdun02a_nifdun01a	nif_dun01	146	39
 warp	nif_dun02	137	15	nifdun02a_nifdun01a_	nif_dun01	146	39
+warp	niflheim	149	124	nifla_nifdun01a	nif_dun01	145	85
+warp	nif_dun01	146	36	nifdun01a_nifdun02a	nif_dun02	149	23
 file	npc/re/warps/dungeons/oz_dun.txt
 warp	oz_dun01	112	30	to_oz_dun02	oz_dun02	142	279
 warp	oz_dun02	142	284	to_oz_dun01	oz_dun01	112	34
@@ -4549,6 +5040,10 @@ warp	prt_mz03_i	165	22	3maze5e1_3maze2c3	prt_mz03_i	111	146
 warp	prt_mz03_i	176	5	3maze5e2_3maze3c3	prt_mz03_i	111	95
 warp	prt_mz03_i	176	34	3maze5e3_3maze4c1	prt_mz03_i	88	56
 warp	prt_mz03_i	194	15	3maze5e4_3maze4a1	prt_mz03_i	8	58
+warp	prt_mz03_i	58	194	3maze1b1_Random1	prt_mz03_i	88	146
+warp	prt_mz03_i	74	74	3maze4b2_Random2	prt_mz03_i	88	146
+warp	prt_mz03_i	139	45	3maze4d1_Random3	prt_mz03_i	88	146
+warp	prt_mz03_i	154	22	3maze5d1_Random4	prt_mz03_i	88	146
 file	npc/re/warps/dungeons/rockmi1.txt
 warp	rockrdg2	304	350	rockrdg2#rockmi1	rockmi1	247	19
 warp	rockmi1	247	16	rockmi1#rockrdg2	rockrdg2	304	344
@@ -5134,6 +5629,9 @@ warp	teg_dun01	238	274	teg_dun01a_prtg#te	te_prt_gld	252	247
 warp	teg_dun01	42	30	teg_dun01b_prtg#te	te_prt_gld	63	66
 warp	teg_dun02	20	160	teg_dun02a_aldega#te	te_alde_gld	229	185
 warp	teg_dun02	180	112	teg_dun02b_aldegb#te	te_alde_gld	242	121
+warp	te_aldecas4	132	231	aldeg-4-15_aldeg-4-#te	te_aldecas4	152	210
+file	npc/re/warps/other/TrainingZone123.txt
+warp	tra_fild01	12	114	tra_fild01_out1	prontera	246	60
 file	npc/re/warps/other/arena.txt
 warp	izlude	213	161	welcome_arena	arena_room	100	30
 warp	izlude_a	213	161	welcome_arena_a	arena_room	100	30
@@ -5147,6 +5645,7 @@ warp	ba_2whs01	156	29	#ep172_2whs01_out	ba_maison	305	319
 warp	ba_2whs02	337	337	#ep172_2whs02_out	ba_2whs01	275	291
 warp	ba_2whs02	63	300	#172wh01_	ba_2whs02	69	300
 warp	ba_2whs02	63	325	#ba2whslab_to_ba2whs02-1	ba_2whs02	69	325
+warp	ba_2whs02	66	300	#172wh01	ba_2whs02	60	300
 file	npc/re/warps/other/ba_maison.txt
 warp	ba_maison	78	146	#ep172_lab2_in	ba_in01	15	321
 warp	ba_in01	24	306	#ep172_lab_to_pw1	ba_pw01	91	288
@@ -5191,9 +5690,15 @@ warp	ba_in01	357	303	#ep172_room01_in	ba_in01	295	101
 warp	ba_in01	295	98	#ep172_room01_out	ba_in01	357	300
 warp	ba_in01	367	290	#ep172_diningRoom_in	ba_in01	360	194
 warp	ba_in01	356	194	#ep172_diningRoom_out	ba_in01	364	290
+warp	ba_in01	12	321	#ep172_lab1_out	ba_maison	75	146
+warp	ba_maison	33	225	#ep172_proom2_out	ba_in01	63	255
+warp	ba_maison	314	203	#ep173_lost_in	ba_lost	162	37
 file	npc/re/warps/other/ba_pw.txt
 warp	ba_pw01	10	115	#ep172_pw1_to_pw2	ba_pw02	10	149
 warp	ba_pw02	275	15	#ep172_pw2_to_cor	sp_cor	257	285
+warp	ba_pw01	91	291	#ep172_pw1_to_lab	ba_in01	23	315
+warp	ba_pw02	7	149	#ep172_pw2_to_pw1	ba_pw01	13	115
+warp	sp_cor	258	287	#ep172_cor_to_pw2	ba_pw02	275	20
 file	npc/re/warps/other/dimensional_gap.txt
 warp	dali	149	82	dg001	mid_camp	210	289
 warp	dali	122	48	dg002	moc_fild22b	227	200
@@ -5274,6 +5779,9 @@ warp	un_myst	124	189	#m101	un_myst	171	197
 warp	un_myst	171	183	#m102	un_myst	259	200
 warp	un_bunker	387	79	#room_out_	un_bunker	300	166
 warp	un_myst	108	38	#way	un_myst	209	33
+warp	un_myst	258	208	#m103	un_myst	291	203
+warp	un_myst	393	139	#m201	un_myst	86	136
+warp	un_myst	75	91	#m301	un_myst	107	88
 file	npc/re/warps/other/verus.txt
 warp	verus04	204	163	fr_ver04_to_tun	ver_tunn	13	35
 warp	verus04	121	267	fr_ver04_to_ver03_1	verus03	121	20
@@ -5361,6 +5869,73 @@ warp	un_bunker	229	163	Z-0#b_Z-1	un_bunker	159	52
 warp	un_bunker	164	51	Z-1#b_Z-0	un_bunker	233	164
 warp	un_bunker	366	164	Z-0#b_Z-2	un_bunker	31	51
 warp	un_bunker	27	52	Z-2#b_Z-0	un_bunker	361	163
+warp	verus03	52	254	verus03_to_verus01	verus01	243	62
+warp	verus03	169	259	verus03_to_verus02	verus02	72	19
+warp	un_bk_q	41	275	Machine Warehouse#J-0	un_bk_q	21	276
+warp	un_bk_q	24	276	J-0#Machine Warehouse	un_bk_q	45	275
+warp	un_bk_q	24	256	J-0#L-1	un_bk_q	26	190
+warp	un_bk_q	23	190	L-1#J-0	un_bk_q	21	256
+warp	un_bk_q	31	196	L-1#D-1	un_bk_q	22	378
+warp	un_bk_q	21	375	D-1#L-1	un_bk_q	32	193
+warp	un_bk_q	51	196	L-1#D-2	un_bk_q	68	378
+warp	un_bk_q	67	375	D-2#L-1	un_bk_q	52	193
+warp	un_bk_q	60	183	L-1#Control room	un_bk_q	75	235
+warp	un_bk_q	71	236	Control room#L-1	un_bk_q	57	182
+warp	un_bk_q	60	169	L-1#b_Monitoring room_	un_bk_q	72	168
+warp	un_bk_q	69	167	b_Monitoring room#L-1	un_bk_q	57	168
+warp	un_bk_q	47	135	L-1#B-1	un_bk_q	37	134
+warp	un_bk_q	40	135	B-1#L-1	un_bk_q	50	134
+warp	un_bk_q	57	118	L-1#A-0	un_bk_q	72	117
+warp	un_bk_q	69	118	A-0#L-1	un_bk_q	53	117
+warp	un_bk_q	97	124	A-0#b_Monitoring room_	un_bk_q	100	144
+warp	un_bk_q	97	141	Monitoring room#A-0	un_bk_q	98	121
+warp	un_bk_q	128	118	A-0#L-2	un_bk_q	144	117
+warp	un_bk_q	140	118	L-2#A-0	un_bk_q	125	117
+warp	un_bk_q	137	168	L-2#b_Monitoring room_	un_bk_q	122	167
+warp	un_bk_q	126	168	b_Monitoring room#L-2	un_bk_q	140	167
+warp	un_bk_q	137	185	L-2#Control room	un_bk_q	120	235
+warp	un_bk_q	124	236	Control room#L-2	un_bk_q	140	184
+warp	un_bk_q	147	196	L-2#E-1	un_bk_q	106	378
+warp	un_bk_q	105	375	E-1#L-2	un_bk_q	148	193
+warp	un_bk_q	167	196	L-2#E-2	un_bk_q	152	378
+warp	un_bk_q	151	375	E-2#L-2	un_bk_q	168	193
+warp	un_bk_q	174	190	L-2#K-0	un_bk_q	172	229
+warp	un_bk_q	169	230	K-0#L-2	un_bk_q	171	189
+warp	un_bk_q	213	346	Farm#C-0	un_bk_q	213	299
+warp	un_bk_q	216	300	C-0#Farm	un_bk_q	216	345
+warp	un_bk_q	216	280	C-0#G-1	un_bk_q	220	261
+warp	un_bk_q	217	262	G-1#C-0	un_bk_q	213	279
+warp	un_bk_q	249	268	G-1#M-0	un_bk_q	390	380
+warp	un_bk_q	389	377	M-0#G-1	un_bk_q	250	265
+warp	un_bk_q	258	262	G-1#Cafeteria	un_bk_q	274	289
+warp	un_bk_q	271	290	Cafeteria#G-1	un_bk_q	255	261
+warp	un_bk_q	269	236	Clinic#G-1	un_bk_q	255	235
+warp	un_bk_q	245	214	G-1#F-1	un_bk_q	226	213
+warp	un_bk_q	230	214	F-1#G-1	un_bk_q	248	213
+warp	un_bk_q	262	200	G-1#H-0	un_bk_q	274	199
+warp	un_bk_q	271	200	H-0#G-1	un_bk_q	258	199
+warp	un_bk_q	75	128	LeftA-0#LeftH-0	un_bk_q	276	196
+warp	un_bk_q	275	191	LeftH-0#LeftA-0	un_bk_q	76	121
+warp	un_bk_q	119	128	RightA-0#RightH-0	un_bk_q	319	196
+warp	un_bk_q	320	191	RightH-0#RightA-0	un_bk_q	120	121
+warp	un_bk_q	297	221	Clinic#H-0	un_bk_q	298	203
+warp	un_bk_q	324	200	H-0#G-2	un_bk_q	344	199
+warp	un_bk_q	339	200	G-2#H-0	un_bk_q	321	199
+warp	un_bk_q	350	214	G-2#F-2	un_bk_q	368	213
+warp	un_bk_q	365	214	F-2#G-2	un_bk_q	347	213
+warp	un_bk_q	326	236	Clinic#G-2	un_bk_q	340	235
+warp	un_bk_q	324	290	Cafeteria#G-2	un_bk_q	340	261
+warp	un_bk_q	337	262	G-2#Cafeteria	un_bk_q	321	289
+warp	un_bk_q	343	270	G-2#N-0	un_bk_q	382	328
+warp	un_bk_q	381	325	N-0#G-2	un_bk_q	344	267
+warp	un_bk_q	370	264	G-2#I-0	un_bk_q	388	263
+warp	un_bk_q	385	264	I-0#G-2	un_bk_q	367	263
+warp	un_bk_q	297	192	H-0#Z-0	un_bk_q	298	181
+warp	un_bk_q	297	186	Z-0#H-0	un_bk_q	298	196
+warp	un_bk_q	229	163	Z-0#Z-1	un_bk_q	159	52
+warp	un_bk_q	164	51	Z-1#Z-0	un_bk_q	233	164
+warp	un_bk_q	366	164	Z-0#Z-2	un_bk_q	31	51
+warp	un_bk_q	27	52	Z-2#Z-0	un_bk_q	361	163
 file	npc/re/world_sync/warps.txt
 warp	bl_death	315	59	ws_bl_death_15901	ba_in01	339	53
 warp	bl_grass	157	16	ws_bl_grass_15899	ba_in01	325	53
@@ -6698,6 +7273,7 @@ warp	um_in	166	69	um_houseA2-2	umbala	102	205
 warp	umbala	107	130	um_houseB1-1	um_in	99	66
 warp	um_in	99	63	um_houseB1-2	umbala	108	127
 warp	um_in	29	71	um_shaman2-1	umbala	217	186
+warp	umbala	220	189	um_shaman1-1	um_in	32	71
 file	npc/warps/cities/veins.txt
 warp	veins	230	166	ve_Tool1-1	ve_in	251	287
 warp	ve_in	251	283	ve_Tool1-2	veins	230	161
@@ -6813,6 +7389,19 @@ warp	yuno_pre	81	68	yungvn09	yuno_pre	95	68
 warp	yuno_pre	18	92	yungvn10	yuno_pre	18	73
 warp	yuno	157	322	yungvn11	yuno_pre	69	13
 warp	yuno_pre	69	10	yungvn12	yuno	157	317
+warp	yuno_in05	153	141	#yun63	yuno_in05	192	102
+warp	yuno_in05	196	102	#yun64	yuno_in05	169	102
+warp	yuno_in05	181	116	#yun65	yuno_in05	181	94
+warp	yuno_in05	165	102	#yun66	yuno_in05	192	102
+warp	yuno_in05	181	91	#yun67	yuno_in05	181	112
+warp	yuno_in05	148	82	#yun68	yuno_in05	169	102
+warp	yuno_in05	125	82	#yun69	yuno_in05	192	102
+warp	yuno_in05	136	71	#yun70	yuno_in05	181	112
+warp	yuno_in05	16	188	#yun71	yuno_in05	181	94
+warp	yuno_in05	176	9	#yun72	yuno_in05	181	112
+warp	yuno_in05	176	52	#yun73	yuno_in05	181	94
+warp	yuno_in05	40	178	#yun74	yuno_in05	181	94
+warp	yuno_in05	47	186	#yun75	yuno_in05	181	94
 file	npc/warps/dungeons/abbey.txt
 warp	abbey01	51	9	namelesswarp0101	nameless_n	160	184
 warp	abbey01	87	122	namelesswarp4001	abbey01	13	201
@@ -6845,6 +7434,18 @@ warp	alde_dun04	215	192	ald018	c_tower2	148	283
 warp	alde_dun04	32	74	aldd19	alde_dun02	187	239
 warp	alde_dun04	208	58	aldd20	alde_dun04	268	74
 warp	alde_dun04	272	74	aldd021	alde_dun04	204	62
+warp	alde_dun02	267	41	ald008r	c_tower3	168	252
+warp	alde_dun02	267	41	ald008r	alde_dun02	262	141
+warp	alde_dun03	130	125	ald014r	c_tower2	228	267
+warp	alde_dun03	130	125	ald014r	alde_dun03	130	130
+warp	alde_dun03	130	125	ald014r	c_tower3	252	29
+warp	alde_dun03	171	127	ald015r	c_tower2	13	282
+warp	alde_dun03	171	127	ald015r	alde_dun03	175	131
+warp	alde_dun03	171	127	ald015r	c_tower3	235	7
+warp	alde_dun04	80	34	ald022r	c_tower2	13	282
+warp	alde_dun04	80	34	ald022r	alde_dun03	175	131
+warp	alde_dun04	80	34	ald022r	c_tower3	235	7
+warp	alde_dun04	80	34	ald022r	alde_dun04	84	36
 file	npc/warps/dungeons/ama_dun.txt
 warp	ama_dun01	235	144	ama_dun1-1	ama_dun02	33	40
 warp	ama_dun02	30	40	ama_dun1-2	ama_dun01	232	144
@@ -6897,6 +7498,38 @@ warp	c_tower4	153	107	clt023	c_tower2	228	267
 warp	c_tower4	171	179	clt024	alde_dun03	276	53
 warp	c_tower4	198	59	clt025	c_tower4	152	98
 warp	c_tower4	204	57	clt026	c_tower4	65	77
+warp	c_tower2	13	288	clt006r	c_tower2	13	282
+warp	c_tower2	13	288	clt006r	alde_dun03	175	131
+warp	c_tower2	13	288	clt006r	c_tower3	235	7
+warp	c_tower2	223	267	clt007r	c_tower2	288	267
+warp	c_tower2	223	267	clt007r	alde_dun03	130	130
+warp	c_tower2	223	267	clt007r	c_tower3	252	29
+warp	c_tower3	163	252	clt014r	c_tower3	168	252
+warp	c_tower3	163	252	clt014r	alde_dun02	262	41
+warp	c_tower3	240	7	clt015r	c_tower2	13	282
+warp	c_tower3	240	7	clt015r	alde_dun03	175	131
+warp	c_tower3	240	7	clt015r	c_tower3	235	7
+warp	c_tower3	252	24	clt016r	c_tower2	228	267
+warp	c_tower3	252	24	clt016r	alde_dun03	130	130
+warp	c_tower3	252	24	clt016r	c_tower3	252	29
+warp	c_tower4	75	156	clt027r	c_tower3	168	252
+warp	c_tower4	75	156	clt027r	alde_dun02	262	41
+warp	c_tower4	75	156	clt027r	c_tower4	73	154
+warp	c_tower4	68	79	clt028r	c_tower2	13	282
+warp	c_tower4	68	79	clt028r	alde_dun03	175	131
+warp	c_tower4	68	79	clt028r	c_tower3	235	7
+warp	c_tower4	68	79	clt028r	c_tower4	65	77
+warp	c_tower4	142	151	clt029r	c_tower3	168	252
+warp	c_tower4	142	151	clt029r	alde_dun02	262	41
+warp	c_tower4	142	151	clt029r	c_tower4	73	154
+warp	c_tower4	151	96	clt030r	c_tower2	228	267
+warp	c_tower4	151	96	clt030r	alde_dun03	130	130
+warp	c_tower4	151	96	clt030r	c_tower3	252	29
+warp	c_tower4	151	96	clt030r	c_tower4	152	95
+warp	c_tower4	189	40	clt031r	c_tower2	228	267
+warp	c_tower4	189	40	clt031r	alde_dun03	130	130
+warp	c_tower4	189	40	clt031r	c_tower3	252	29
+warp	c_tower4	189	40	clt031r	c_tower4	152	95
 file	npc/warps/dungeons/ein_dun.txt
 warp	einbech	138	252	eib_d01	ein_dun01	22	14
 warp	ein_dun01	22	11	eib_d01a	einbech	138	249
@@ -7018,6 +7651,7 @@ warp	kh_dun01	3	234	kh_dun_00	yuno_fild08	74	174
 warp	kh_dun01	232	226	kh_dun_01	kh_dun01	13	12
 warp	kh_dun01	63	7	kh_dun_02	kh_dun01	227	176
 warp	kh_dun01	232	176	kh_dun_03	kh_dun01	63	12
+warp	kh_dun02	43	195	kh_dun04	kh_dun01	41	206
 file	npc/warps/dungeons/lhz_dun.txt
 warp	lhz_dun01	149	291	lhz_dun1-1	lhz_in01	19	129
 warp	lhz_dun01	281	150	lhz_dun2-1	lhz_dun02	282	153
@@ -7044,6 +7678,8 @@ warp	lhz_cube	18	136	cubew07-1	lhz_cube	10	74
 warp	lhz_cube	3	192	cubew08-3	lhz_cube	10	74
 warp	lhz_cube	10	200	cubew08-4	lhz_cube	66	18
 warp	lhz_cube	115	18	cubew09-3	lhz_cube	248	184
+warp	lhz_dun02	149	149	lhz_dun5-1	lhz_dun02	145	149
+warp	lhz_dun02	149	149	lhz_dun5-1	lhz_dun03	140	133
 file	npc/warps/dungeons/lou_dun.txt
 warp	louyang	37	271	lou_dun1-1	lou_dun01	218	195
 warp	lou_dun01	221	195	lou_dun1-2	louyang	40	273
@@ -7093,6 +7729,8 @@ file	npc/warps/dungeons/mosk_dun.txt
 warp	mosk_fild02	190	257	moscoviawarp0401	mosk_dun01	189	45
 warp	mosk_dun01	189	42	moscoviawarp0501	mosk_fild02	190	254
 warp	mosk_in	215	36	babayagaout	mosk_dun02	53	217
+warp	mosk_dun02	53	220	#babayagain	mosk_in	125	92
+warp	mosk_dun02	53	220	#babayagain	mosk_dun02	100	100
 file	npc/warps/dungeons/odin.txt
 warp	odin_tem01	378	182	odin01	odin_tem02	28	180
 warp	odin_tem02	21	180	odin02	odin_tem01	373	182
@@ -7126,6 +7764,7 @@ warp	pay_dun04	191	41	payd04-2	pay_dun03	124	62
 warp	pay_dun04	202	206	payd04-3	pay_dun03	124	62
 warp	pay_dun04	32	204	payd04-4	pay_dun03	124	62
 warp	pay_dun04	40	37	payd04-1	pay_dun03	124	62
+warp	pay_dun03	127	62	payd04r	pay_dun04	201	204
 file	npc/warps/dungeons/prt_maze.txt
 warp	prt_maze01	22	194	mazewarp5101	prt_maze01	16	31
 warp	prt_maze01	5	186	mazewarp5102	prt_maze01	182	88
@@ -7260,6 +7899,10 @@ warp	prt_sewb2	60	24	prts04-1	prt_sewb2	19	171
 warp	prt_sewb3	180	173	prts03-1	prt_sewb2	180	28
 warp	prt_sewb3	20	185	prts05	prt_sewb4	100	92
 warp	prt_sewb4	100	96	prts05-1	prt_sewb3	19	180
+warp	prt_maze03	58	194	#mazewarp5303	prt_maze03	98	151
+warp	prt_maze03	74	74	#mazewarp5339	prt_maze03	98	151
+warp	prt_maze03	139	45	#mazewarp5346	prt_maze03	98	151
+warp	prt_maze03	154	22	#mazewarp5358	prt_maze03	98	151
 file	npc/warps/dungeons/ra_san.txt
 warp	ra_san02	213	280	sanctuary02	ra_san01	140	19
 warp	ra_san03	123	283	sanctuary03	ra_san01	140	19
@@ -7275,6 +7918,10 @@ warp	ra_san02	213	4	sanctuary12	ra_san04	35	216
 warp	ra_san04	35	221	sanctuary13	ra_san02	213	9
 warp	ra_san02	30	21	sanctuary14	ra_san05	14	149
 warp	ra_san01	139	139	sanctuary15	ra_temin	27	314
+warp	ra_san01	139	13	sanctuary01	que_san04	119	110
+warp	ra_san01	139	13	sanctuary01	ra_san02	213	275
+warp	ra_san01	139	13	sanctuary01	ra_san03	119	283
+warp	ra_san01	139	13	sanctuary01	ra_san04	119	110
 file	npc/warps/dungeons/tha_t.txt
 warp	tha_scene01	144	198	WarpThana0a	tha_t01	149	38
 warp	tha_t01	149	33	WarpThana0b	hu_fild01	140	158
@@ -7370,6 +8017,8 @@ warp	xmas_dun01	205	13	xmas_dun1-2	xmas	143	311
 warp	xmas_dun01	129	130	xmas_dun2-1	xmas_dun02	131	130
 warp	xmas_dun02	129	130	xmas_dun2-2	xmas_dun01	132	130
 file	npc/warps/fields/abyss_warper.txt
+warp	hu_fild05	171	211	Column#abyss2	hu_fild05	169	305
+warp	hu_fild05	196	210	AbyssWarp	abyss_01	260	268
 off	AbyssWarp
 on	AbyssWarp
 file	npc/warps/fields/amatsu_fild.txt
@@ -7492,12 +8141,15 @@ warp	glast_01	237	330	gl6	gl_in01	122	59
 warp	glast_01	377	304	glst001	gef_fild06	27	304
 warp	glast_01	51	108	gl1	gl_step	12	7
 warp	glast_01	77	193	gl2	gl_knt01	150	15
+warp	gl_prison	11	70	gl18-2	gl_cas01	163	193
 file	npc/warps/fields/jawaii.txt
 warp	jawaii_in	90	78	jawaiiwarp001	jawaii	115	172
 warp	jawaii_in	113	61	jawaiiwarp002	jawaii	138	202
 warp	jawaii_in	133	107	jawaiiwarp003	jawaii	111	199
 warp	jawaii_in	88	117	jawaiiwarp004	jawaii	109	186
 warp	jawaii	192	215	jawaiiwarp005	jawaii_in	28	94
+warp	jawaii_in	27	91	jawaiiwarp006	jawaii	192	218
+warp	jawaii_in	27	91	jawaiiwarp006	jawaii_in	27	94
 file	npc/warps/fields/lhalzen_fild.txt
 warp	lhz_fild01	210	18	lhz043-1	lighthalzen	214	324
 warp	lighthalzen	214	329	lhz043a-1	lhz_fild01	210	23
@@ -8043,6 +8695,7 @@ warp	gld_dun03	238	274	gdun03a_prtg	prt_gld	252	247
 warp	gld_dun03	42	30	gdun03b_prtg	prt_gld	63	66
 warp	gld_dun04	37	230	gdun04_g13a	gef_fild13	42	331
 warp	gld_dun04	110	20	gdun04_g13b	gef_fild13	373	62
+warp	aldeg_cas04	132	231	aldeg-4-15_aldeg-4-	aldeg_cas04	152	210
 file	npc/warps/other/airplane.txt
 warp	einbroch	92	281	ein_ap01	airplane	224	64
 warp	einbroch	64	234	ein_ap02	airport	138	51
