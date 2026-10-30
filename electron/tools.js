@@ -26,6 +26,10 @@
 //                                            palette, from the asset server
 //   ro-tool://map-editor/asset/..., api/...  the map editor's bridge, see
 //                                            map-editor.js
+//   ro-tool://grf-browser/files.json, asset/..., api/...  the GRF browser's,
+//                                            see grf-browser.js
+//   ro-tool://<id>/shared/...                the map editor's lib/ (sprite,
+//                                            BMP and TGA reading), for any tool
 //
 // The tables come with the mods' db/import laid over them, so a mod's
 // monsters and items show up too. Each window has its own session and no
@@ -225,6 +229,15 @@ const TOOLS = [
 		needsServer: true,
 	},
 	{
+		id: 'grf-browser',
+		name: 'GRF browser',
+		description: 'Every file in your client\'s GRFs: find one, preview it (sprites animated, pictures, palettes, text, sounds), and copy it into a mod. Sprites, pictures and palettes go out as PNGs for any image editor and come back in the client\'s own format.',
+		page: 'grf-browser.html',
+		author: 'Ragnarok Offline',
+		needsServer: true,
+		width: 1360, height: 860,
+	},
+	{
 		id: 'control-panel',
 		name: 'Control panel',
 		description: 'Every account and character on your server: how they look, their level, zeny, equipment and where they are. Move a stuck character to its save point, delete a character the way the game does, or make an account.',
@@ -274,6 +287,11 @@ function createTools(deps) {
 		},
 	});
 	const cpBridge = require('./cp-bridge').createCpBridge(deps);
+	const grfBrowser = require('./grf-browser').createGrfBrowser({
+		stateDir: deps.stateDir, assetBase: () => `http://${assetHost()}`, log: deps.log,
+		fetch: (url, init) => deps.net.fetch(url, { ...init, bypassCustomProtocolHandlers: true }),
+		openPath: deps.shell && (dir => deps.shell.openPath(dir)),
+	});
 	// Parsed once per window: the item tables are megabytes.
 	let itemNames = null;
 
@@ -412,6 +430,10 @@ function createTools(deps) {
 				const answer = await controlPanelRoute(name, url, request);
 				if (answer) return answer;
 			}
+			if (tool.id === 'grf-browser') {
+				const answer = await grfBrowser(name, url, request);
+				if (answer) return answer;
+			}
 			if (name === 'mob_db.yml' || /^item_db_(equip|etc|usable)\.yml$/.test(name)) {
 				return respond(await exportTable(name.replace(/\.yml$/, '')), TYPES['.yml']);
 			}
@@ -426,9 +448,11 @@ function createTools(deps) {
 				if (!res.ok) return respond(`no sprite ${sprite[1]}`, 'text/plain', 404);
 				return respond(Buffer.from(await res.arrayBuffer()), 'application/octet-stream');
 			}
-			// The tool's own files, and nothing outside its folder.
-			const dir = path.join(ROOT, tool.dir || tool.id);
-			const file = path.resolve(dir, name || tool.page);
+			// The tool's own files, and nothing outside its folder -- or the map
+			// editor's readers of the client's formats, under shared/.
+			const shared = name.startsWith('shared/');
+			const dir = shared ? path.join(ROOT, 'map-editor', 'lib') : path.join(ROOT, tool.dir || tool.id);
+			const file = path.resolve(dir, shared ? name.slice('shared/'.length) : (name || tool.page));
 			if (!file.startsWith(dir + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()) return respond('not found', 'text/plain', 404);
 			return respond(fs.readFileSync(file), TYPES[path.extname(file)] || 'application/octet-stream');
 		} catch (e) {

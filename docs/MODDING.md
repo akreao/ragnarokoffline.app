@@ -824,9 +824,15 @@ python3 scripts/mksprite.py my_monster.png --monster --out my-mod/data/sprite/mo
 community's **Act Editor** (Tokeiburu's, "ActEditor" on GitHub). It opens a
 `.spr` and `.act` pair, imports PNGs as frames, and edits each action and
 direction. The easy start is a file from `mksprite.py`, or a stock NPC's pair.
-Get a stock pair from your client's `data.grf` with **GRF Editor** (also by
-Tokeiburu): they're under `data/sprite/npc/`. Save under your own name; don't
-overwrite the stock file unless you mean to replace that NPC everywhere.
+Get a stock pair from your client with **Settings → Tools → GRF browser**
+(**Copy to mod**; they're under `data/sprite/npc/`), on any platform. Save
+under your own name; don't overwrite the stock file unless you mean to replace
+that NPC everywhere.
+
+**To repaint a stock sprite** without changing how it moves, you don't need a
+sprite editor: the GRF browser's **Edit as PNG** writes its frames out as PNGs
+for any image editor and turns them back into a `.spr` in your mod
+([The GRF browser](mods/GRF_BROWSER.md#sprites)).
 
 ### When it doesn't show
 
@@ -1797,6 +1803,11 @@ Anything under `data/` is served **ahead of the GRFs**, so a file here replaces
 the client's own copy without repacking a 2.4 GB archive. Sprites (`.spr`),
 animations (`.act`), textures, Lua tables and the `.gat`/`.gnd`/`.rsw` geometry
 of a custom map all go here, in the same layout the GRF uses.
+
+**Settings → Tools → GRF browser** finds any file in your GRFs, previews it,
+and copies it into a mod at the right path. Sprites, pictures and palettes go
+out as PNGs for an ordinary image editor and come back in the client's format.
+See [The GRF browser](mods/GRF_BROWSER.md).
 
 ```
 my-mod/data/sprite/·¹½ºÅÍ/poring.spr

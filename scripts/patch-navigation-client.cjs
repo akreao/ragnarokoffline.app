@@ -26,8 +26,8 @@ if (original.includes(PATCH_MARKER)) {
 }
 let patched = original;
 // The tables must be arrays: the loader copies each Lua array in with
-// Object.assign, and an object keeps no .length. akreao/roBrowserLegacy#381
-// makes them arrays in the client itself; older pins still need it done here.
+// Object.assign, and an object keeps no .length. A client that already makes
+// them arrays is left as it is; older pins still need it done here.
 for (const name of ['NaviMapTable','NaviMobTable','NaviNpcTable','NaviLinkTable','NaviLinkDistanceTable','NaviNpcDistanceTable']) {
   const needle = name + ' = {};';
   const fixed = name + ' = [];';
@@ -45,7 +45,7 @@ loader = loader.replace(escapePattern, () => String.raw`local function escape_st
                                     return string.format('\\u%04x', string.byte(c))
                                 end))
                             end`);
-// The same fix in the client (akreao/roBrowserLegacy#381) is left as it is.
+// A client that already has this fix is left as it is.
 const arrayFixed = /is_array = is_array and count == highest/;
 const arrayPattern = /local is_array = true\s+local index = 1\s+for k, _ in pairs\(value\) do[\s\S]*?index = index \+ 1\s+end/;
 if (!arrayFixed.test(loader)) {
