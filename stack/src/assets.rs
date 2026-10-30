@@ -1352,6 +1352,41 @@ mod tests {
         fs::remove_dir_all(cfg.state.parent().unwrap()).unwrap();
     }
 
+    /// The tip box's English tips are a Compatibility layer's
+    /// SystemEN/tipbox.lub. The rule in the shipped TRANSLATION_LAYERS takes
+    /// it, and it is served as System/tipbox.lub in front of the client's own
+    /// Korean table -- but only from a packet version the layer applies to.
+    #[test]
+    fn the_tip_box_table_comes_from_its_layer_in_front_of_the_clients() {
+        let cfg = fixture_config("tipbox");
+        let client = cfg.state.parent().unwrap().join("client");
+        write(&client.join("data.grf"), "archive");
+        write(&client.join("System/tipbox.lub"), "Korean tips");
+        let en = cfg.root.join("vendor/ROenglishRE/Translation");
+        write(&en.join("Renewal/data/table.txt"), "renewal table");
+        write(&en.join("Renewal/SystemEN/LuaFiles514/itemInfo.lua"), "English items");
+        write(&en.join("Renewal/SystemEN/OngoingQuests.lub"), "English quests");
+        let layer = en.join("Compatibility/2017-12-13");
+        write(&layer.join("Renewal/SystemEN/tipbox.lub"), "English tips");
+        write(&layer.join("Pre-Renewal/SystemEN/tipbox.lub"), "English pre-renewal tips");
+        let shipped = Path::new(env!("CARGO_MANIFEST_DIR")).join("../config/TRANSLATION_LAYERS");
+        write(&cfg.root.join("config/TRANSLATION_LAYERS"), &fs::read_to_string(shipped).unwrap());
+        write(&cfg.root.join("config/Config.local.js"),
+            "window.ROConfigLocal = {\npacketver: 20221005,\nrenewal: true,\n};\n");
+        write(&cfg.root.join("config/index.html"), "game entry");
+        let args = vec![client.join("data.grf").to_str().unwrap().to_string()];
+        let read = |p: &str| fs::read_to_string(cfg.state.join("assets").join(p)).ok();
+
+        link(&cfg, &args).unwrap();
+        assert_eq!(read("System/tipbox.lub").as_deref(), Some("English tips"));
+
+        write(&cfg.state.join("prerenewal"), "true");
+        write(&en.join("Pre-Renewal/data/table.txt"), "pre-renewal table");
+        link(&cfg, &args).unwrap();
+        assert_eq!(read("System/tipbox.lub").as_deref(), Some("English pre-renewal tips"));
+        fs::remove_dir_all(cfg.state.parent().unwrap()).unwrap();
+    }
+
     /// Turning the translation off has to take the whole of it away, not just
     /// the `data/` overlay: with the English tables gone, the client's own
     /// item and quest tables are the only ones left and must stop being
