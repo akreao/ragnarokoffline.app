@@ -3,7 +3,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { parse, customConf, overrides, report, keysIn, MAX_BYTES } = require('../electron/custom-conf');
+const { parse, customConf, overrides, report, keysIn, serverOf, MAX_BYTES, CHAR_KEYS, OTHER_SERVER_KEYS } = require('../electron/custom-conf');
 
 const read = f => fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
 const names = text => parse(text).settings.map(s => s.key);
@@ -72,9 +72,9 @@ test('a value cannot smuggle a second setting onto the next line', () => {
 // player losing half of what they typed, and is worth saying.
 test('only the first token of a value is read, and a lost tail is reported', () => {
 	assert.deepEqual(parse('idletime_mer_option: 0x1F // bitmask').notes, []);
-	const { settings, notes } = parse('start_items: 1101 1 0');
-	assert.deepEqual(settings, [{ key: 'start_items', value: '1101 1 0', at: 1 }]);
-	assert.match(notes[0], /is set to "1101"; the server reads only up to the first space/);
+	const { settings, notes } = parse('max_walk_path: 17 1 0');
+	assert.deepEqual(settings, [{ key: 'max_walk_path', value: '17 1 0', at: 1 }]);
+	assert.match(notes[0], /is set to "17"; the server reads only up to the first space/);
 });
 
 test('the same name twice says which one wins', () => {
@@ -153,4 +153,70 @@ test('everything the shell writes from settings is in the backup allowlist', () 
 	const derived = written.filter(f => f.startsWith('conf/'));
 	assert.ok(derived.length, 'writeSettingsFiles no longer writes a conf file; check this test still means something');
 	for (const file of derived) assert.ok(allow.includes(file), `${file} is written from settings but not backed up`);
+});
+
+// ---------------------------------------------------------------------------
+// Character-server keys
+// ---------------------------------------------------------------------------
+
+// A player set char_name_option: 0 here to allow Japanese names and still got
+// "Creation is denied": the line went to battle_conf.txt, which only the map
+// server reads. The name keys now go to the character server instead.
+test('character-name keys are kept out of the battle config', () => {
+	const text = 'char_name_option: 0\nchar_name_letters: @ #\ndrop_rate_cap: 10000';
+	const { settings, notes } = parse(text);
+	assert.deepEqual(settings.map(s => [s.key, serverOf(s.key)]),
+		[['char_name_option', 'char'], ['char_name_letters', 'char'], ['drop_rate_cap', 'battle']]);
+	assert.deepEqual(notes, [], 'a list of letters may contain spaces; the character server reads the whole line');
+	assert.equal(customConf({ custom_battle_conf: text }).split('\n').filter(l => l && !l.startsWith('//')).join('\n'),
+		'drop_rate_cap: 10000');
+	assert.equal(customConf({ custom_battle_conf: 'char_name_option: 0' }), '');
+});
+
+test('a character-name value the server would not accept is named', () => {
+	for (const text of ['char_name_option: 3', 'char_name_option: 0 1', 'char_name_option: x', 'char_name_min_length: 2', 'char_name_min_length: 24']) {
+		const { settings, notes } = parse(text);
+		assert.deepEqual(settings, [], text);
+		assert.match(notes[0], /is not a value .* accepts, so it was left out/, text);
+	}
+	assert.equal(serverOf(parse('char_name_min_length: 8').settings[0].key), 'char');
+});
+
+test('other character and login server keys are named, not written where nothing reads them', () => {
+	for (const key of ['char_ip', 'login_ip', 'start_point', 'char_del_delay', 'new_account', 'pincode_enabled']) {
+		const { settings, notes } = parse(`${key}: 1`);
+		assert.deepEqual(settings, [], key);
+		assert.match(notes[0], /read by the character or login server, which this box cannot set/, key);
+	}
+	assert.equal(customConf({ custom_battle_conf: 'char_ip: 1.2.3.4' }), '');
+	for (const key of CHAR_KEYS) assert.ok(!OTHER_SERVER_KEYS.has(key), key);
+});
+
+// The supervisor writes the character-server keys (stack/src/custom_conf.rs).
+// Its list and the shell's must be the same list.
+test('the shell and the supervisor agree on which keys go to the character server', () => {
+	const rust = read('stack/src/custom_conf.rs');
+	const list = rust.match(/pub const CHAR_KEYS: &\[&str\] = &\[([^\]]*)\]/);
+	assert.ok(list, 'CHAR_KEYS not found in custom_conf.rs');
+	assert.deepEqual([...list[1].matchAll(/"([a-z_]+)"/g)].map(m => m[1]).sort(), [...CHAR_KEYS].sort());
+	assert.match(read('stack/src/cmds.rs'), /crate::custom_conf::char_lines\(/, 'cmds.rs no longer writes them');
+});
+
+// Every key the supervisor writes to the login and character configs is one
+// this box cannot set, so each must be named rather than passed to the map
+// server, which would ignore it.
+test('every key the supervisor writes for the login and character servers is named', () => {
+	// Windows checks the sources out with CRLF; the function ends are found by '\n}\n'.
+	const rust = (read('stack/src/registration.rs') + read('stack/src/cmds.rs')).replace(/\r\n/g, '\n');
+	const written = new Set();
+	for (const fn of ['login_config', 'character_config']) {
+		const body = rust.slice(rust.indexOf(`pub fn ${fn}(`), rust.indexOf('\n}\n', rust.indexOf(`pub fn ${fn}(`)));
+		for (const m of body.matchAll(/(?:"|\\n)([a-z_]+): /g)) written.add(m[1]);
+	}
+	const charConf = rust.match(/write_conf\(&conf, "char_conf\.txt",[\s\S]*?"login_ip[^"]*"/);
+	assert.ok(charConf, 'char_conf.txt is no longer written where this test looks');
+	for (const m of charConf[0].matchAll(/(?:"|\\n)([a-z_]+): /g)) written.add(m[1]);
+	for (const m of rust.matchAll(/login_config\.push_str\("([a-z_]+): /g)) written.add(m[1]);
+	assert.ok(written.size >= 6, [...written].join(', '));
+	for (const key of written) assert.ok(OTHER_SERVER_KEYS.has(key), `${key} is written by the supervisor but not named`);
 });

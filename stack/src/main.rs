@@ -20,6 +20,7 @@ mod world;
 mod asset_transaction;
 mod cmds;
 mod crashes;
+mod custom_conf;
 mod database;
 mod db_backup;
 mod dump_migrations;
