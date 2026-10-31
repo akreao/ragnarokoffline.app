@@ -17,9 +17,8 @@
 use crate::json::Value;
 
 /// Must match CHAR_KEYS in electron/custom-conf.js (tests/custom-conf.test.cjs
-/// compares them). Not char_name_min_length: the client refuses a name under
-/// four UTF-8 bytes before sending it, so a lower minimum could not be reached.
-pub const CHAR_KEYS: &[&str] = &["char_name_option", "char_name_letters"];
+/// compares them).
+pub const CHAR_KEYS: &[&str] = &["char_name_option", "char_name_letters", "char_name_min_length"];
 
 /// Same limit as the shell's MAX_BYTES: an oversized box writes nothing.
 const MAX_BYTES: usize = 8 * 1024;
@@ -30,6 +29,13 @@ fn accepts(key: &str, value: &str) -> bool {
         "char_name_option" => matches!(value, "0" | "1" | "2"),
         // rAthena reads the rest of the line, so a list may contain spaces.
         "char_name_letters" => value.len() <= 1023,
+        // UTF-8 bytes, against a 23-byte name. Not under 4: the client
+        // refuses a shorter name before sending it, so it could not be reached.
+        "char_name_min_length" => {
+            !value.is_empty()
+                && value.bytes().all(|b| b.is_ascii_digit())
+                && value.parse::<u32>().map_or(false, |n| (4..=23).contains(&n))
+        }
         _ => false,
     }
 }
@@ -79,13 +85,14 @@ mod tests {
         assert_eq!(lines("drop_rate_cap: 10000\nchar_name_option: 0\n"), "char_name_option: 0\n");
         assert_eq!(lines("  CHAR_NAME_OPTION: 2  \r\nchar_name_letters: @ #$\r\n"),
                    "char_name_option: 2\nchar_name_letters: @ #$\n");
+        assert_eq!(lines("char_name_min_length: 8"), "char_name_min_length: 8\n");
     }
 
     #[test]
     fn nothing_else_reaches_it() {
         for text in ["char_ip: 1.2.3.4", "login_ip: evil", "start_point: prontera,1,1", "import: x",
                      "// char_name_option: 0", "char_name_option: 3", "char_name_option: 0 1",
-                     "char_name_min_length: 2",
+                     "char_name_min_length: 2", "char_name_min_length: 24", "char_name_min_length: -1",
                      "char_name_option:", "char_name_letters: \u{3042}"] {
             assert_eq!(lines(text), "", "{text}");
         }

@@ -174,15 +174,16 @@ test('character-name keys are kept out of the battle config', () => {
 });
 
 test('a character-name value the server would not accept is named', () => {
-	for (const text of ['char_name_option: 3', 'char_name_option: 0 1', 'char_name_option: x']) {
+	for (const text of ['char_name_option: 3', 'char_name_option: 0 1', 'char_name_option: x', 'char_name_min_length: 2', 'char_name_min_length: 24']) {
 		const { settings, notes } = parse(text);
 		assert.deepEqual(settings, [], text);
 		assert.match(notes[0], /is not a value .* accepts, so it was left out/, text);
 	}
+	assert.equal(serverOf(parse('char_name_min_length: 8').settings[0].key), 'char');
 });
 
 test('other character and login server keys are named, not written where nothing reads them', () => {
-	for (const key of ['char_ip', 'login_ip', 'start_point', 'char_del_delay', 'new_account', 'pincode_enabled', 'char_name_min_length']) {
+	for (const key of ['char_ip', 'login_ip', 'start_point', 'char_del_delay', 'new_account', 'pincode_enabled']) {
 		const { settings, notes } = parse(`${key}: 1`);
 		assert.deepEqual(settings, [], key);
 		assert.match(notes[0], /read by the character or login server, which this box cannot set/, key);
