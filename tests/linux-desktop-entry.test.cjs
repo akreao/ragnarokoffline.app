@@ -14,13 +14,13 @@ function sandbox(t) {
   for (const size of ['512x512', '1024x1024']) {
     const dir = path.join(appDir, 'usr/share/icons/hicolor', size, 'apps');
     fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(path.join(dir, 'ragnarokoffline.png'), `icon ${size}`);
+    fs.writeFileSync(path.join(dir, 'ragnarokoffline-client-test.png'), `icon ${size}`);
   }
   const appImage = path.join(home, 'Downloads', 'Ragnarok Offline-1.2.0-x64.AppImage');
   fs.mkdirSync(path.dirname(appImage), { recursive: true });
   fs.writeFileSync(appImage, 'not really an appimage');
   const env = { APPIMAGE: appImage, APPDIR: appDir, XDG_DATA_HOME: path.join(home, '.local/share') };
-  const file = path.join(env.XDG_DATA_HOME, 'applications/ragnarokoffline.desktop');
+  const file = path.join(env.XDG_DATA_HOME, 'applications/ragnarokoffline-client-test.desktop');
   return { home, env, appImage, appDir, file };
 }
 
@@ -34,7 +34,7 @@ test('the entry points back at the AppImage, quoted so a space cannot split it',
   assert.match(text, /^TryExec=\/home\/player\/My Games\/Ragnarok Offline-1\.2\.0-x64\.AppImage$/m);
   assert.match(text, /^Type=Application$/m);
   assert.match(text, /^Categories=Game;$/m);
-  assert.match(text, /^Icon=ragnarokoffline$/m);
+  assert.match(text, /^Icon=ragnarokoffline-client-test$/m);
 });
 
 test('an AppImage run writes a launcher entry pointing back at itself', t => {
@@ -45,7 +45,7 @@ test('an AppImage run writes a launcher entry pointing back at itself', t => {
   assert.equal(fs.readFileSync(s.file, 'utf8').replace(/\r\n/g, '\n'), entryText(s.appImage));
   // Both icon sizes, at the path a hicolor theme looks in.
   for (const size of ['512x512', '1024x1024']) {
-    const icon = path.join(s.env.XDG_DATA_HOME, 'icons/hicolor', size, 'apps/ragnarokoffline.png');
+    const icon = path.join(s.env.XDG_DATA_HOME, 'icons/hicolor', size, 'apps/ragnarokoffline-client-test.png');
     assert.equal(fs.readFileSync(icon, 'utf8').replace(/\r\n/g, '\n'), `icon ${size}`);
   }
 });

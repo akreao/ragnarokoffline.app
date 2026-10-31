@@ -24,8 +24,10 @@ const os = require('node:os');
 
 // The same base name electron-builder gives the bundled copy, so a system that
 // *does* integrate AppImages ends up with one entry rather than two.
-const ENTRY = 'ragnarokoffline.desktop';
-const ICON = 'ragnarokoffline';
+// The client-test build has its own: electron-builder names the icon after
+// package.json's name, and an entry of its own leaves the main app's alone.
+const ENTRY = 'ragnarokoffline-client-test.desktop';
+const ICON = 'ragnarokoffline-client-test';
 
 function dataHome(env, home) {
   return env.XDG_DATA_HOME || path.join(home, '.local', 'share');
@@ -43,7 +45,7 @@ function entryText(appImage) {
   return [
     '[Desktop Entry]',
     'Type=Application',
-    'Name=Ragnarok Offline',
+    'Name=Ragnarok Offline Client Test',
     'Comment=Ragnarok Online, offline, in one app',
     `Exec=${quote(appImage)} --no-sandbox %U`,
     `TryExec=${appImage}`,
@@ -52,7 +54,7 @@ function entryText(appImage) {
     'Categories=Game;',
     // Matches what Electron reports as the window class, which is how a
     // desktop associates the open window with this entry.
-    'StartupWMClass=Ragnarok Offline',
+    'StartupWMClass=Ragnarok Offline Client Test',
     // Ours, so a later version can recognise its own work and a person
     // reading the file can tell where it came from.
     'X-RagnarokOffline-Generated=true',

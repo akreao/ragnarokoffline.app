@@ -166,6 +166,11 @@ const EXE = process.platform === 'win32' ? '.exe' : '';
 // Paths
 // ---------------------------------------------------------------------------
 
+// The client-test build's name: its window titles, its app name (and so
+// Electron's userData and single-instance lock) and its data folder. Must
+// match productName in package.json and DATA_NAME in stack/src/config.rs.
+const DATA_NAME = 'Ragnarok Offline Client Test';
+
 // Not Electron's app.getPath(), which derives the folder from the app name and
 // would drift if that changed. The name is also deliberately not the bundle id:
 // a folder ending in `.app` is drawn by Finder as an application bundle and
@@ -178,20 +183,24 @@ const EXE = process.platform === 'win32' ? '.exe' : '';
 // `~/Library/Application Support` directory on Linux.
 //
 // Must stay in step with data_root() in stack/src/config.rs.
+//
+// This fork's client-test build keeps its data in its own folder, named after
+// the product (DATA_NAME), so it never touches the saves of the main
+// Ragnarok Offline app and the two can be installed side by side.
 function dataRoot() {
 	// Same override the supervisor honours (see data_root() in
 	// stack/src/config.rs), so the two agree and a test run can be pointed at a
 	// scratch directory instead of a real install.
 	if (process.env.RAGNAROK_OFFLINE_HOME) return process.env.RAGNAROK_OFFLINE_HOME;
 	if (process.platform === 'darwin') {
-		return path.join(os.homedir(), 'Library/Application Support/Ragnarok Offline');
+		return path.join(os.homedir(), 'Library/Application Support', DATA_NAME);
 	}
 	if (process.platform === 'win32') {
 		return path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData/Roaming'),
-			'Ragnarok Offline');
+			DATA_NAME);
 	}
 	return path.join(process.env.XDG_DATA_HOME || path.join(os.homedir(), '.local/share'),
-		'Ragnarok Offline');
+		DATA_NAME);
 }
 
 // The supervisor binary that replaced stack.sh and link-assets.sh. One
@@ -1825,7 +1834,7 @@ function scanClientDir(dir) {
 // stack.sh still writes a platform-flavoured MOTD ("Welcome to RagnarokMac
 // Offline!"), which is a greeting rather than an identity and reads fine.
 function productName() {
-	return 'Ragnarok Offline';
+	return DATA_NAME;
 }
 
 const windows = {};

@@ -29,22 +29,26 @@ pub fn home() -> PathBuf {
 /// conventional locations rather than inheriting the macOS one, which is what
 /// the shell version did — it wrote a literal `~/Library/Application Support`
 /// directory on Linux.
+/// The client-test build's data folder name, its own so it never shares saves
+/// with the main Ragnarok Offline app. Must match DATA_NAME in electron/main.js.
+pub const DATA_NAME: &str = "Ragnarok Offline Client Test";
+
 pub fn data_root() -> PathBuf {
     if let Some(p) = env::var_os("RAGNAROK_OFFLINE_HOME") {
         return PathBuf::from(p);
     }
     if cfg!(target_os = "macos") {
-        home().join("Library/Application Support/Ragnarok Offline")
+        home().join("Library/Application Support").join(DATA_NAME)
     } else if cfg!(windows) {
         env::var_os("APPDATA")
             .map(PathBuf::from)
             .unwrap_or_else(|| home().join("AppData/Roaming"))
-            .join("Ragnarok Offline")
+            .join(DATA_NAME)
     } else {
         env::var_os("XDG_DATA_HOME")
             .map(PathBuf::from)
             .unwrap_or_else(|| home().join(".local/share"))
-            .join("Ragnarok Offline")
+            .join(DATA_NAME)
     }
 }
 

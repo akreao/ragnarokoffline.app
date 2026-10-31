@@ -37,9 +37,9 @@ const require = createRequire(import.meta.url);
 
 function dataRoot() {
 	if (process.env.RAGNAROK_OFFLINE_HOME) return process.env.RAGNAROK_OFFLINE_HOME;
-	if (process.platform === 'darwin') return path.join(os.homedir(), 'Library/Application Support/Ragnarok Offline');
-	if (process.platform === 'win32') return path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData/Roaming'), 'Ragnarok Offline');
-	return path.join(process.env.XDG_DATA_HOME || path.join(os.homedir(), '.local/share'), 'Ragnarok Offline');
+	if (process.platform === 'darwin') return path.join(os.homedir(), 'Library/Application Support/Ragnarok Offline Client Test');
+	if (process.platform === 'win32') return path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData/Roaming'), 'Ragnarok Offline Client Test');
+	return path.join(process.env.XDG_DATA_HOME || path.join(os.homedir(), '.local/share'), 'Ragnarok Offline Client Test');
 }
 const stateDir = opts => opts.state || process.env.RAGNAROKMAC_STATE || path.join(dataRoot(), 'state');
 const connectionFile = opts => path.join(stateDir(opts), 'map-editor', 'connection.json');

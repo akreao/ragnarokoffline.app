@@ -30,7 +30,7 @@ const UI_DIR = '/data/texture/%C0%AF%C0%FA%C0%CE%C5%CD%C6%E4%C0%CC%BD%BA/';
 
 function discoverPort() {
 	// The app writes its http port into the asset log line "Server ready on http://...".
-	const state = path.join(os.homedir(), 'AppData', 'Roaming', 'Ragnarok Offline', 'state');
+	const state = path.join(os.homedir(), 'AppData', 'Roaming', 'Ragnarok Offline Client Test', 'state');
 	for (const file of ['assets.log', 'app.log']) {
 		const p = path.join(state, file);
 		if (!fs.existsSync(p)) continue;

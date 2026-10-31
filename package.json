@@ -1,7 +1,7 @@
 {
-  "name": "ragnarokoffline",
-  "productName": "Ragnarok Offline",
-  "version": "1.7.7",
+  "name": "ragnarokoffline-client-test",
+  "productName": "Ragnarok Offline Client Test",
+  "version": "1.7.8",
   "description": "Ragnarok Online, offline, in one app",
   "license": "GPL-3.0",
   "private": true,
@@ -18,8 +18,8 @@
     "electron-builder": "^26.18.0"
   },
   "build": {
-    "appId": "com.chronotale.ragnarokoffline",
-    "productName": "Ragnarok Offline",
+    "appId": "com.akreao.ragnarokoffline.clienttest",
+    "productName": "Ragnarok Offline Client Test",
     "copyright": "GPL-3.0",
     "directories": {
       "output": "dist/electron",
