@@ -115,6 +115,18 @@ print('installed client extension API and shared movement hooks')
 # client's own historical limit too. The server counts the bytes of the name as
 # sent, which is UTF-8, so count those: a two-character Japanese name is six
 # bytes and the server takes it.
+# A checkout patched before the check counted bytes still has the old one,
+# which counted JavaScript characters and refused two-character Japanese names.
+# The edit below would add the new check above it and leave both, so swap it in
+# place first.
+_char_engine = rb / 'src' / 'Engine/CharEngine.js'
+_old_check = ("\tif (String(name || '').trim().length < 4) {\n"
+              "\t\tUIManager.showMessageBox('Character names need at least 4 characters.', 'ok');")
+_new_check = ("\tif (new TextEncoder().encode(String(name || '').trim()).length < 4) {\n"
+              "\t\tUIManager.showMessageBox('Character names need at least 4 letters, or 2 Japanese, Chinese or Korean characters.', 'ok');")
+_text = _char_engine.read_text()
+if _old_check in _text:
+    _char_engine.write_text(_text.replace(_old_check, _new_check, 1))
 edit('Engine/CharEngine.js', "function onCharCreationRequest(name, Str, Agi, Vit, Int, Dex, Luk, hair, color, job, sex) {\n\tlet pkt;",
      """function onCharCreationRequest(name, Str, Agi, Vit, Int, Dex, Luk, hair, color, job, sex) {
 \tlet pkt;
