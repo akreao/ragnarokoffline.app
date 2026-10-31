@@ -174,16 +174,15 @@ test('character-name keys are kept out of the battle config', () => {
 });
 
 test('a character-name value the server would not accept is named', () => {
-	for (const text of ['char_name_option: 3', 'char_name_option: 0 1', 'char_name_min_length: 0', 'char_name_min_length: 24']) {
+	for (const text of ['char_name_option: 3', 'char_name_option: 0 1', 'char_name_option: x']) {
 		const { settings, notes } = parse(text);
 		assert.deepEqual(settings, [], text);
 		assert.match(notes[0], /is not a value .* accepts, so it was left out/, text);
 	}
-	assert.equal(parse('char_name_min_length: 2').settings.length, 1);
 });
 
 test('other character and login server keys are named, not written where nothing reads them', () => {
-	for (const key of ['char_ip', 'login_ip', 'start_point', 'char_del_delay', 'new_account', 'pincode_enabled']) {
+	for (const key of ['char_ip', 'login_ip', 'start_point', 'char_del_delay', 'new_account', 'pincode_enabled', 'char_name_min_length']) {
 		const { settings, notes } = parse(`${key}: 1`);
 		assert.deepEqual(settings, [], key);
 		assert.match(notes[0], /read by the character or login server, which this box cannot set/, key);
@@ -200,4 +199,22 @@ test('the shell and the supervisor agree on which keys go to the character serve
 	assert.ok(list, 'CHAR_KEYS not found in custom_conf.rs');
 	assert.deepEqual([...list[1].matchAll(/"([a-z_]+)"/g)].map(m => m[1]).sort(), [...CHAR_KEYS].sort());
 	assert.match(read('stack/src/cmds.rs'), /crate::custom_conf::char_lines\(/, 'cmds.rs no longer writes them');
+});
+
+// Every key the supervisor writes to the login and character configs is one
+// this box cannot set, so each must be named rather than passed to the map
+// server, which would ignore it.
+test('every key the supervisor writes for the login and character servers is named', () => {
+	const rust = read('stack/src/registration.rs') + read('stack/src/cmds.rs');
+	const written = new Set();
+	for (const fn of ['login_config', 'character_config']) {
+		const body = rust.slice(rust.indexOf(`pub fn ${fn}(`), rust.indexOf('\n}\n', rust.indexOf(`pub fn ${fn}(`)));
+		for (const m of body.matchAll(/(?:"|\\n)([a-z_]+): /g)) written.add(m[1]);
+	}
+	const charConf = rust.match(/write_conf\(&conf, "char_conf\.txt",[\s\S]*?"login_ip[^"]*"/);
+	assert.ok(charConf, 'char_conf.txt is no longer written where this test looks');
+	for (const m of charConf[0].matchAll(/(?:"|\\n)([a-z_]+): /g)) written.add(m[1]);
+	for (const m of rust.matchAll(/login_config\.push_str\("([a-z_]+): /g)) written.add(m[1]);
+	assert.ok(written.size >= 6, [...written].join(', '));
+	for (const key of written) assert.ok(OTHER_SERVER_KEYS.has(key), `${key} is written by the supervisor but not named`);
 });

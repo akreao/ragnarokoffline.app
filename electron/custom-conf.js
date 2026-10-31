@@ -54,7 +54,10 @@ const REFUSED = new Set(['import']);
 // Character-server keys this box may set. They go to char_conf.txt, not to
 // battle_conf.txt. stack/src/custom_conf.rs holds the same list and the same
 // checks, and the test suite compares the two.
-const CHAR_KEYS = new Set(['char_name_option', 'char_name_letters', 'char_name_min_length']);
+// char_name_min_length is not one of them: the client refuses a name under
+// four UTF-8 bytes before sending it (scripts/patch-client-controls.py), so a
+// lower server minimum could never be reached.
+const CHAR_KEYS = new Set(['char_name_option', 'char_name_letters']);
 
 // rAthena's char_config_read reads the whole rest of the line as the value, so
 // a list of letters may contain spaces. Each key's own check, by name.
@@ -62,12 +65,11 @@ const CHAR_VALUE = {
 	// 0: any name, 1: only char_name_letters, 2: anything but char_name_letters.
 	char_name_option: v => /^[012]$/.test(v),
 	char_name_letters: v => v.length <= 1023,
-	// Counted in bytes, against a 23-byte name.
-	char_name_min_length: v => /^\d+$/.test(v) && Number(v) >= 1 && Number(v) <= 23,
 };
 
 // Keys the character and login servers read (conf/char_athena.conf and
-// conf/login_athena.conf at the pinned rAthena) that this box cannot set. None
+// conf/login_athena.conf at the pinned rAthena, plus every key the supervisor
+// writes to char_conf.txt or login_conf.txt itself) that this box cannot set. None
 // of them is a battle setting, so written to battle_conf.txt they would do
 // nothing at all. Named instead.
 const OTHER_SERVER_KEYS = new Set([
@@ -77,17 +79,17 @@ const OTHER_SERVER_KEYS = new Set([
 	'char_movetoused', 'char_new', 'char_new_display', 'char_port', 'char_rename_guild', 'char_rename_party',
 	'clan_remove_inactive_days', 'clear_parties', 'db_path', 'default_map', 'default_map_x', 'default_map_y',
 	'fame_list_alchemist', 'fame_list_blacksmith', 'fame_list_taekwon', 'gm_allow_group', 'guild_exp_rate',
-	'log_char', 'login_ip', 'login_port', 'mail_delete_days', 'mail_retrieve', 'mail_return_days',
+	'char_name_min_length', 'log_char', 'login_ip', 'login_port', 'mail_delete_days', 'mail_retrieve', 'mail_return_days',
 	'mail_return_empty', 'max_connect_user', 'name_ignoring_case', 'passwd', 'pincode_allow_repeated',
 	'pincode_allow_sequential', 'pincode_changetime', 'pincode_enabled', 'pincode_force', 'pincode_maxtry',
 	'save_log', 'server_name', 'start_items', 'start_items_doram', 'start_items_pre', 'start_point',
 	'start_point_doram', 'start_point_pre', 'start_zeny', 'unknown_char_name', 'userid', 'wisp_server_name',
 	// login_athena.conf
-	'allowed_regs', 'chars_per_account', 'client_hash_check', 'date_format', 'disable_webtoken_delay',
+	'acc_name_min_length', 'allowed_regs', 'chars_per_account', 'client_hash_check', 'date_format', 'disable_webtoken_delay',
 	'dnsbl_servers', 'group_id_to_connect', 'hash_passwords', 'ipban_cleanup_interval',
 	'ipban_dynamic_pass_failure_ban', 'ipban_dynamic_pass_failure_ban_duration',
 	'ipban_dynamic_pass_failure_ban_interval', 'ipban_dynamic_pass_failure_ban_limit', 'ipban_enable',
-	'log_login', 'login_log_filename', 'login_tokens', 'min_group_id_to_connect', 'new_account',
+	'log_login', 'login_log_filename', 'login_tokens', 'min_group_id_to_connect', 'new_account', 'password_min_length',
 	'start_limited_time', 'time_allowed', 'use_dnsbl', 'use_web_auth_token', 'usercount_disable',
 	'usercount_high', 'usercount_low', 'usercount_medium', 'vip_char_increase', 'vip_group',
 ]);
