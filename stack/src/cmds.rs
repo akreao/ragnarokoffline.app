@@ -2038,10 +2038,13 @@ pub fn up(cfg: &Config, dk: &Docker, lan: bool, ram_mib: Option<u32>) -> Result<
     // parsed by char_config_split_startpoint, which clears the array before
     // filling it, so the last line is the whole answer rather than an addition.
     let instant_deletion = crate::registration::instant_character_deletion(&cfg.state)?;
+    // The player's own name rules from Settings -> Rates -> Advanced come
+    // after the mods', so what the owner typed wins (custom_conf.rs).
+    let player_char_lines = crate::custom_conf::char_lines(&crate::registration::settings(&cfg.state)?);
     write_conf(&conf, "char_conf.txt",
         &format!("login_ip: ragnarok-login\nchar_ip: {advertise}\npincode_enabled: no\n{}\
-                  {start_point}\n{}{}{}", crate::registration::character_config(instant_deletion),
-                  conf_lines(&mods, "char_conf.txt"),
+                  {start_point}\n{}{}{}{}", crate::registration::character_config(instant_deletion),
+                  conf_lines(&mods, "char_conf.txt"), player_char_lines,
                   credentials.as_ref().map(|c| format!("userid: s1\npasswd: {}\n", c.interserver)).unwrap_or_default(),
                   ports.char_conf()))?;
 
