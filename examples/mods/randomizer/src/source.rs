@@ -122,17 +122,17 @@ pub fn data_root() -> PathBuf {
     .unwrap_or_default();
 
     if cfg!(target_os = "macos") {
-        home.join("Library/Application Support/Ragnarok Offline")
+        home.join("Library/Application Support/Ragnarok Offline Client Test")
     } else if cfg!(windows) {
         std::env::var_os("APPDATA")
             .map(PathBuf::from)
             .unwrap_or_else(|| home.join("AppData/Roaming"))
-            .join("Ragnarok Offline")
+            .join("Ragnarok Offline Client Test")
     } else {
         std::env::var_os("XDG_DATA_HOME")
             .map(PathBuf::from)
             .unwrap_or_else(|| home.join(".local/share"))
-            .join("Ragnarok Offline")
+            .join("Ragnarok Offline Client Test")
     }
 }
 

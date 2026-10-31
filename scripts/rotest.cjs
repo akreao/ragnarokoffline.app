@@ -22,9 +22,9 @@ const home = process.env.HOME || process.env.USERPROFILE || '';
 // and data_root() (stack/src/config.rs). On Linux that is XDG_DATA_HOME, not
 // ~/.config: that one holds only Chromium's userData.
 const appData = process.env.RAGNAROK_OFFLINE_HOME
-    || (process.platform === 'darwin' ? path.join(home, 'Library/Application Support/Ragnarok Offline')
-        : process.platform === 'win32' ? path.join(process.env.APPDATA || path.join(home, 'AppData/Roaming'), 'Ragnarok Offline')
-            : path.join(process.env.XDG_DATA_HOME || path.join(home, '.local/share'), 'Ragnarok Offline'));
+    || (process.platform === 'darwin' ? path.join(home, 'Library/Application Support/Ragnarok Offline Client Test')
+        : process.platform === 'win32' ? path.join(process.env.APPDATA || path.join(home, 'AppData/Roaming'), 'Ragnarok Offline Client Test')
+            : path.join(process.env.XDG_DATA_HOME || path.join(home, '.local/share'), 'Ragnarok Offline Client Test'));
 const WORLD = path.resolve(process.env.RO_E2E_WORLD || path.join(repo, 'artifacts/agent-world'));
 const PORT = Number(process.env.ROTEST_PORT || 7480);
 const OUT = path.resolve(process.env.ROTEST_OUT || path.join(repo, 'artifacts/rotest'));

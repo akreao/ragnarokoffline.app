@@ -453,7 +453,7 @@ jobs:
       - name: Verify the bundle matches the source
         if: matrix.platform == 'mac'
         run: |
-          APP="dist/electron/mac-arm64/Ragnarok Offline.app"
+          APP="dist/electron/mac-arm64/Ragnarok Offline Client Test.app"
           # Against the hash sidecar, not the binary: signing rewrites the
           # Mach-O, so the shipped binary never matches the build output byte
           # for byte. The sidecar is a text file, is not signed, and still
@@ -475,9 +475,9 @@ jobs:
           DMG=$(ls dist/electron/*.dmg | head -1)
           MP=$(mktemp -d); OUT=$(mktemp -d)
           hdiutil attach "$DMG" -nobrowse -readonly -mountpoint "$MP" >/dev/null
-          cp -R "$MP/Ragnarok Offline.app" "$OUT/"
+          cp -R "$MP/Ragnarok Offline Client Test.app" "$OUT/"
           hdiutil detach "$MP" >/dev/null
-          codesign --verify --strict "$OUT/Ragnarok Offline.app" \
+          codesign --verify --strict "$OUT/Ragnarok Offline Client Test.app" \
             || { echo "the app is not validly signed after being copied out of the dmg" >&2; exit 1; }
           rm -rf "$OUT" "$MP"
 

@@ -70,7 +70,7 @@ if ($CrossVolume) {
 
 if (-not $ConfirmDestructive) { throw 'The install loop deletes the VM data disk. Use disposable state and -ConfirmDestructive, or choose -CrossVolume.' }
 
-$data   = "$env:APPDATA\Ragnarok Offline"
+$data   = "$env:APPDATA\Ragnarok Offline Client Test"
 $nebula = "$data\nebula"
 $rt     = "$data\runtime"
 $stack  = "$rt\bin\ragnarok-stack.exe"
