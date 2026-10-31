@@ -44,11 +44,11 @@
         "to": "payload"
       }
     ],
-    "artifactName": "Ragnarok.Offline-${version}-${arch}.${ext}",
+    "artifactName": "Ragnarok.Offline-client-test-${version}-${arch}.${ext}",
     "publish": [
       {
         "provider": "github",
-        "owner": "Flux159",
+        "owner": "akreao",
         "repo": "ragnarokoffline.app",
         "releaseType": "release"
       }
