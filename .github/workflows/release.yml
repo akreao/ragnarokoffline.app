@@ -142,8 +142,17 @@ jobs:
           if [ "$busy" != 0 ]; then
             echo "::error::an images.yml run is still going; wait for it (or cancel the stale ones)"; exit 1
           fi
-          run=$(gh run list -R "$GITHUB_REPOSITORY" -w images.yml -b main -L 40 --json headSha,conclusion,createdAt \
-            -q "[.[] | select(.headSha == \"$img\")][0] // empty | \"\(.conclusion) \(.createdAt)\"")
+          # The newest push run built from a commit that contains $img. A push
+          # of several commits runs images.yml once, on the last of them, so the
+          # run's head is often a later commit than $img and not $img itself.
+          # Only push runs publish to the images release; a manual run does not.
+          run=""
+          while read -r sha conclusion created; do
+            if git merge-base --is-ancestor "$img" "$sha" 2>/dev/null; then
+              run="$conclusion $created"; break
+            fi
+          done < <(gh run list -R "$GITHUB_REPOSITORY" -w images.yml -b main -L 40 --json headSha,conclusion,createdAt,event \
+            -q '.[] | select(.event == "push") | "\(.headSha) \(.conclusion) \(.createdAt)"')
           if [ -z "$run" ]; then echo "::error::no images.yml run for ${img:0:9}"; exit 1; fi
           read -r conclusion started <<<"$run"
           if [ "$conclusion" != success ]; then
