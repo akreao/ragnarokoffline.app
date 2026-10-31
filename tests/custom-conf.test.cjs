@@ -206,7 +206,8 @@ test('the shell and the supervisor agree on which keys go to the character serve
 // this box cannot set, so each must be named rather than passed to the map
 // server, which would ignore it.
 test('every key the supervisor writes for the login and character servers is named', () => {
-	const rust = read('stack/src/registration.rs') + read('stack/src/cmds.rs');
+	// Windows checks the sources out with CRLF; the function ends are found by '\n}\n'.
+	const rust = (read('stack/src/registration.rs') + read('stack/src/cmds.rs')).replace(/\r\n/g, '\n');
 	const written = new Set();
 	for (const fn of ['login_config', 'character_config']) {
 		const body = rust.slice(rust.indexOf(`pub fn ${fn}(`), rust.indexOf('\n}\n', rust.indexOf(`pub fn ${fn}(`)));
