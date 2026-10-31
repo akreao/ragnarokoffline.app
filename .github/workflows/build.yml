@@ -544,7 +544,9 @@ jobs:
           if-no-files-found: warn
 
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
+    # Only this fork's own client-test tags publish. The plain v* tags it
+    # carries from upstream still build, but never become a release here.
+    if: startsWith(github.ref, 'refs/tags/v') && endsWith(github.ref, '-client-test')
     needs: app
     runs-on: ubuntu-latest
     # contents for the release; actions to start the docs rebuild
@@ -560,7 +562,8 @@ jobs:
         with:
           pattern: ragnarok-offline-*
           path: artifacts
-      # The release notes, from the tag: release-notes/<version>.md, which the
+      # The release notes, from the tag: release-notes/client-test/<version>.md
+      # (this fork's tags are v<version>-client-test), which the
       # version bump pull request adds (release.yml refuses to tag without it).
       # The release is published with them, so nothing edits it afterwards.
       # Without the file -- a tag cut before this existed -- GitHub's
@@ -575,10 +578,12 @@ jobs:
         # player never has to pick one out of the update files, then the notes.
         run: |
           version="${GITHUB_REF_NAME#v}"
-          file="source/release-notes/$version.md"
+          version="${version%-client-test}"
+          file="source/release-notes/client-test/$version.md"
           base="https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}"
+          echo "name=Ragnarok Offline $version (client-test)" >> "$GITHUB_OUTPUT"
           {
-            echo "**Download:** [macOS (Apple Silicon)]($base/Ragnarok.Offline-$version-arm64.dmg) · [Windows]($base/Ragnarok.Offline-$version-x64.exe) · [Linux (AppImage)]($base/Ragnarok.Offline-$version-x86_64.AppImage)"
+            echo "**Download:** [macOS (Apple Silicon)]($base/Ragnarok.Offline-client-test-$version-arm64.dmg) · [Windows]($base/Ragnarok.Offline-client-test-$version-x64.exe) · [Linux (AppImage)]($base/Ragnarok.Offline-client-test-$version-x86_64.AppImage)"
             echo
           } > body.md
           if [ -f "$file" ]; then
@@ -605,15 +610,9 @@ jobs:
             artifacts/**/*.zip
             artifacts/**/*.blockmap
             artifacts/**/latest*.yml
+          name: ${{ steps.notes.outputs.name }}
           body_path: ${{ steps.notes.outputs.path }}
           generate_release_notes: ${{ steps.notes.outputs.generate }}
-      # The docs site's /download/<platform>/ pages redirect to the newest
-      # installer by its versioned name, read when the site is built, so the
-      # site is rebuilt now that this release exists. A dispatch on main rather
-      # than a reusable workflow: the github-pages environment only deploys
-      # from main. A release made with this token would not start a `release`
-      # workflow, but a dispatch does.
-      - name: Rebuild the download pages
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh workflow run deploy-docs.yml --repo "$GITHUB_REPOSITORY" --ref main -f tag="$GITHUB_REF_NAME"
+      # Upstream rebuilds its docs site's download pages here. This fork has no
+      # docs site (Pages is off, and docs-site/ points at Flux159's releases),
+      # so the step is left out.

@@ -1,16 +1,21 @@
 name: release
 
-# Cuts a release from main: checks it is ready, tags main's head v<version>,
-# and runs build.yml on that tag, which builds the installers and publishes the
-# GitHub release.
+# Cuts a client-test release from main: checks it is ready, tags main's head
+# v<version>-client-test, and runs build.yml on that tag, which builds the
+# installers and publishes the GitHub release.
+#
+# This fork (akreao/ragnarokoffline.app) cuts test builds for its own testers.
+# Its tags, release titles and installer names all carry "client-test" so they
+# are never mistaken for Flux159's releases, and its release notes live in
+# release-notes/client-test/ so they never collide with upstream's in a merge.
 #
 # The version bump lands first, as an ordinary pull request whose commit is
 # named "<version>" and changes only package.json and adds
-# release-notes/<version>.md: main takes nothing but merged pull requests.
-# This workflow never commits; it only tags. build.yml publishes the release
-# with those notes.
+# release-notes/client-test/<version>.md: main takes nothing but merged pull
+# requests. This workflow never commits; it only tags. build.yml publishes the
+# release with those notes.
 #
-# Only the maintainer may run it. Anyone with write access can start a
+# Only the fork's maintainer may run it. Anyone with write access can start a
 # workflow_dispatch, so the first step stops every other actor. The scheduled
 # cloud routines act as the maintainer's account and pass that check.
 #
@@ -46,11 +51,12 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       VERSION: ${{ inputs.version }}
+      TAG: v${{ inputs.version }}-client-test
     steps:
       - name: Only the maintainer releases
         run: |
-          if [ "${{ github.actor }}" != "Flux159" ]; then
-            echo "::error::release.yml was started by ${{ github.actor }}; only Flux159 may release."
+          if [ "${{ github.actor }}" != "akreao" ]; then
+            echo "::error::release.yml was started by ${{ github.actor }}; only akreao may release."
             exit 1
           fi
 
@@ -59,27 +65,28 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      - name: The version is the next one
+      - name: The version is newer than the last client-test
         run: |
           set -euo pipefail
           if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "::error::'$VERSION' is not a version like 1.5.1"; exit 1
           fi
           git fetch --tags --force --quiet
-          if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then
-            echo "::error::v$VERSION already exists"; exit 1
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "::error::$TAG already exists"; exit 1
           fi
-          last=$(git tag -l 'v*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1)
-          IFS=. read -r major minor patch <<<"${last#v}"
-          # No x.y.10: after 1.4.9 comes 1.5.0, and after 1.9.9 comes 2.0.0.
-          if [ "$patch" -lt 9 ]; then patch=$((patch + 1))
-          elif [ "$minor" -lt 9 ]; then minor=$((minor + 1)); patch=0
-          else major=$((major + 1)); minor=0; patch=0; fi
-          next="$major.$minor.$patch"
-          if [ "$VERSION" != "$next" ]; then
-            echo "::error::the release after $last is $next, not $VERSION"; exit 1
+          # Only this fork's own releases count. Upstream's version numbers jump
+          # when its bumps are merged in, so the rule is "newer", not "next".
+          last=$(git tag -l 'v*-client-test' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+-client-test$' | head -1 || true)
+          if [ -z "$last" ]; then
+            echo "first client-test release: $TAG"; exit 0
           fi
-          echo "last release $last, releasing $VERSION"
+          prev="${last#v}"; prev="${prev%-client-test}"
+          newest=$(printf '%s\n%s\n' "$prev" "$VERSION" | sort -V | tail -1)
+          if [ "$VERSION" = "$prev" ] || [ "$newest" != "$VERSION" ]; then
+            echo "::error::$VERSION is not newer than the last client-test release $last"; exit 1
+          fi
+          echo "last release $last, releasing $TAG"
 
       - name: main says this version, and nothing is waiting since
         run: |
@@ -88,8 +95,8 @@ jobs:
           if [ "$have" != "$VERSION" ]; then
             echo "::error::main's package.json is $have. Merge the \"$VERSION\" bump pull request first."; exit 1
           fi
-          last=$(git tag -l 'v*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1)
-          if [ -z "$(git log --oneline "$last..HEAD" -- . ':!package.json' ':!release-notes')" ]; then
+          last=$(git tag -l 'v*-client-test' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+-client-test$' | head -1 || true)
+          if [ -n "$last" ] && [ -z "$(git log --oneline "$last..HEAD" -- . ':!package.json' ':!release-notes')" ]; then
             echo "::error::nothing but the version changed since $last"; exit 1
           fi
 
@@ -99,13 +106,14 @@ jobs:
           # build.yml publishes the release with this file, so the release is
           # right from the start and nothing has to edit it afterwards. It
           # comes in with the version bump pull request.
-          file="release-notes/$VERSION.md"
+          file="release-notes/client-test/$VERSION.md"
           if [ ! -f "$file" ]; then
             echo "::error::main has no $file. Add the release notes to the \"$VERSION\" bump pull request."; exit 1
           fi
-          last=$(git tag -l 'v*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1)
-          if ! grep -qF "compare/$last...v$VERSION" "$file"; then
-            echo "::error::$file does not end with the Full Changelog link compare/$last...v$VERSION"; exit 1
+          last=$(git tag -l 'v*-client-test' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+-client-test$' | head -1 || true)
+          # The first client-test release has nothing to compare against.
+          if [ -n "$last" ] && ! grep -qF "compare/$last...$TAG" "$file"; then
+            echo "::error::$file does not end with the Full Changelog link compare/$last...$TAG"; exit 1
           fi
           echo "$file: $(wc -c < "$file") bytes"
 
@@ -154,11 +162,11 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "v$VERSION" -m "$VERSION" HEAD
-          git push origin "v$VERSION"
-          gh workflow run build.yml -R "$GITHUB_REPOSITORY" --ref "v$VERSION"
-          echo "Tagged v$VERSION at $(git rev-parse --short HEAD) and started build.yml on it."
+          git tag -a "$TAG" -m "$VERSION client-test" HEAD
+          git push origin "$TAG"
+          gh workflow run build.yml -R "$GITHUB_REPOSITORY" --ref "$TAG"
+          echo "Tagged $TAG at $(git rev-parse --short HEAD) and started build.yml on it."
 
       - name: Dry run
         if: ${{ inputs.dry_run }}
-        run: echo "Dry run, every check passed. Run again with dry_run off to tag v$VERSION and build it."
+        run: echo "Dry run, every check passed. Run again with dry_run off to tag $TAG and build it."
